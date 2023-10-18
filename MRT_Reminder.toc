@@ -1,0 +1,8 @@
+## Interface: 100200
+## Title: Method Raid Tools [Reminder]
+## Author: ykiigor
+## Notes: Method Raid Tools [Reminder]
+## Version: 1
+## RequiredDeps: MRT
+core.lua
+Reminder.lua
