@@ -705,13 +705,64 @@ local function CreateFunctions()
 	end
 end
 
+function exportReminderEncounters()
+ local backoff = EJ_GetCurrentTier()
+ local exists = {};
+
+ local encounterListEJ = {};
+ for tier = 9, EJ_GetNumTiers() do
+  EJ_SelectTier(tier);
+
+  local instance_index = 1;
+  local instance_id    = EJ_GetInstanceByIndex(instance_index, true);
+  
+  while instance_id do
+   local encounterLine = {};
+   EJ_SelectInstance(instance_id);
+   local mapId = select(7, EJ_GetInstanceInfo(instance_id));
+   if mapId and mapId ~= 0 and not exists[instance_id] then
+    table.insert(encounterLine, mapId);
+    
+    local ej_id       = 1;
+    local encounterId = select(7, EJ_GetEncounterInfoByIndex(ej_id, instance_id));
+    
+    while encounterId do
+     table.insert(encounterLine, encounterId);
+    
+     ej_id = ej_id + 1;
+     encounterId = select(7, EJ_GetEncounterInfoByIndex(ej_id, instance_id));
+    end
+    
+    if #encounterLine > 1 then
+     table.insert(encounterListEJ, encounterLine);
+    end
+    encounterLine = {};
+   end
+   
+   exists[instance_id] = true;
+   
+   instance_index = instance_index + 1;
+   instance_id    = EJ_GetInstanceByIndex(instance_index, true);
+  end
+ end
+ 
+ EJ_SelectTier(backoff);
+ 
+ local result = {};
+ for i = #encounterListEJ, 1, -1 do
+  table.insert(result, encounterListEJ[i]);
+ end
+ 
+ return result;
+end
+
 function module.options:Load()
 	self:CreateTilte()
 	
 	MRT.lib:Text(self,"v."..dataVersion,10):Point("BOTTOMLEFT",self.title,"BOTTOMRIGHT",5,2)
 	
-	
 	local encountersList = {
+  --{},
   {2166, 2688, 2687, 2693, 2682, 2680, 2689, 2683, 2684, 2685},
   {2119,2587,2639,2590,2592,2635,2605,2614,2607},
 		{2003,2423,2433,2429,2432,2434,2430,2436,2431,2422,2435},	--sanctum of domination
@@ -727,6 +778,9 @@ function module.options:Load()
 		{806,1958,1962,2008},--tov
 		{777,1853,1841,1873,1854,1876,1877,1864},--EN
 	}
+ 
+ encountersList = exportReminderEncounters();
+
 	local eventsList = {
 		{"SPELL_CAST_SUCCESS","Каст завершен"},
 		{"SPELL_CAST_START","Начало каста"},
