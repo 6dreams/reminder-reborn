@@ -13,7 +13,7 @@ local UnitHealthMax, UnitHealth, UnitIsUnit = UnitHealthMax, UnitHealth, UnitIsU
 local pairs, bit_band = pairs, bit.band
 
 local senderVersion = 2
-local dataVersion = 11
+local dataVersion = 12
 
 local frame = CreateFrame('Frame',nil,UIParent)
 frame:SetSize(30,30)
@@ -146,7 +146,7 @@ CLEU:SetScript("OnEvent",function()
 			for i=1,#f do
 				f[i](CastNumbers_START[sourceGUID][spellID],sourceGUID,sourceFlags2 or 0,CastNumbers_START[spellID])
 			end
-		end		
+		end
 		if bit_band(sourceFlags,0x000000F0) ~= 0x00000010 and not stopHistory then
 			history[#history+1] = {GetTime(),"SPELL_CAST_START",spellID,sourceGUID,sourceName,sourceFlags,sourceFlags2,destGUID,destName,destFlags,destFlags2}
 		end
@@ -157,7 +157,7 @@ CLEU:SetScript("OnEvent",function()
 			CastNumbers_AURA_APPLIED[sourceGUID][spellID] = (CastNumbers_AURA_APPLIED[sourceGUID][spellID] or 0) + 1
 			CastNumbers_AURA_APPLIED[spellID] = (CastNumbers_AURA_APPLIED[spellID] or 0) + 1
 			for i=1,#f do
-				f[i](CastNumbers_AURA_APPLIED[sourceGUID][spellID],sourceGUID,destFlags2 or 0,CastNumbers_AURA_APPLIED[spellID])	
+				f[i](CastNumbers_AURA_APPLIED[sourceGUID][spellID],sourceGUID,destFlags2 or 0,CastNumbers_AURA_APPLIED[spellID])
 			end
 		end
 		f = CLEU_SPELL_AURA_APPLIED_SELF[spellID]
@@ -166,7 +166,7 @@ CLEU:SetScript("OnEvent",function()
 			CastNumbers_AURA_APPLIED_SELF[sourceGUID][spellID] = (CastNumbers_AURA_APPLIED_SELF[sourceGUID][spellID] or 0) + 1
 			CastNumbers_AURA_APPLIED_SELF[spellID] = (CastNumbers_AURA_APPLIED_SELF[spellID] or 0) + 1
 			for i=1,#f do
-				f[i](CastNumbers_AURA_APPLIED_SELF[sourceGUID][spellID],sourceGUID,sourceFlags2 or 0,CastNumbers_AURA_APPLIED_SELF[spellID])	
+				f[i](CastNumbers_AURA_APPLIED_SELF[sourceGUID][spellID],sourceGUID,sourceFlags2 or 0,CastNumbers_AURA_APPLIED_SELF[spellID])
 			end
 		end
 		if bit_band(sourceFlags,0x000000F0) ~= 0x00000010 and not stopHistory then
@@ -240,16 +240,16 @@ BOSSManaFrame:SetScript("OnEvent",function(self,_,unit)
 		if hpMax == 0 then
 			return
 		end
-		
+
 		CastNumbers_MANA2[unit] = CastNumbers_MANA2[unit] or 1
-		
+
 		local hp = UnitPower(unit) / hpMax * 100
 		if bossManaPrev[unit] and hp < bossManaPrev[unit] then
 			CastNumbers_MANA2[unit] = CastNumbers_MANA2[unit] + 1
 			for HP,funcs in pairs(thisUnit) do
 				for i=1,#funcs do
 					CastNumbers_MANA[ funcs[i] ] = nil
-				end				
+				end
 			end
 		end
 		bossManaPrev[unit] = hp
@@ -628,7 +628,7 @@ local function CreateFunctions()
 						if (data.event == "BOSS_PHASE" and (ActivePhase ~= data.spellID or ActiveEncounterStart ~= globalCastNumber)) or
 						   (data.event == "BOSS_START" and (ActiveEncounterStart ~= globalCastNumber)) then
 							return
-						end					
+						end
 						if HideDelay then HideDelay:Cancel() end
 						if CountdownTimer then CountdownTimer:Cancel() end
 						frame.text:SetText(FormatMsg(data.msg))
@@ -674,15 +674,15 @@ local function CreateFunctions()
 					end
 				end
 			end
-			
-			if (data.event == "SPELL_CAST_SUCCESS" or data.event == "SPELL_CAST_START" 
+
+			if (data.event == "SPELL_CAST_SUCCESS" or data.event == "SPELL_CAST_START"
 			   or data.event == "SPELL_AURA_APPLIED" or data.event == "SPELL_AURA_REMOVED"
 			   or data.event == "SPELL_AURA_APPLIED_SELF" or data.event == "SPELL_AURA_REMOVED_SELF") then
 				funcTable[data.spellID] = funcTable[data.spellID] or {}
 				funcTable[data.spellID][ #funcTable[data.spellID] + 1 ] = newFunc
 			elseif (data.event == "BW_MSG" or data.event == "BW_TIMER") then
 				funcTable[data.spellID] = funcTable[data.spellID] or {}
-				funcTable[data.spellID][ #funcTable[data.spellID] + 1 ] = newFunc				
+				funcTable[data.spellID][ #funcTable[data.spellID] + 1 ] = newFunc
 			elseif data.event == "BOSS_HP" or data.event == "BOSS_MANA" then
 				local condition = type(data.condition) == 'nil' and "boss1" or data.condition
 				if type(condition) == 'string' and type(data.spellID) == 'number' then
@@ -715,56 +715,56 @@ function exportReminderEncounters()
 
   local instance_index = 1;
   local instance_id    = EJ_GetInstanceByIndex(instance_index, true);
-  
+
   while instance_id do
    local encounterLine = {};
    EJ_SelectInstance(instance_id);
    local mapId = select(7, EJ_GetInstanceInfo(instance_id));
    if mapId and mapId ~= 0 and not exists[instance_id] then
     table.insert(encounterLine, mapId);
-    
+
     local ej_id       = 1;
     local encounterId = select(7, EJ_GetEncounterInfoByIndex(ej_id, instance_id));
-    
+
     while encounterId do
      table.insert(encounterLine, encounterId);
-    
+
      ej_id = ej_id + 1;
      encounterId = select(7, EJ_GetEncounterInfoByIndex(ej_id, instance_id));
     end
-    
+
     if #encounterLine > 1 then
      table.insert(encounterListEJ, encounterLine);
     end
     encounterLine = {};
    end
-   
+
    exists[instance_id] = true;
-   
+
    instance_index = instance_index + 1;
    instance_id    = EJ_GetInstanceByIndex(instance_index, true);
   end
  end
- 
+
  EJ_SelectTier(backoff);
- 
+
  local result = {};
  for i = #encounterListEJ, 1, -1 do
   table.insert(result, encounterListEJ[i]);
  end
- 
+
  return result;
 end
 
 function module.options:Load()
 	self:CreateTilte()
-	
-	MRT.lib:Text(self,"v."..dataVersion,10):Point("BOTTOMLEFT",self.title,"BOTTOMRIGHT",5,2)
-	
+
+	MRT.lib:Text(self,"v."..dataVersion.." (Рестарт)",10):Point("BOTTOMLEFT",self.title,"BOTTOMRIGHT",5,2)
+
 	local encountersList = {
-  --{},
-  {2166, 2688, 2687, 2693, 2682, 2680, 2689, 2683, 2684, 2685},
-  {2119,2587,2639,2590,2592,2635,2605,2614,2607},
+		{2232, 2820, 2709, 2737, 2728, 2731, 2708, 2824, 2786, 2677}, -- Amirdrassil, the Dream's Hope
+		{2166, 2688, 2687, 2693, 2682, 2680, 2689, 2683, 2684, 2685}, -- Aberrus, the Shadowed Crucible
+		{2119,2587,2639,2590,2592,2635,2605,2614,2607},
 		{2003,2423,2433,2429,2432,2434,2430,2436,2431,2422,2435},	--sanctum of domination
 		{1735,2398,2418,2402,2383,2405,2406,2412,2399,2417,2407},	--castle Nathria
 		{1582,2329,2327,2334,2328,2336,2333,2331,2335,2343,2345,2337,2344}, --nyalotha
@@ -778,7 +778,7 @@ function module.options:Load()
 		{806,1958,1962,2008},--tov
 		{777,1853,1841,1873,1854,1876,1877,1864},--EN
 	}
- 
+
  encountersList = exportReminderEncounters();
 
 	local eventsList = {
@@ -862,7 +862,7 @@ function module.options:Load()
 	local soundsList = {
 		--{nil,"-"},
 	}
-	do 
+	do
 		for name, path in MRT.F.IterateMediaData("sound") do
 			soundsList[#soundsList + 1] = {
 				path,
@@ -878,7 +878,7 @@ function module.options:Load()
 		{15,"Героик"},
 		{16,"Мифик"},
 	}
-	
+
 	local function GetEncounterSortIndex(id,unk)
 		for i=1,#encountersList do
 			local dung = encountersList[i]
@@ -890,7 +890,7 @@ function module.options:Load()
 		end
 		return unk
 	end
-	
+
 	local ExpandedBosses = {}
 
 	local SetupFrame
@@ -901,11 +901,11 @@ function module.options:Load()
 	--decorationLine.texture:SetGradientAlpha("VERTICAL",.24,.25,.30,1,.27,.28,.33,1)
 	decorationLine.texture:SetGradient("VERTICAL",CreateColor(.24,.25,.30,1), CreateColor(.27,.28,.33,1))
 
-	local chkEnable = ELib:Check(self,L.Enable,VMRT.Reminder.enabled):Point(560,-26):Size(18,18):AddColorState():OnClick(function(self) 
-		VMRT.Reminder.enabled = self:GetChecked() 
+	local chkEnable = ELib:Check(self,L.Enable,VMRT.Reminder.enabled):Point(560,-26):Size(18,18):AddColorState():OnClick(function(self)
+		VMRT.Reminder.enabled = self:GetChecked()
 		module:Update()
 	end)
-	
+
 	self.tab = ELib:Tabs(self,0,L.cd2Spells,L.cd2Appearance):Point(0,-45):Size(698,570):SetTo(1)
 	self.tab:SetBackdropBorderColor(0,0,0,0)
 	self.tab:SetBackdropColor(0,0,0,0)
@@ -913,16 +913,16 @@ function module.options:Load()
 	local ListFrame = ELib:ScrollFrame(self.tab.tabs[1]):Size(690,530):Point("TOP",0,0)
 	ELib:Border(ListFrame,0)
 	ELib:DecorationLine(self):Point("TOP",ListFrame,"BOTTOM",0,0):Point("LEFT",self):Point("RIGHT",self):Size(0,1)
-	
+
 	local AddButton = ELib:Button(self.tab.tabs[1],"Добавить"):Point("TOPLEFT",ListFrame,"BOTTOMLEFT",2,-5):Size(100,20):OnClick(function()
 		SetupFrameData = {}
 		SetupFrame:Show()
 	end)
-	
+
 	local SyncButton = ELib:Button(self.tab.tabs[1],"Отправить"):Point("TOPLEFT",AddButton,"BOTTOMLEFT",0,-5):Size(100,20):OnClick(function()
 		module:Sync()
 	end)
-	
+
 	SetupFrame = ELib:Popup(" "):Size(510,565):OnShow(function()
 		if not SetupFrameData then
 			SetupFrameData = {}
@@ -935,7 +935,7 @@ function module.options:Load()
 	local function GetMapNameByID(mapID)
 		return (C_Map.GetMapInfo(mapID or 0) or {}).name or ("Map ID "..mapID)
 	end
-	
+
 	local bossList = ELib:DropDown(SetupFrame,200,15):AddText("Босс:"):Size(200):Point("TOPLEFT",150,-25)
 	do
 		local function bossList_SetValue(_,encounterID)
@@ -943,7 +943,7 @@ function module.options:Load()
 			ELib:DropDownClose()
 			SetupFrameUpdate()
 		end
-	
+
 		local List = bossList.List
 		for i=1,#encountersList do
 			local instance = encountersList[i]
@@ -968,7 +968,7 @@ function module.options:Load()
 			func = bossList_SetValue,
 		}
 	end
-	
+
 	local diffList = ELib:DropDown(SetupFrame,200,3):Size(100):Point("LEFT",bossList,"RIGHT",5,0)
 	do
 		local function diffList_SetValue(_,diff)
@@ -976,7 +976,7 @@ function module.options:Load()
 			ELib:DropDownClose()
 			SetupFrameUpdate()
 		end
-	
+
 		local List = diffList.List
 		for i=1,#diffsList do
 			List[#List+1] = {
@@ -986,7 +986,7 @@ function module.options:Load()
 			}
 		end
 	end
-	
+
 	local nameEdit = ELib:Edit(SetupFrame):Size(200,20):Point("TOPLEFT",150,-50):OnChange(function(self,isUser)
 		if not isUser then
 			return
@@ -999,7 +999,7 @@ function module.options:Load()
 		SetupFrameUpdate()
 	end)
 	ELib:Text(nameEdit,"Название:",12):Point("RIGHT",nameEdit,"LEFT",-5,0):Right():Middle():Color():Shadow()
-	
+
 	local eventList = ELib:DropDown(SetupFrame,200,#eventsList):AddText("Событие:"):Size(200):Point("TOPLEFT",150,-75)
 	do
 		local function eventList_SetValue(_,event)
@@ -1007,7 +1007,7 @@ function module.options:Load()
 			ELib:DropDownClose()
 			SetupFrameUpdate()
 		end
-		
+
 		local List = eventList.List
 		for i=1,#eventsList do
 			List[#List+1] = {
@@ -1017,7 +1017,7 @@ function module.options:Load()
 			}
 		end
 	end
-	
+
 	local eventSIDSpellNameText
 	local eventSIDEdit = ELib:Edit(SetupFrame,nil,true):Size(200,20):Point("TOPLEFT",150,-100):OnChange(function(self,isUser)
 		local text = self:GetText()
@@ -1039,7 +1039,7 @@ function module.options:Load()
 	end)
 	local eventSIDEditText = ELib:Text(eventSIDEdit,"Spell ID:",12):Point("RIGHT",eventSIDEdit,"LEFT",-5,0):Right():Middle():Color():Shadow()
 	eventSIDSpellNameText = ELib:Text(eventSIDEdit,"",12):Point("LEFT",eventSIDEdit,"RIGHT",5,0):Size(0,20):Point("RIGHT",SetupFrame,"RIGHT",-5,0):Middle():Color():Shadow()
-	
+
 	local castList = ELib:DropDown(SetupFrame,200,#castsList-10):AddText("№ каста:"):Size(200):Point("TOPLEFT",150,-125)
 	do
 		local function castsList_SetValue(_,event)
@@ -1047,7 +1047,7 @@ function module.options:Load()
 			ELib:DropDownClose()
 			SetupFrameUpdate()
 		end
-		
+
 		local List = castList.List
 		for i=1,#castsList do
 			List[#List+1] = {
@@ -1071,7 +1071,7 @@ function module.options:Load()
 		SetupFrameUpdate()
 	end)
 	local delayEditText = ELib:Text(delayEdit,"Показать через, с.:",12):Point("RIGHT",delayEdit,"LEFT",-5,0):Right():Middle():Color():Shadow()
-	
+
 	local durationEdit = ELib:Edit(SetupFrame,nil,true):Size(200,20):Point("TOPLEFT",150,-175):OnChange(function(self,isUser)
 		if not isUser then
 			return
@@ -1106,7 +1106,7 @@ function module.options:Load()
 			ELib:DropDownClose()
 			SetupFrameUpdate()
 		end
-		
+
 		local List = conditionList.List
 		for i=1,#conditionsList do
 			List[#List+1] = {
@@ -1127,7 +1127,7 @@ function module.options:Load()
 				PlaySoundFile(arg1, "Master")
 			end
 		end
-		
+
 		local List = soundList.List
 		for i=1,#soundsList do
 			List[#List+1] = {
@@ -1138,7 +1138,7 @@ function module.options:Load()
 		end
 	end
 
-	
+
 	local topPos = 275
 	local playersChecks = {}
 	local otherUnitsEdit
@@ -1176,7 +1176,7 @@ function module.options:Load()
 			playersChecks[i][j].text:SetJustifyH("LEFT")
 		end
 	end
-	
+
 	local function CheckPlayerRole()
 		local r = "#"
 		for j=1,5 do
@@ -1189,18 +1189,18 @@ function module.options:Load()
 			r = nil
 		end
 		SetupFrameData.roles = r
-		SetupFrameUpdate()  
+		SetupFrameUpdate()
 	end
-	
+
 	playersChecks[7] = {}
 	for i=1,#rolesList do
 		playersChecks[7][i] = ELib:Check(SetupFrame,rolesList[i][2]):Point("TOPLEFT",10+(i-1)*100,-topPos - (7-1)*25):OnClick(CheckPlayerRole)
 		playersChecks[7][i].text:SetWidth(80)
 		playersChecks[7][i].text:SetJustifyH("LEFT")
-		
+
 		playersChecks[7][i].token = rolesList[i][1]
 	end
-	
+
 	playersChecks[8] = ELib:Check(SetupFrame,"Все игроки"):Point("TOPLEFT",10+(1-1)*100,-topPos - (8-1)*25):OnClick(function(self)
 		self:SetChecked(true)
 		SetupFrameData.roles = nil
@@ -1209,7 +1209,7 @@ function module.options:Load()
 	end)
 	playersChecks[8].text:SetWidth(80)
 	playersChecks[8].text:SetJustifyH("LEFT")
-	
+
 	otherUnitsEdit = ELib:Edit(SetupFrame):Size(490,20):Point("TOP",0,-topPos - (9-1)*25):Tooltip("Custom players")
 
 
@@ -1233,36 +1233,36 @@ function module.options:Load()
 
 	local SaveButton = ELib:Button(SetupFrame,"Сохранить"):Point("BOTTOM",0,10):Size(200,20):OnClick(function()
 		SetupFrame:Hide()
-		
+
 		CheckPlayerClick()
-		
+
 		if not SetupFrameData.token then
 			SetupFrameData.token = time() + GetTime() % 1
 		end
-		
+
 		SetupFrameData.notSync = true
 
 		if SetupFrameData.event == "BOSS_START" then
 			SetupFrameData.spellID = 0
 		end
-		
+
 		VMRT.Reminder.data[ SetupFrameData.token ] = SetupFrameData
-		
+
 		CreateFunctions()
-		
+
 		ExpandedBosses[SetupFrameData.boss or -1] = true
-		
+
 		SetupFrameData = nil
 		module.options:Hide()
 		module.options:Show()
 	end)
-	
+
 	local function RemoveFromList(table,val)
 		for i=#table,1,-1 do
 			if table[i]==val then
 				tremove(table,i)
 			end
-		end	
+		end
 	end
 
 	SetupFrame.QuickList = ELib:ScrollTableList(SetupFrame,90,50,0,40,65,25,90,90):Size(580,500):Point("LEFT",SetupFrame,"RIGHT",0,0):FontSize(11)
@@ -1384,8 +1384,8 @@ function module.options:Load()
 			local mark = FlagMarkToIndex[flags]
 			if mark and mark > 0 then
 				name = MRT.F.GetRaidTargetText(mark).." " .. name
-			end	
-			return name		
+			end
+			return name
 		elseif flags then
 			local mark = FlagMarkToIndex[flags]
 			if mark and mark > 0 then
@@ -1474,10 +1474,10 @@ function module.options:Load()
 		SetupFrame.QuickList.L = result
 		SetupFrame.QuickList:Update()
 	end
-	
+
 	function SetupFrameUpdate()
 		bossList:SetText(SetupFrameData.boss and L.bossName[ SetupFrameData.boss ] or "Всегда")
-		
+
 		eventList:SetText("")
 		local anyEvent
 		for i=1,#eventsList do
@@ -1496,12 +1496,12 @@ function module.options:Load()
 			eventSIDEditText:SetText("")
 			eventSIDEdit:Hide()
 			useGlobalCounterCheck:Hide()
-		elseif SetupFrameData.event == "BOSS_HP" then			
+		elseif SetupFrameData.event == "BOSS_HP" then
 			eventSIDEditText:SetText("меньше %хп босса:")
 			eventSIDEdit:Show()
 			eventSIDEdit:SetNumeric(false)
 			useGlobalCounterCheck:Hide()
-		elseif SetupFrameData.event == "BOSS_MANA" then			
+		elseif SetupFrameData.event == "BOSS_MANA" then
 			eventSIDEditText:SetText("больше %энергии босса:")
 			eventSIDEdit:Show()
 			eventSIDEdit:SetNumeric(false)
@@ -1517,7 +1517,7 @@ function module.options:Load()
 		else
 			delayEditText:SetText("Показать через, с.:")
 		end
-		
+
 		diffList:SetText("Все")
 		for i=1,#diffsList do
 			if diffsList[i][1] == SetupFrameData.diff then
@@ -1525,7 +1525,7 @@ function module.options:Load()
 				break
 			end
 		end
-		
+
 		castList:SetText("Все")
 		for i=1,#castsList do
 			if castsList[i][1] == SetupFrameData.cast then
@@ -1533,7 +1533,7 @@ function module.options:Load()
 				break
 			end
 		end
-		
+
 		conditionList:SetText("-")
 		for i=1,#conditionsList do
 			if conditionsList[i][1] == SetupFrameData.condition then
@@ -1541,7 +1541,7 @@ function module.options:Load()
 				break
 			end
 		end
-		
+
 		soundList:SetText("-")
 		for i=1,#soundsList do
 			if soundsList[i][1] == SetupFrameData.sound then
@@ -1549,7 +1549,7 @@ function module.options:Load()
 				break
 			end
 		end
-		
+
 		eventSIDEdit:SetText(SetupFrameData.spellID or "")
 		delayEdit:SetText(SetupFrameData.delay or "")
 		durationEdit:SetText(SetupFrameData.duration or "")
@@ -1562,7 +1562,7 @@ function module.options:Load()
 		for i=1,6 do
 			playersChecks[i].c = 0
 		end
-		
+
 		local allUnits = {strsplit("#",SetupFrameData.units or "")}
 		RemoveFromList(allUnits,"")
 		sort(allUnits)
@@ -1570,21 +1570,21 @@ function module.options:Load()
 		for _, name, subgroup, class in MRT.F.IterateRoster, 6 do
 			playersChecks[subgroup].c = playersChecks[subgroup].c + 1
 			local cFrame = playersChecks[subgroup][ playersChecks[subgroup].c ]
-			
+
 			name = MRT.F.delUnitNameServer(name)
-			
+
 			cFrame:SetText("|c"..MRT.F.classColor(class)..name)
 			local isChecked = SetupFrameData.units and SetupFrameData.units:find("#"..name.."#")
 			cFrame:SetChecked(isChecked)
-			
+
 			RemoveFromList(allUnits,name)
-			
+
 			cFrame.name = name
 			cFrame:Show()
 		end
-		
+
 		otherUnitsEdit:SetText(strjoin(" ",unpack(allUnits)))
-		
+
 		for i=1,6 do
 			for j=playersChecks[i].c+1,5 do
 				local cFrame = playersChecks[i][j]
@@ -1592,10 +1592,10 @@ function module.options:Load()
 				cFrame:Hide()
 			end
 		end
-		
+
 		for i=1,#rolesList do
 			local cFrame = playersChecks[7][i]
-			
+
 			local isChecked = SetupFrameData.roles and SetupFrameData.roles:find("#"..cFrame.token.."#")
 			cFrame:SetChecked(isChecked)
 		end
@@ -1616,7 +1616,7 @@ function module.options:Load()
 		else
 			notePatternCurr:SetText("")
 		end
-		
+
 		if not SetupFrameData.duration then
 			durationEdit:ColorBorder(true)
 		else
@@ -1634,7 +1634,7 @@ function module.options:Load()
 		else
 			eventSIDEdit:ColorBorder()
 		end
-		
+
 		if not anyEvent or (not SetupFrameData.spellID and SetupFrameData.event ~= "BOSS_START") or not SetupFrameData.duration or not SetupFrameData.msg then
 			SaveButton:Disable()
 		else
@@ -1643,7 +1643,7 @@ function module.options:Load()
 
 		UpdateHistory()
 	end
-	
+
 	local function DeleteData(self)
 		local parent = self:GetParent()
 		if not parent.data then
@@ -1653,9 +1653,9 @@ function module.options:Load()
 		VMRT.Reminder.data[ token ] = nil
 		module.options:Hide()
 		module.options:Show()
-		
+
 		MRT.F.SendExMsg("reminder","R\t"..token)
-		
+
 		CreateFunctions()
 	end
 	local function EditData(self)
@@ -1672,7 +1672,7 @@ function module.options:Load()
 			return
 		end
 		VMRT.Reminder.disabled[ parent.data.token ] = not self:GetChecked()
-		
+
 		CreateFunctions()
 	end
 	local function DuplicateData(self)
@@ -1686,7 +1686,7 @@ function module.options:Load()
 		VMRT.Reminder.data[ token ].notSync = true
 		module.options:Hide()
 		module.options:Show()
-		
+
 		CreateFunctions()
 	end
 	local function CheckLock(self)
@@ -1696,7 +1696,7 @@ function module.options:Load()
 		end
 		VMRT.Reminder.locked[ parent.data.token ] = self:GetChecked()
 	end
-		
+
 	local function ListFrameLineMode(self,mode)
 		local isExpandMode = mode == 2
 		self.chk:SetShown(not isExpandMode)
@@ -1715,10 +1715,10 @@ function module.options:Load()
 		self.expandIcon:SetShown(isExpandMode)
 		self.expandBoss:SetShown(isExpandMode)
 		self.bossImg:SetShown(isExpandMode)
-		
+
 		self.isExpandMode = isExpandMode
 	end
-	
+
 	local function ListFrameLine_OnClick(self)
 		if not self.data then return end
 		ExpandedBosses[self.data] = not ExpandedBosses[self.data]
@@ -1737,7 +1737,7 @@ function module.options:Load()
 			self.back:SetColorTexture(.4,.4,.4,0)
 		end
 	end
-	
+
 	ListFrame.lines = {}
 	local function GetListFrameLine(i)
 		local line = ListFrame.lines[i]
@@ -1746,26 +1746,26 @@ function module.options:Load()
 			ListFrame.lines[i] = line
 			line:SetPoint("TOPLEFT",0,-20*(i-1))
 			line:SetPoint("BOTTOMRIGHT",ListFrame.C,"TOPRIGHT",0,-20*i)
-			
+
 			line.chk = ELib:Check(line):Point("LEFT",5,0):OnClick(CheckData):Tooltip("В выключенном состоянии ремаиндер не будет показан.\nНастройка влияет только для вас, не передается при отправке")
 			line.chk:defSetSize(14,14)
 			line.boss = ELib:Text(line):Point("LEFT",30,0):Size(110,20):Tooltip("ANCHOR_LEFT")
 			line.name = ELib:Text(line):Point("LEFT",line.boss,"RIGHT",5,0):Size(125,20):Tooltip("ANCHOR_LEFT")
 			line.msg = ELib:Text(line):Point("LEFT",line.name,"RIGHT",5,0):Size(155,20):Tooltip("ANCHOR_LEFT")
-			
+
 			line.chk_lock = ELib:Check(line):Point("LEFT",line.msg,"RIGHT",5,0):OnClick(CheckLock):Tooltip("Заблокировать\nЛюбые обновления от других игроков будут проигнорированы для этого ремаиндера")
 			line.chk_lock:defSetSize(14,14)
 
 			line.edit = ELib:Button(line,"Ред."):FontSize(10):Point("LEFT",line.chk_lock,"RIGHT",5,0):Size(52,16):OnClick(EditData)
 			line.duplicate = ELib:Button(line,"Дубл."):FontSize(10):Point("LEFT",line.edit,"RIGHT",5,0):Size(52,16):OnClick(DuplicateData)
 			line.delete = ELib:Button(line,"Удалить"):FontSize(10):Point("LEFT",line.duplicate,"RIGHT",5,0):Size(52,16):OnClick(DeleteData)
-			
+
 			line.notSync = ELib:Text(line,"***",18):Point("LEFT",line.delete,"RIGHT",5,0):Size(160,20)
-			
+
 			line.expandIcon = ELib:Icon(line,"Interface\\AddOns\\MRT\\media\\DiesalGUIcons16x256x128",18):Point("LEFT",5,0)
 			line.expandIcon.texture:SetTexCoord(0.25,0.3125,0.5,0.625)
 			line.expandBoss = ELib:Text(line):Point("LEFT",30,0):Size(0,20)
-			
+
 			line.back = line:CreateTexture(nil,"BACKGROUND")
 			line.back:SetAllPoints()
 			if i % 2 == 0 then
@@ -1775,17 +1775,17 @@ function module.options:Load()
 			line.bossImg = line:CreateTexture(nil, "ARTWORK")
 			line.bossImg:SetSize(22,22)
 			line.bossImg:SetPoint("LEFT",line.expandBoss,"RIGHT",10,0)
-			
+
 			line.index = i
 			line.SetMode = ListFrameLineMode
 			line:SetScript("OnClick",ListFrameLine_OnClick)
 			line:SetScript("OnEnter",ListFrameLine_OnEnter)
 			line:SetScript("OnLeave",ListFrameLine_OnLeave)
 		end
-		
+
 		return line
 	end
-	
+
 	local function CheckRole(roles,role1, role2)
 		if role1 ~= "DAMAGER" then
 			if roles:find("#"..role1.."#") then
@@ -1799,7 +1799,7 @@ function module.options:Load()
 			end
 		end
 	end
-	
+
 	ListFrame:OnShow(function()
 		local list = {}
 		for token,data in pairs(VMRT.Reminder.data) do
@@ -1813,8 +1813,8 @@ function module.options:Load()
 			}
 		end
 		sort(list,function(a,b)
-			if (a.boss ~= b.boss) then 
-				return GetEncounterSortIndex(a.boss,a.token) < GetEncounterSortIndex(b.boss,b.token)		
+			if (a.boss ~= b.boss) then
+				return GetEncounterSortIndex(a.boss,a.token) < GetEncounterSortIndex(b.boss,b.token)
 			elseif (a.sort ~= b.sort) then
 				return (a.sort) < (b.sort)
 			else
@@ -1841,10 +1841,10 @@ function module.options:Load()
 				listIndex = listIndex + 1
 				local line = GetListFrameLine(listIndex)
 				local data = list[i].data
-				
+
 				if list[i].isExpand then
 					line:SetMode(2)
-					
+
 					local bossID = list[i].boss or -1
 					line.data = bossID
 					if ExpandedBosses[bossID] then
@@ -1852,9 +1852,9 @@ function module.options:Load()
 					else
 						line.expandIcon.texture:SetTexCoord(0.375,0.4375,0.5,0.625)	--Right
 					end
-					
+
 					line.expandBoss:SetText(list[i].boss and L.bossName[ list[i].boss ] or "Всегда")
-					
+
 					if line.index % 2 == 0 then
 						line.back:SetColorTexture(.4,.4,.4,.07)
 					else
@@ -1873,29 +1873,29 @@ function module.options:Load()
 					end
 				else
 					line:SetMode(1)
-					
+
 					line.chk:SetChecked(not VMRT.Reminder.disabled[ data.token ])
-					
+
 					line.chk_lock:SetChecked(VMRT.Reminder.locked[ data.token ])
 					line.boss:SetText(data.boss and L.bossName[ data.boss ] or "Всегда")
 					line.msg:SetText(FormatMsg(data.msg))
 					line.name:SetText(data.name or "")
 					line.data = data
-					
+
 					if data.notSync then
 						line.notSync:Show()
 					else
 						line.notSync:Hide()
 					end
-					
+
 					local isNoteOn,isInNote
 					if data.notepat then
 						isNoteOn = true
 						isInNote = FindPlayerInNote(data.notepat)
 					end
-					if 
+					if
 						(isNoteOn and isInNote) or
-						(not isNoteOn and 
+						(not isNoteOn and
 							(not data.units or data.units:find("#"..playerName.."#")) and
 							(not data.roles or CheckRole(data.roles, role1, role2))
 						)
@@ -1904,16 +1904,16 @@ function module.options:Load()
 							line.back:SetColorTexture(0,1,0,.11)
 						else
 							line.back:SetColorTexture(0,1,0,.07)
-						end			
+						end
 					else
 						if line.index % 2 == 0 then
 							line.back:SetColorTexture(1,0,0,.11)
 						else
 							line.back:SetColorTexture(1,0,0,.07)
 						end
-					end			
+					end
 				end
-				
+
 				line:Show()
 			end
 		end
@@ -1922,7 +1922,7 @@ function module.options:Load()
 		end
 		ListFrame:Height(listIndex*20)
 	end)
-	
+
 	self.lastUpdate = ELib:Text(self.tab.tabs[1],"",11):Point("LEFT",AddButton,"RIGHT",10,0):Color()
 	self.lastUpdate.Update = function()
 		if VMRT.Reminder.LastUpdateName and VMRT.Reminder.LastUpdateTime then
@@ -1937,12 +1937,12 @@ function module.options:Load()
 		module.options:Hide()
 		module.options:Show()
 	end)
-	
+
 	local ExportButton = ELib:Button(self.tab.tabs[1],"Экспорт"):Point("RIGHT",ResetForAllButton,"LEFT",-5,0):Size(80,20):OnClick(function()
 		local export = module:Sync(true)
 		MRT.F:Export(export)
 	end)
-	
+
 	local exportWindow
 	local ImportButton = ELib:Button(self.tab.tabs[1],"Импорт"):Point("RIGHT",ExportButton,"LEFT",-5,0):Size(80,20):OnClick(function()
 		if not exportWindow then
@@ -1961,17 +1961,17 @@ function module.options:Load()
 		exportWindow:Show()
 		exportWindow.Edit.EditBox:SetFocus()
 	end)
-	
-	self.chkLock = ELib:Check(self.tab.tabs[2],L.cd2fix,not VMRT.Reminder.lock):Point(10,-10):OnClick(function(self) 
+
+	self.chkLock = ELib:Check(self.tab.tabs[2],L.cd2fix,not VMRT.Reminder.lock):Point(10,-10):OnClick(function(self)
 		VMRT.Reminder.lock = not self:GetChecked()
 		module:UpdateVisual()
 	end)
-	
-	self.disableSound = ELib:Check(self.tab.tabs[2],"Отключить звук",VMRT.Reminder.disableSound):Point(10,-35):OnClick(function(self) 
+
+	self.disableSound = ELib:Check(self.tab.tabs[2],"Отключить звук",VMRT.Reminder.disableSound):Point(10,-35):OnClick(function(self)
 		VMRT.Reminder.disableSound = self:GetChecked()
 	end)
-	
-	self.sliderFontSize = ELib:Slider(self.tab.tabs[2],L.NoteFontSize):Size(300):Point(10,-70):Range(12,200):SetTo(VMRT.Reminder.FontSize or 72):OnChange(function(self,event) 
+
+	self.sliderFontSize = ELib:Slider(self.tab.tabs[2],L.NoteFontSize):Size(300):Point(10,-70):Range(12,200):SetTo(VMRT.Reminder.FontSize or 72):OnChange(function(self,event)
 		event = floor(event + .5)
 		VMRT.Reminder.FontSize = event
 		module:UpdateVisual()
@@ -1994,17 +1994,17 @@ function module.options:Load()
 		info.arg1 = MRT.F.fontList[i]
 		info.func = dropDownFontSetValue
 		info.font = MRT.F.fontList[i]
-		info.justifyH = "CENTER" 
+		info.justifyH = "CENTER"
 	end
 	for key,font in MRT.F.IterateMediaData("font") do
 		local info = {}
 		self.dropDownFont.List[#self.dropDownFont.List+1] = info
-		
+
 		info.text = key
 		info.arg1 = font
 		info.func = dropDownFontSetValue
 		info.font = font
-		info.justifyH = "CENTER" 
+		info.justifyH = "CENTER"
 	end
 end
 
@@ -2019,7 +2019,7 @@ function module.main:ADDON_LOADED()
 		frame:ClearAllPoints()
 		frame:SetPoint("TOPLEFT",UIParent,"BOTTOMLEFT",VMRT.Reminder.Left,VMRT.Reminder.Top)
 	end
-	
+
 	module:Update()
 	module:UpdateVisual()
 	module:RegisterAddonMessage()
@@ -2058,27 +2058,27 @@ do
 		if (BigWigsLoader) and BigWigsLoader.RegisterMessage then
 			local r = {}
 			function r:BigWigs_Message (event, module, key, text, ...)
-				
+
 				if (key == "stages") then
 					local phase = text:gsub (".*%s", "")
 					phase = tonumber (phase)
-					
+
 					if (phase and type (phase) == "number" and prevPhase ~= phase) then
 						prevPhase = phase
-						
+
 						CastNumbers_PHASE[phase] = (CastNumbers_PHASE[phase] or 0)+1
 						BossPhaseCheck(phase,CastNumbers_PHASE[phase])
 
 						history[#history+1] = {GetTime(),"PHASE",phase}
 					end
-					
+
 				end
 			end
-			
+
 			BigWigsLoader.RegisterMessage (r, "BigWigs_Message")
-			
+
 			isAdded = true
-		end  
+		end
 	end
 	function BossModsRefresh()
 		prevPhase = nil
@@ -2108,7 +2108,7 @@ function module.main:ENCOUNTER_START(encounterID, encounterName, difficultyID, g
 	ActiveEncounterStart = GetTime()
 	BossPhaseCheck(1,1)
 	BossPullCheck()
-	
+
 	BOSSHPFrame:RegisterEvent("UNIT_HEALTH")
 	BOSSManaFrame:RegisterUnitEvent("UNIT_POWER_FREQUENT","boss1","boss2")
 
@@ -2123,7 +2123,7 @@ function module.main:ENCOUNTER_END(encounterID, encounterName, difficultyID, gro
 		ActiveDelays[i]:Cancel()
 	end
 	wipe(ActiveDelays)
-	
+
 	BOSSHPFrame:UnregisterAllEvents()
 	BOSSManaFrame:UnregisterAllEvents()
 
@@ -2177,21 +2177,21 @@ function module:UpdateVisual(onlyFont)
 		if VMRT.Reminder.lock then
 			frame.dot:Show()
 			frame:EnableMouse(true)
-			frame:SetMovable(true)	
+			frame:SetMovable(true)
 			frame.text:SetText("Test message Тест")
 			frame:Show()
 		else
 			frame.dot:Hide()
 			frame:EnableMouse(false)
-			frame:SetMovable(false)	
+			frame:SetMovable(false)
 			frame.text:SetText("")
-			frame:Hide()		
+			frame:Hide()
 		end
 	end
 	frame.text:SetFont(VMRT.Reminder.Font or MRT.F.defFont, VMRT.Reminder.FontSize or 72)
 end
 
-ELib:FixPreloadFont(frame,function() 
+ELib:FixPreloadFont(frame,function()
 	if VMRT then
 		frame.text:SetFont(GameFontWhite:GetFont(),11)
 		module:UpdateVisual(true)
@@ -2284,7 +2284,7 @@ function ProcessTextToData(text,isImport)
 			module.options:Show()
 		end
 	end
-	
+
 	CreateFunctions()
 end
 
@@ -2296,7 +2296,7 @@ function module:addonMessage(sender, prefix, prefix2, token, ...)
 			end
 			VMRT.Reminder.LastUpdateName = sender
 			VMRT.Reminder.LastUpdateTime = time()
-		
+
 			local currMsg = table.concat({...}, "\t")
 			if tostring(token) == tostring(module.db.msgindex) and type(module.db.lasttext)=='string' then
 				module.db.lasttext = module.db.lasttext .. currMsg
@@ -2321,7 +2321,7 @@ function module:addonMessage(sender, prefix, prefix2, token, ...)
 				return
 			end
 			token = tonumber(token)
-			
+
 			VMRT.Reminder.data[token] = nil
 			if module.options:IsVisible() then
 				module.options:Hide()
