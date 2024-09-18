@@ -2,8 +2,11 @@
 ## Title: Method Raid Tools [Reminder]
 ## Author: ykiigor (tweaks from |cffC69B6Dm33shoq|r, dotfry)
 ## Notes: Method Raid Tools [Reminder] (tweaks from |cffC69B6Dm33shoq|r, dotfry)
-## Version: 1
+## Version: 33
 ## RequiredDeps: MRT
+## OptionalDeps: WeakAuras
+## SavedVariables: ReminderLog
+## IconTexture: Interface\AddOns\MRT\media\MiniMap.tga
 core.lua
 
 embeds.xml
@@ -12,3 +15,4 @@ locales.xml
 Reminder.lua
 WA_Sync.lua
 NoteChecker.lua
+

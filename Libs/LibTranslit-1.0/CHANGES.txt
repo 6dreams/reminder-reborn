@@ -1,0 +1,21 @@
+lightweight tag 66a5aa7df5bb404003cfba85a27bbae87c3d3536 1.0.5
+Author:	Vardex <12969608+Vardex@users.noreply.github.com>
+Date:	Fri Nov 11 04:01:15 2022 +0100
+
+commit 66a5aa7df5bb404003cfba85a27bbae87c3d3536
+Author: Vardex <12969608+Vardex@users.noreply.github.com>
+Date:   Fri Nov 11 03:55:49 2022 +0100
+
+    Add license
+
+commit 7809267b8b4e03d4999730bb8473241599083c05
+Author: Vardex <12969608+Vardex@users.noreply.github.com>
+Date:   Fri Nov 11 03:51:47 2022 +0100
+
+    Rewrite transliteration function and formatting
+    
+    Fix a bug where the mark was inserted in the middle of a
+    transliterated word if it didn't start with a cyrilic shift key.
+    Apply some formatting.
+    Bump toc.
+
