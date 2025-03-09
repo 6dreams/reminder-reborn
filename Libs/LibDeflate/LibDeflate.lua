@@ -106,7 +106,7 @@ end
 -- localize Lua api for faster access.
 local assert = assert
 local error = error
-local pairs = pairs
+local next = next
 local string_byte = string.byte
 local string_char = string.char
 local string_find = string.find
@@ -605,7 +605,7 @@ local function IsValidArguments(str,
 				:format(type(configs))
 		end
 		if type_configs == "table" then
-			for k, v in pairs(configs) do
+			for k, v in next, configs do
 				if k ~= "level" and k ~= "strategy" then
 					return false,
 					("'configs' - unsupported table key in the configs: '%s'.")
@@ -899,7 +899,7 @@ local function GetHuffmanBitlenAndCode(symbol_counts, max_bitlen, max_symbol)
 		tree[4]: right child
 	--]]
 	local number_unique_symbols = 0
-	for symbol, count in pairs(symbol_counts) do
+	for symbol, count in next, symbol_counts do
 		number_unique_symbols = number_unique_symbols + 1
 		leafs[number_unique_symbols] = {count, symbol}
 	end
@@ -1862,7 +1862,7 @@ local function Deflate(configs, WriteBits, WriteString, FlushWriter, str
 				j = j + 1
 			end
 
-			for k, t in pairs(hash_tables) do
+			for k, t in next, hash_tables do
 				local tSize = #t
 				if tSize > 0 and block_end+1 - t[1] > 32768 then
 					if tSize == 1 then

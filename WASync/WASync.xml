@@ -1,0 +1,12 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/">
+    <Script file="WAChecker.lua"/>
+    <Script file="WASync.lua"/>
+    <Script file="WASyncArchive.lua"/>
+    <Script file="WeakAurasUtils.lua"/>
+    <Script file="SenderFrame.lua"/>
+    <Script file="Comms.lua"/>
+    <Script file="QueueFrame.lua"/>
+    <Script file="ImportFunctions.lua"/>
+    <Script file="InspectWA.lua"/>
+	<Script file="WAEditor.lua"/>
+</Ui>

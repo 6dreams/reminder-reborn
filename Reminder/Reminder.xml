@@ -1,0 +1,16 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/">
+    <Script file="Reminder.lua"/>
+    <Script file="ReminderTextFrame.lua"/>
+    <Script file="ReminderGSUB.lua"/>
+    <Script file="ReminderData.lua"/>
+    <Script file="ReminderSender.lua"/>
+	<Script file="ReminderUtilities.lua"/>
+    <Script file="ReminderOptions/MainScrollButtonsList.lua"/>
+    <Script file="ReminderOptions/BinScrollButtonsList.lua"/>
+    <Script file="ReminderOptions/SetupFrame.lua"/>
+    <Script file="ReminderOptions/History.lua"/>
+    <Script file="ReminderOptions/Options.lua"/>
+    <Script file="ReminderOptions/TimelineData.lua"/>
+    <Script file="ReminderOptions/Timeline.lua"/>
+    <Script file="Changelog.lua"/>
+</Ui>
