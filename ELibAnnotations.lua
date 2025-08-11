@@ -7,7 +7,7 @@
 local ELib = {}
 
 ---@class ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -25,13 +25,13 @@ local ELib = {}
 local Border = {}
 
 --- Create a border around a parent frame
----@param parent Frame The parent frame to which the border will be added
+---@param parent Frame|Texture The parent frame to which the border will be added or texture which parent will be used
 ---@param size number The size (thickness) of the border
----@param colorR number The red component of the border color (0-1)
----@param colorG number The green component of the border color (0-1)
----@param colorB number The blue component of the border color (0-1)
----@param colorA number The alpha (transparency) component of the border color (0-1)
----@param outside boolean Whether the border should be outside the parent frame
+---@param colorR number? The red component of the border color (0-1)
+---@param colorG number? The green component of the border color (0-1)
+---@param colorB number? The blue component of the border color (0-1)
+---@param colorA number? The alpha (transparency) component of the border color (0-1)
+---@param outside number? Whether the border should be outside the parent frame
 ---@param layerCounter number The layer counter for the border
 ---@return ELibText
 function ELib:Border(parent, size, colorR, colorG, colorB, colorA, outside, layerCounter) end
@@ -39,7 +39,7 @@ function ELib:Border(parent, size, colorR, colorG, colorB, colorA, outside, laye
 
 
 ---@class ELibText : FontString, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -123,7 +123,7 @@ function Text:MaxLines(num) end
 
 
 ---@class ELibButton : Button, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -142,7 +142,7 @@ local Button = {}
 --- Create a button
 ---@param parent Frame The parent frame to which the button will be added
 ---@param text string The text to display on the button
----@param template string The template to use for the button
+---@param template string|number? The template to use for the button
 ---@return ELibButton
 function ELib:Button(parent, text, template) end
 
@@ -154,7 +154,7 @@ function Button:Tooltip(...) end
 
 
 ---@class Check : CheckButton, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -205,7 +205,7 @@ function Check:TextButton() end
 
 
 ---@class ELibDropDown : Frame, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -270,7 +270,7 @@ function DropDown:AutoText(value, key, includeSubMenus) end
 
 
 ---@class ELibDropDownButton : ELibButton, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -287,7 +287,7 @@ local DropDownButton = {}
 ---@param parent Frame The parent frame to which the dropdown button will be added
 ---@param defText string The default text to display on the dropdown button
 ---@param dropDownWidth number The width of the dropdown menu
----@param lines table The lines (options) to display in the dropdown menu
+---@param lines number? The lines (options) to display in the dropdown menu
 ---@param template string The template to use for the dropdown button
 ---@return ELibDropDownButton
 function ELib:DropDownButton(parent, defText, dropDownWidth, lines, template) end
@@ -295,7 +295,7 @@ function ELib:DropDownButton(parent, defText, dropDownWidth, lines, template) en
 
 
 ---@class ELibEdit : EditBox, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -310,8 +310,8 @@ local Edit = {}
 
 --- Create an edit box
 ---@param parent Frame The parent frame to which the edit box will be added
----@param maxLetters number The maximum number of letters allowed in the edit box
----@param onlyNum boolean Whether the edit box should only accept numeric input
+---@param maxLetters number? The maximum number of letters allowed in the edit box
+---@param onlyNum boolean? Whether the edit box should only accept numeric input
 ---@param template string The template to use for the edit box
 ---@return ELibEdit
 function ELib:Edit(parent, maxLetters, onlyNum, template) end
@@ -322,7 +322,7 @@ function ELib:Edit(parent, maxLetters, onlyNum, template) end
 function Edit:Text(str) end
 
 --- -> [add tooltip]
----@param str string
+---@param str string|fun(self) : string?
 ---@return self
 function Edit:Tooltip(str) end
 
@@ -338,7 +338,7 @@ function Edit:OnChange(func) end
 function Edit:OnFocus(gained, lost) end
 
 --- -> Add an icon inside the edit box
----@param texture string
+---@param texture string|number
 ---@param size number [optional]
 ---@param offset number [optional]
 ---@return self
@@ -391,7 +391,7 @@ function Edit:FontSize(size) end
 
 
 ---@class ELibFrame : Frame, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -438,7 +438,7 @@ function Frame:TextureSize(...) end
 
 
 ---@class ELibIcon : Frame, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -468,7 +468,7 @@ function Icon:Icon(...) end
 
 
 ---@class ELibListButton : Frame, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -497,7 +497,7 @@ function ListButton:Left() end
 
 
 ---@class ELibMultiEdit : ELibScrollFrame, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -509,6 +509,7 @@ function ListButton:Left() end
 ---@field OnLeave fun(self,func): self
 ---@field OnUpdate fun(self,func): self
 ---@field EditBox ELibEdit
+---@field HideScrollOnNoScroll fun(self): self
 local MultiEdit = {}
 
 --- Create a multi-line edit box
@@ -554,7 +555,7 @@ function MultiEdit:OnCursorChanged(func) end
 
 
 ---@class ELibOneTab : Frame, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -577,7 +578,7 @@ function ELib:OneTab(parent, text, isOld) end
 
 
 ---@class ELibPopup : Frame, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -602,7 +603,7 @@ function Popup:AddScroll() end
 
 
 ---@class ELibRadio : Frame, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -634,7 +635,7 @@ function Radio:Tooltip(str) end
 
 
 ---@class ELibScrollBar : Frame, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -706,7 +707,7 @@ function ScrollBar:Minimal() end
 
 
 ---@class ELibScrollList : Frame, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -731,6 +732,7 @@ function ScrollList:Update() end
 
 --- Set the font size of the scroll list
 ---@param size number The font size to set
+---@return self
 function ScrollList:FontSize(size) end
 
 ---@param fontName string
@@ -753,10 +755,28 @@ function ScrollList:HideBorders() end
 ---@return self
 function ScrollList:SetTo(value) end
 
+---@alias buttonClick
+---|"LeftButton"
+---|"RightButton"
+---|"MiddleButton"
+---|"Button4"
+---|"Button5"
+
+--- Fires on line click, after SetListValue
+---@param line Frame|Button
+---@param button buttonClick?
+---@param isDown boolean?
+function ScrollList.AdditionalLineClick(line,button,isDown) end
+
+--- Fires on line click, before AdditionalLineClick
+---@param index number corresponding to the self.L[index]
+---@param button buttonClick
+---@param isDown boolean
+function ScrollList:SetListValue(index,button,isDown) end
 
 
 ---@class ELibScrollCheckList : ELibScrollList, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -785,7 +805,7 @@ function ScrollCheckList:FontSize(size) end
 
 
 ---@class ELibScrollFrame : ScrollFrame, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -815,7 +835,7 @@ function ScrollFrame:Height(px) end
 
 
 ---@class ELibScrollTableList : ELibScrollFrame, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -847,7 +867,7 @@ function ScrollTableList:FontSize(size) end
 
 
 ---@class ScrollTabsFrame : Frame, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -870,7 +890,7 @@ function ELib:ScrollTabsFrame(parent, ...) end
 
 
 ---@class ELibScrollButtonsList : ELibScrollFrame, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -893,7 +913,7 @@ function ELib:ScrollButtonsList(parent) end
 
 
 ---@class ELibSlider : Slider, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -947,7 +967,7 @@ function Slider:Tooltip(str) end
 
 
 ---@class ELibSliderBox : Frame, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -994,7 +1014,7 @@ function ELib:ShadowInside(parent, enableBorder, enableLine) end
 
 
 ---@class ELibTabs : Frame, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -1009,7 +1029,7 @@ local Tabs = {}
 
 --- Create a tabs frame
 ---@param parent Frame The parent frame to which the tabs will be added
----@param template string The template to use for the tabs
+---@param template string|number? The template to use for the tabs
 ---@param ... string Tab names
 ---@return ELibTabs
 function ELib:Tabs(parent, template, ...) end
@@ -1022,7 +1042,7 @@ function Tabs:SetTo(page) end
 
 
 ---@class ELibTexture : Texture, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self
@@ -1089,7 +1109,7 @@ function Texture:Layer(layer) end
 
 
 ---@class DecorationLine : Texture, ELibBaseMethods
----@field Point fun(self,point,relativeFrame,relativePoint,x,y): self
+---@field Point fun(self,point: FramePoint,relativeFrame,relativePoint: FramePoint,x,y): self
 ---@field Size fun(self,width:number,height:number): self
 ---@field NewPoint fun(self,point,relativeFrame,relativePoint,x,y): self
 ---@field Scale fun(self,scale): self

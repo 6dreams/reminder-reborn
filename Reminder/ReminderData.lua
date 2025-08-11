@@ -140,26 +140,44 @@ local LR = AddonDB.LR
 --- @field lastSync number? last time reminder was sent
 --- @field isPersonal boolean? if true reminder will never be sent
 
+---@alias ReminderModule.PERSONAL_DATA_OPTION
+---|"LOCKED"
+---|"DISABLED"
+---|"DEF_ENABLED"
+---|"SOUND_LOCKED"
+---|"SOUND_DISABLED"
+
+module.ENUM = {
+	OPTION_BITS = {
+		LOCKED = 1,
+		DISABLED = 2,
+		DEF_ENABLED = 4,
+		SOUND_LOCKED = 8,
+		SOUND_DISABLED = 16,
+	}
+}
+
+
 
 module.datas = {
-    newReminderTemplate = {
-        triggers = {
-            {event = 3}
-        },
-        countdown = true,
-    },
+	newReminderTemplate = {
+		triggers = {
+			{event = 3}
+		},
+		countdown = true,
+	},
 	countdownType = {
 		{1,"5"," %d"},
 		{nil,"5.3"," %.1f"},
 		{3,"5.32"," %.2f"},
 	},
 	messageSize = {
-        {nil,LR.DefText},
-        {1,LR.SmallText},
-	    {2,LR.BigText},
-        {3,LR["Progress Bar"]},
-        {4,LR["Small Progress Bar"]},
-        {5,LR["Big Progress Bar"]},
+		{nil,LR.DefText},
+		{1,LR.SmallText},
+		{2,LR.BigText},
+		{3,LR["Progress Bar"]},
+		{4,LR["Small Progress Bar"]},
+		{5,LR["Big Progress Bar"]},
 	},
 	rolesList = {
 		{1,LR.RolesTanks,"TANK",1,"roleicon-tiny-tank"},
@@ -214,17 +232,7 @@ module.datas = {
 		{7,MRT.F.GetRaidTargetText(7,20)},
 		{8,MRT.F.GetRaidTargetText(8,20)},
 	},
-	markToIndex = {
-		[0] = 0,
-		[0x1] = 1,
-		[0x2] = 2,
-		[0x4] = 3,
-		[0x8] = 4,
-		[0x10] = 5,
-		[0x20] = 6,
-		[0x40] = 7,
-		[0x80] = 8,
-	},
+	markToIndex = AddonDB.markToIndex,
 	unitsList = {
 		{"boss1","boss2","boss3","boss4","boss5","arena1","arena2","arena3","arena4","arena5","arenapet1","arenapet2","arenapet3","arenapet4","arenapet5","npc"},
 		{"nameplate1","nameplate2","nameplate3","nameplate4","nameplate5","nameplate6","nameplate7","nameplate8","nameplate9","nameplate10",
@@ -310,8 +318,7 @@ module.datas = {
 	{25,"繁體中文:預設值 (男性)","Interface\\AddOns\\"..GlobalAddonName.."\\Media\\Sounds\\Heroes\\zhTW\\male\\"},
 	},
 	vcdsounds = {},	--create later via func from <vcountdowns>
-    instance_difficulty_types = {}, -- create later
-    soundsList = {}, -- create later
+	soundsList = {}, -- create later
 }
 
 for _,v in next, module.datas.vcountdowns do
@@ -326,97 +333,17 @@ for _,v in next, module.datas.glowImages do
 end
 
 C_Timer.After(0,function()
-    for name, path in MRT.F.IterateMediaData("sound") do
-        module.datas.soundsList[#module.datas.soundsList + 1] = {
-            path,
-            name,
-        }
-    end
+	for name, path in MRT.F.IterateMediaData("sound") do
+		module.datas.soundsList[#module.datas.soundsList + 1] = {
+			path,
+			name,
+		}
+	end
 
-    sort(module.datas.soundsList,function(a,b) return a[2]<b[2] end)
-    tinsert(module.datas.soundsList,1,{nil,"-"})
+	sort(module.datas.soundsList,function(a,b) return a[2]<b[2] end)
+	tinsert(module.datas.soundsList,1,{nil,"-"})
 end)
 
-
-if MRT.clientVersion > 40000 then
-    -- Fill out instance_difficulty_types automatically.
-    -- Unfortunately the names BLizzard gives are not entirely unique,
-    -- so try hard to disambiguate them via the type, and if nothing works by
-    -- including the plain id.
-
-    local unused = {}
-
-    local instance_difficulty_names = {
-        [1] = LR["Dungeon (Normal)"],
-        [2] = LR["Dungeon (Heroic)"],
-        [3] = LR["10 Player Raid (Normal)"],
-        [4] = LR["25 Player Raid (Normal)"],
-        [5] = LR["10 Player Raid (Heroic)"],
-        [6] = LR["25 Player Raid (Heroic)"],
-        [7] = LR["Legacy Looking for Raid"],
-        [8] = LR["Mythic Keystone"],
-        [9] = LR["40 Player Raid"],
-        [11] = LR["Scenario (Heroic)"],
-        [12] = LR["Scenario (Normal)"],
-        [14] = LR["Raid (Normal)"],
-        [15] = LR["Raid (Heroic)"],
-        [16] = LR["Raid (Mythic)"],
-        [17] = LR["Looking for Raid"],
-        [18] = unused, -- Event Raid
-        [19] = unused, -- Event Party
-        [20] = unused, -- Event Scenario
-        [23] = LR["Dungeon (Mythic)"],
-        [24] = LR["Dungeon (Timewalking)"],
-        [25] = unused, -- World PvP Scenario
-        [29] = unused, -- PvEvP Scenario
-        [30] = unused, -- Event Scenario
-        [32] = unused, -- World PvP Scenario
-        [33] = LR["Raid (Timewalking)"],
-        [34] = unused, -- PvP
-        [38] = LR["Island Expedition (Normal)"],
-        [39] = LR["Island Expedition (Heroic)"],
-        [40] = LR["Island Expedition (Mythic)"],
-        [45] = LR["Island Expeditions (PvP)"],
-        [147] = LR["Warfront (Normal)"],
-        [148] = LR["20 Player Raid"],
-        [149] = LR["Warfront (Heroic)"],
-        [152] = LR["Visions of N'Zoth"],
-        [150] = unused, -- Normal Party
-        [151] = unused, -- LfR
-        [153] = unused, -- Teeming Islands
-        [167] = LR["Torghast"],
-        [168] = LR["Path of Ascension: Courage"],
-        [169] = LR["Path of Ascension: Loyalty"],
-        [171] = LR["Path of Ascension: Humility"],
-        [170] = LR["Path of Ascension: Wisdom"],
-        [172] = unused, -- World Boss
-        [173] = LR["Normal Party"],
-        [174] = LR["Heroic Party"],
-        [175] = LR["10 Player Raid"],
-        [176] = LR["25 Player Raid"],
-        [192] = LR["Dungeon (Mythic+)"], -- "Challenge Level 1"
-        [193] = LR["10 Player Raid (Heroic)"],
-        [194] = LR["25 Player Raid (Heroic)"],
-        [205] = LR["Follower Dungeon"],
-        [208] = LR["Delve"],
-        [216] = LR["Quest Party"],
-        [220] = LR["Story Raid"]
-    }
-
-    for i = 1, 220 do
-        local name, type = GetDifficultyInfo(i)
-        if name then
-            if instance_difficulty_names[i] then
-                if instance_difficulty_names[i] ~= unused then
-                    module.datas.instance_difficulty_types[i] = instance_difficulty_names[i]
-                end
-            else
-                module.datas.instance_difficulty_types[i] = name
-                -- prettyPrint(string.format("Unknown difficulty id found. You are probably running an outdated version. Debug Information: %s %s %s", i, name, type))
-            end
-        end
-    end
-end
 
 module.C = {
 	[1] = {
@@ -672,7 +599,7 @@ module.C = {
 		isUntimed = false,
 		isUnits = false,
 		triggerFields = {"pattFind","spellID","counter","cbehavior","delayTime","activeTime","invert"},
-        fieldTooltips = {["pattFind"]=LR.SearchStringTip},
+		fieldTooltips = {["pattFind"]=LR.SearchStringTip},
 		alertFields = {0,"pattFind","spellID"},
 		triggerSynqFields = {"spellID","pattFind","counter","cbehavior","delayTime","activeTime","invert"},
 		replaceres = {"spellID","spellName",spellName=LR.ReplacerspellNameBWMsg,"counter"},
@@ -686,7 +613,7 @@ module.C = {
 		isUnits = false,
 		extraDelayTable = true,
 		triggerFields = {"pattFind","spellID","bwtimeleft","counter","cbehavior","delayTime","activeTime","invert"},
-        fieldTooltips = {["pattFind"]=LR.SearchStringTip},
+		fieldTooltips = {["pattFind"]=LR.SearchStringTip},
 		alertFields = {"bwtimeleft",0,"pattFind","spellID"},
 		triggerSynqFields = {"bwtimeleft","spellID","pattFind","counter","cbehavior","delayTime","activeTime","invert"},
 		replaceres = {"spellID","spellName",spellName=LR.ReplacerspellNameBWTimer,"timeLeft","counter"},
@@ -852,7 +779,7 @@ module.C = {
 		help = "Always active trigger.\nCan be used to query unit as name in another triggers.",
 		replaceres = {"sourceName","sourceGUID","stacks",stacks=LR["Raid group number"],"guid"},
 	},
-    [20] = {
+	[20] = {
 		id = 20,
 		name = "MPLUS_START",
 		lname = LR["QS_20"],
@@ -863,18 +790,127 @@ module.C = {
 	},
 }
 
-module:CreateListOfReplacers()
-
 module.SetupFrameDataRequirements = {
-    [1] = {0,"msg","spamMsg","nameplateGlow","sound","tts","glow","soundOnHide","voiceCountdown","WAmsg"},--0 значит достаточно любого из следующих значений
+	[1] = {0,"msg","spamMsg","nameplateGlow","sound","tts","glow","soundOnHide","ttsOnHide","voiceCountdown","WAmsg"},--0 значит достаточно любого из следующих значений
 
-    --exception: значит что условие не должно проверяться когда значение exception == true
-    [2] = {"duration"},
+	--exception: значит что условие не должно проверяться когда значение exception == true
+	[2] = {"duration"},
 
-    --имяПоля = {...} означает что ... проверяеться когда имяПоля есть в дате
-    ["spamMsg"] = {"spamType","spamChannel"},
-    ["spamType"] = {"spamMsg","spamChannel"},
-    ["spamChannel"] = {"spamMsg","spamType"},
+	--имяПоля = {...} означает что ... проверяеться когда имяПоля есть в дате
+	["spamMsg"] = {"spamType","spamChannel"},
+	["spamType"] = {"spamMsg","spamChannel"},
+	["spamChannel"] = {"spamMsg","spamType"},
 
-    --условия для проверки триггеров прописаны в module.C >>> 'alertFields'
+	--условия для проверки триггеров прописаны в module.C >>> 'alertFields'
+}
+
+local function GetDefaultTTSVoiceID()
+	if C_VoiceChat then
+		local TTSVOICES = C_VoiceChat.GetTtsVoices()
+		local voiceID = 0
+		for k, v in next, TTSVOICES do
+			if v.name:match("English") then
+				voiceID = v.voiceID
+				break
+			end
+		end
+		return voiceID
+	else
+		return 0
+	end
+end
+
+module.DefaultReminderDB = {
+	Version = AddonDB.Version,
+	enabled = true,
+	unlocked = false,
+
+	data = {},
+	removed = {},
+
+	options = {},
+
+	-- disabled = {},
+	-- defEnabled = {},
+	-- locked = {},
+	-- disableSounds = {},
+	-- lockedSounds = {},
+
+	snippets = {},
+	HistoryBlacklist = {},
+	SyncPlayers = {},
+	TimelineFilter = {},
+
+	DataProfile = "Default", -- currently loaded profile
+	DataProfiles = {["Default"]={}},
+	DataProfileKeys = {}, -- charKey to profileKey
+	ForcedDataProfile = "Default", -- may be mixed types?
+
+	VisualProfile = "Default",
+	VisualProfiles = {["Default"]={}},
+	VisualProfileKeys = {}, -- charKey to profileKey
+	ForcedVisualProfile = "Default", -- may be mixed types?
+
+	HistoryMaxPulls = 2,
+	HistoryEnabled = true,
+	SaveHistory = false,
+
+	VisualSettings = {
+		Text_Font = MRT.F.defFont,
+		Text_FontShadow = true,
+		Text_FrameStrata = "MEDIUM",
+		Text_JustifyH = 0,
+		Text_FontTimerExcluded = false,
+		Text_FontSizeBig = 75,
+		Text_FontSize = 50,
+		Text_FontSizeSmall = 25,
+		Text_PosX = 0,
+		Text_PosY = 100,
+
+		Bar_FrameStrata = "MEDIUM",
+		Bar_Width = 300,
+		Bar_Height = 30,
+		Bar_Texture = [[Interface\AddOns\MRT\media\bar34.tga]],
+		Bar_Font = MRT.F.defFont,
+		Bar_PosX = 0,
+		Bar_PosY = 250,
+
+		NameplateGlow_DefaultType = nil, -- nil is pixel glow
+
+		Glow = {
+			type = "Action Button Glow",
+			Color = "ffff0000",
+			PixelGlow = {
+				count = 8,
+				frequency = 0.25,
+				length = 20,
+				thickness = 3,
+				xOffset = 0,
+				yOffset = 0,
+				border = true,
+			},
+			AutoCastGlow = {
+				count = 10,
+				frequency = 0.25,
+				scale = 1.5,
+				xOffset = 0,
+				yOffset = 0,
+			},
+			ProcGlow = {
+				xOffset = 0,
+				yOffset = 0,
+				startAnim = true,
+				duration = 1,
+			},
+			ActionButtonGlow = {
+				frequency = 0.125,
+			},
+		},
+
+		TTS_Voice = GetDefaultTTSVoiceID(),
+		TTS_VoiceAlt = false, -- ru/kr
+		TTS_VoiceVolume = 75,
+		TTS_VoiceRate = 0,
+		TTS_IgnoreFiles = false,
+	}
 }

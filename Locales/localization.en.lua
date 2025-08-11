@@ -6,6 +6,42 @@ AddonDB.LR = {}
 ---@class Locale
 local LR = AddonDB.LR
 
+if AddonDB.IsDev then
+    setmetatable(LR, {__index = function(self, key)
+        --print if translation is missing
+        print("Missing translation for key: "..key)
+        -- print(debugstack())
+        self[key] = (key or "")
+        VMRT.Reminder.missingLocale = VMRT.Reminder.missingLocale or {}
+        tInsertUnique(VMRT.Reminder.missingLocale, key)
+        return key
+    end})
+else
+    setmetatable(LR, {__index = function(self, key)
+        self[key] = (key or "")
+        return key
+    end})
+end
+
+-- add slash cmd that will use MRT.F.Export(str) to export all missing locale strings
+
+local function ExportMissingLocale()
+    local missingLocale = VMRT.Reminder.missingLocale
+    if not missingLocale then return end
+    for i=1, #missingLocale do
+        missingLocale[i] = missingLocale[i]:gsub("|", "||")
+        if missingLocale[i]:find("\n") then
+            missingLocale[i] = "LR[ [[" .. missingLocale[i].."]] ] = [[".. missingLocale[i].."]]"
+        else
+            missingLocale[i] = "LR[\"" .. missingLocale[i].."\"] = \"".. missingLocale[i].."\""
+        end
+    end
+    MRT.F:Export(table.concat(missingLocale, "\n"))
+    wipe(missingLocale)
+end
+
+SlashCmdList["REMINDER_EXPORT_MISSING_LOCALE"] = ExportMissingLocale
+SLASH_REMINDER_EXPORT_MISSING_LOCALE1 = "/reminderlocale"
 
 
 
@@ -551,7 +587,7 @@ LR.Comment = "Comment:"
 LR["Last Sync:"] = "Last Sync: "
 LR["Never"] = "Never"
 LR["New Update"] = "New Update"
-LR["Update last sync time"] = "Update last sync date\n\nIf the reciever has a last update date greater than or equal to yours, then he will not receive the update"
+LR["Update last sync time"] = "Update last sync date\n\nIf the receiver has a last update date greater than or equal to yours, then he will not receive the update"
 LR["Send to:"] = "Send to:"
 LR["CustomReceiverTip"] = "Send WA to specified player"
 LR["Import Mode:"] = "Import Mode:"
@@ -747,7 +783,28 @@ LR["Update inviters list"] = "Update inviters list"
 
 LR.RGList = "RG List:"
 LR.RGConditions = "List condition:"
-LR.RGConditionsTip = "|cffffffffCan have multiple values, just need to pass\nthrough one of them for the reminder to load.\n|cffffff00x-y|r range of players, if the player is in the list between x and y then they passed\n|cffffff00x%y|r - every y, starting from x\n|cffffff00x/y|r - list divided into y parts, condition passes if player is in x part\n|cffffff00Rx|r - starts counting from the end|r"
+LR.RGConditionsTip = [[|cffffffffCan accept multiple values, by default passing any one of them is enough to pass the check. If you combine several conditions with |cffffff00+|r, they become additive.
+
+|cffffff00-|r before all conditions inverts the check, i.e., if the condition is not met, it will be considered as passed.
+
+|cffffff00R|r before a condition inverts the order of the list when checking the condition, R1 - last player in the list, R1/3 - last third of the list
+
+|cffffff00x|r - only the player at position x in the list passes the check
+|cffffff00x%y|r - every y, starting from x, e.g., 2%3 - 2, 5, 8, 11, etc.
+|cffffff00x-y|r - range of players, if the player is in the list between x and y, they pass, e.g., 2-4 - 2, 3, 4
+|cffffff00x/y|r - the list is divided into y parts, the condition passes if the player is in part x. If it is not possible to divide evenly, the first parts will be larger than the last. For example, if a list of 10 players is divided into 3 parts, it will be 4, 3, 3, i.e., 1-4, 5-7, 8-10
+
+|cffffff00>=x|r - player's position is greater than or equal to x
+|cffffff00>x|r - player's position is greater than x
+|cffffff00<=x|r - player's position is less than or equal to x
+|cffffff00<x|r - player's position is less than x
+|cffffff00!x|r - player is not at position x in the list
+
+Example of an additive condition:
+|cffffff001/3,+!R6|r - players from the first third of the list, excluding the 6th player counting from the end of the list
+
+Additive conditions can be combined with regular conditions, for example:
+|cffffff00R1/3,+!R6,7|r - players from the first third of the list, excluding the 6th player from the end of the list and including the 7th player from the list|r]]
 LR.RGOnly = "Only RG players"
 LR.RGOnlyTip = "List only consists of players who are in RGDB"
 
@@ -758,7 +815,7 @@ LR.SplitsLastImport = "Last import was made"
 LR.SplitsShouldNotBeInRaid = " shouldn't be in raid:"
 
 LR.AssignmentsListID = "List's ID"
-LR.AssignmentsHelpTip = "Priority:\nNickname > Custom Condition > Alias > Spec > Class > Sub Role(melee/range) > Role > Others"
+LR.AssignmentsHelpTip = "Priority:\nNickname > Custom Condition > Alias > \"Not in characters DB\"> Spec > Class > Subrole(melee/range) > Role > Nested list > Not in list"
 LR.AssignmentsAutoSendTip = "Automatically send the list"
 LR.AssignmentsTestTip = "Normal click to test priority\nShift click to test list\nAlt click to test with RG players first"
 LR.AssignmentsAutoSendEditTip = [=[|cffffffffAutomatically send list when
@@ -835,7 +892,6 @@ LR.timeLineDisable = "Don't show on timeline"
 LR.durationReverse = "Show in advance"
 LR.durationReverseTip = "Show message X sec before chosen time (X - duration length) (if it possible)"
 LR.TEST = "TEST"
-LR.StartTestFight = "Start Test Fight"
 LR.OnlyMine = "Only mine"
 LR.ImportHistory = "Import Spell History"
 LR.ExportHistory = "Export Spell History"
@@ -869,7 +925,7 @@ LR["rshortnumTip"] = [[Shorten numbers. Examples:
 LR.TimerExcluded = "Enable Timer Alignment"
 LR.TimerExcludedTip = "Consider the countdown timer when aligning the reminder.\n\nDisable if you want the text to stop shaking when the timer updates."
 LR["QS_20"] = "M+ start"
-LR.StartTestFightTip = "Works only for reminders with the trigger \"Boss Pull\", \"Boss Phase\", and \"M+ start\""
+LR.StartTestFightTip = "Works only for reminders with the trigger \"Boss Pull\", \"Boss Phase\", \"M+ start\" and \"Combat log\" events Cast start, Cast success, Aura applied and Aura removed"
 
 LR.GlobalTimeScale = "Global Time Scale"
 LR.TimeScaleT1 = "At"
@@ -916,6 +972,7 @@ role2 - sub role (MHEALER, RHEALER, MDD, RDD)
 alias - player's alias
 class - player's class (WARRIOR, PALADIN, etc.)
 spec - player's specialization ID (71, 72, etc.)
+group - player's raid group number
 
 Example: |cffffd100class == WARRIOR and alias == "Mishok"|r]]
 LR.CustomDurationLenMore = "Set duration in sec. for %s (for session)"
@@ -1055,8 +1112,37 @@ LR["PersonalStatus2"] = "Make reminder global"
 LR.OptPlayersTooltip = "Settings for players to whom the \"Always\" rule is applied."
 LR["Current spell settings will be lost. Reset to default preset?"] = "Current spell settings will be lost. Reset to default preset?"
 
+LR["Lua error in overwritten BigWigs module '%s': %s"] = "Lua error in overwritten BigWigs module '%s': %s"
+LR["Use default TTS Voice"] = "Use default TTS Voice"
+LR["Text"] = "Text"
+LR["Text To Speech"] = "Text To Speech"
+LR["Raid Frame Glow"] = "Raid Frame Glow"
+LR["Nameplate Glow"] = "Nameplate Glow"
+LR["Bars"] = "Bars"
+LR["Default TTS Voice"] = "Default TTS Voice"
+LR["Alternative TTS Voice"] = "Russian TTS Voice"
+LR["TTS Volume"] = "TTS Volume"
+LR["TTS Rate"] = "TTS Rate"
+
+LR["Timeline simulation"] = "Timeline simulation"
+LR["Start simulation"] = "Start simulation"
+LR["Cancel simulation"] = "Cancel simulation"
+LR["Pause simulation"] = "Pause simulation"
+LR["Resume simulation"] = "Resume simulation"
+LR["Simulation start time"] = "Simulation start time"
+LR["Simulation speed multiplier"] = "Simulation speed multiplier"
+
+LR["ttsOnHide"] = "TTS on hide:"
+LR["sound_delayTip"] = "Sound delay(seconds)"
+LR["sound_delayTip2"] = "Sound delay(seconds), negative values are 'x' seconds before end"
+
+LR["DataProfileTip1"] = "Includes current set of active and deleted reminders."
+LR["VisualProfileTip1"] = "Includes anchors, text/bars appearance, tts and glow settings."
+LR["Visual Profile"] = "Visual Profile"
+LR["Delete visual profile"] = "Delete visual profile"
+
 LR.HelpText =
-[=[Slash Commands:
+([=[Slash Commands:
     |cffaaaaaa/rem|r or |cffaaaaaa/reminder|r or |cffaaaaaa/rt r|r or |cffaaaaaa/rt rem|r - Open Reminder window
     |cffaaaaaa/rt ra|r - Open Raid Analyzer window
     |cffaaaaaa/was|r or |cffaaaaaa/wasync|r or |cffaaaaaa/rt was|r - Open WeakAuras Sync window
@@ -1335,43 +1421,22 @@ the cyclic order of positions in the block: 1, 2, 1, 2, 1, 2, etc.
 
 4. Points 2 and 3 are not relevant if everyone in your guild uses the same boss mod addon.
 
-]=]
-LR.HelpText = LR.HelpText:gsub("\t", "    ") -- \t(tab) may not be printable atleast for some fonts, so replacing it with spaces
+]=]):gsub("\t", "    ") -- \t(tab) may not be printable atleast for some fonts, so replacing it with spaces
 
-if AddonDB.VersionHash == "DEV" then
-    setmetatable(LR, {__index = function(self, key)
-        --print if translation is missing
-        print("Missing translation for key: "..key)
-        -- print(debugstack())
-        self[key] = (key or "")
-        VMRT.Reminder.missingLocale = VMRT.Reminder.missingLocale or {}
-        tInsertUnique(VMRT.Reminder.missingLocale, key)
-        return key
-    end})
-else
-    setmetatable(LR, {__index = function(self, key)
-        self[key] = (key or "")
-        return key
-    end})
-end
+LR["Not in list"] = "Not in list"
+LR["Not in characters DB"] = "Not in characters DB"
+LR["Select nested list"] = "Select nested list"
+LR["NotInDBTip"] = "Set a special position in the list for characters who are not in the database.\n\nEven if the list is obtained with the RGOnly option, these characters will be in this list."
+LR["NotInListTip"] = "Set a special position in the list for characters who are not in the list.\n\nCan be used as the only priority in the list to sort characters by GUID."
 
--- add slash cmd that will use MRT.F.Export(str) to export all missing locale strings
-
-local function ExportMissingLocale()
-    local missingLocale = VMRT.Reminder.missingLocale
-    if not missingLocale then return end
-    for i=1, #missingLocale do
-        missingLocale[i] = missingLocale[i]:gsub("|", "||")
-        if missingLocale[i]:find("\n") then
-            missingLocale[i] = "LR[ [[" .. missingLocale[i].."]] ] = [[".. missingLocale[i].."]]"
-        else
-            missingLocale[i] = "LR[\"" .. missingLocale[i].."\"] = \"".. missingLocale[i].."\""
-        end
-    end
-    MRT.F:Export(table.concat(missingLocale, "\n"))
-    wipe(missingLocale)
-end
-
-SlashCmdList["REMINDER_EXPORT_MISSING_LOCALE"] = ExportMissingLocale
-SLASH_REMINDER_EXPORT_MISSING_LOCALE1 = "/reminderlocale"
-
+LR["Export for AutoImport"] = "Export for AutoImport"
+LR["Show full diffs"] = "Show full diffs"
+LR["Please select two auras to compare"] = "Please select two auras to compare"
+LR["Diff is too long, showing first 100000 characters only, full length:"] = "Diff is too long, showing first 100000 characters only, full length:"
+LR["Imports have different UIDs, cannot be matched. Try checking full diffs"] = "Imports have different UIDs, cannot be matched. Try checking full diffs"
+LR["Error comparing auras: "] = "Error comparing auras: "
+LR["Import has no UID, cannot be matched."] = "Import has no UID, cannot be matched."
+LR["Don't check on spell CD"] = "Don't check on spell CD"
+LR["%s note is not synced\nSend note?"]  = "%s note is not synced\nSend note?"
+LR["Delete Reminders"] = "Delete Reminders"
+LR["Skip Import"] = "Skip Import"

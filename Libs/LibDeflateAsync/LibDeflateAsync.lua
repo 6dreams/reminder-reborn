@@ -1214,7 +1214,7 @@ local function GetBlockLZ77Result(level, string_table, hash_tables, block_start,
 	local dict_string_table
 	local dict_string_len = 0
 
-    if coroutine_running() then coroutine_yield() end
+	if coroutine_running() then coroutine_yield() end
 	if dictionary then
 		dict_hash_tables = dictionary.hash_tables
 		dict_string_table = dictionary.string_table
@@ -1267,7 +1267,7 @@ local function GetBlockLZ77Result(level, string_table, hash_tables, block_start,
 	-- I put them together, so it is a bit harder to understand.
 	-- because I think this is easier for me to maintain it.
 	while (index <= index_end) do
-    if coroutine_running() then coroutine_yield() end
+	if coroutine_running() then coroutine_yield() end
 		local string_table_index = index - offset
 		local offset_minus_three = offset - 3
 		prev_len = cur_len
@@ -1759,7 +1759,7 @@ local function Deflate(configs, WriteBits, WriteString, FlushWriter, str
 	end
 
 	while not is_last_block do
-        if coroutine_running() then coroutine_yield() end
+		if coroutine_running() then coroutine_yield() end
 		if not block_start then
 			block_start = 1
 			block_end = 64*1024 - 1
@@ -2287,7 +2287,7 @@ local function GetHuffmanForDecode(huffman_bitlens, max_symbol, max_bitlen)
 	local huffman_bitlen_counts = {}
 	local min_bitlen = max_bitlen
 	for symbol = 0, max_symbol do
-        if coroutine_running() then coroutine_yield() end
+		if coroutine_running() then coroutine_yield() end
 		local bitlen = huffman_bitlens[symbol] or 0
 		min_bitlen = (bitlen > 0 and bitlen < min_bitlen)
 			and bitlen or min_bitlen
@@ -2300,7 +2300,7 @@ local function GetHuffmanForDecode(huffman_bitlens, max_symbol, max_bitlen)
 
 	local left = 1
 	for len = 1, max_bitlen do
-        if coroutine_running() then coroutine_yield() end
+		if coroutine_running() then coroutine_yield() end
 		left = left * 2
 		left = left - (huffman_bitlen_counts[len] or 0)
 		if left < 0 then
@@ -2317,7 +2317,7 @@ local function GetHuffmanForDecode(huffman_bitlens, max_symbol, max_bitlen)
 
 	local huffman_symbols = {}
 	for symbol = 0, max_symbol do
-        if coroutine_running() then coroutine_yield() end
+		if coroutine_running() then coroutine_yield() end
 		local bitlen = huffman_bitlens[symbol] or 0
 		if bitlen ~= 0 then
 			local offset = offsets[bitlen]
@@ -2363,7 +2363,7 @@ local function DecodeUntilEndOfBlock(state, lcodes_huffman_bitlens
 	end
 
 	repeat
-        if coroutine_running() then coroutine_yield() end
+		if coroutine_running() then coroutine_yield() end
 		local symbol = Decode(lcodes_huffman_bitlens
 			, lcodes_huffman_symbols, lcodes_huffman_min_bitlen)
 		if symbol < 0 or symbol > 285 then
@@ -2506,7 +2506,7 @@ local function DecompressDynamicBlock(state)
 	local rle_codes_huffman_bitlens = {}
 
 	for i = 1, ncode do
-        if coroutine_running() then coroutine_yield() end
+		if coroutine_running() then coroutine_yield() end
 		rle_codes_huffman_bitlens[_rle_codes_huffman_bitlen_order[i]] =
 			ReadBits(3)
 	end
@@ -2524,7 +2524,7 @@ local function DecompressDynamicBlock(state)
 	-- Read length/literal and distance code length tables
 	local index = 0
 	while index < nlen + ndist do
-        if coroutine_running() then coroutine_yield() end
+		if coroutine_running() then coroutine_yield() end
 		local symbol -- Decoded value
 		local bitlen -- Last length to repeat
 
@@ -2618,7 +2618,7 @@ local function Inflate(state)
 
 	local is_last_block
 	while not is_last_block do
-        if coroutine_running() then coroutine_yield() end
+		if coroutine_running() then coroutine_yield() end
 		is_last_block = (ReadBits(1) == 1)
 		local block_type = ReadBits(2)
 		local status
@@ -2836,7 +2836,7 @@ do
 		_fix_block_literal_huffman_bitlen[sym] = 9
 	end
 	for sym=256, 279 do
-	    _fix_block_literal_huffman_bitlen[sym] = 7
+		_fix_block_literal_huffman_bitlen[sym] = 7
 	end
 	for sym=280, 287 do
 		_fix_block_literal_huffman_bitlen[sym] = 8
@@ -3241,7 +3241,7 @@ function LibDeflate:EncodeForPrint(str)
 	local buffer = {}
 	local buffer_size = 0
 	while i <= strlenMinus2 do
-        if coroutine_running() then coroutine_yield() end
+		if coroutine_running() then coroutine_yield() end
 		local x1, x2, x3 = string_byte(str, i, i+2)
 		i = i + 3
 		local cache = x1+x2*256+x3*65536
@@ -3260,14 +3260,14 @@ function LibDeflate:EncodeForPrint(str)
 	local cache = 0
 	local cache_bitlen = 0
 	while i <= strlen do
-        if coroutine_running() then coroutine_yield() end
+		if coroutine_running() then coroutine_yield() end
 		local x = string_byte(str, i, i)
 		cache = cache + x * _pow2[cache_bitlen]
 		cache_bitlen = cache_bitlen + 8
 		i = i + 1
 	end
 	while cache_bitlen > 0 do
-        if coroutine_running() then coroutine_yield() end
+		if coroutine_running() then coroutine_yield() end
 		local bit6 = cache % 64
 		buffer_size = buffer_size + 1
 		buffer[buffer_size] = _byte_to_6bit_char[bit6]
@@ -3305,7 +3305,7 @@ function LibDeflate:DecodeForPrint(str)
 	local buffer = {}
 	local buffer_size = 0
 	while i <= strlenMinus3 do
-        if coroutine_running() then coroutine_yield() end
+		if coroutine_running() then coroutine_yield() end
 		local x1, x2, x3, x4 = string_byte(str, i, i+3)
 		x1 = _6bit_to_byte[x1]
 		x2 = _6bit_to_byte[x2]
@@ -3328,7 +3328,7 @@ function LibDeflate:DecodeForPrint(str)
 	local cache  = 0
 	local cache_bitlen = 0
 	while i <= strlen do
-        if coroutine_running() then coroutine_yield() end
+		if coroutine_running() then coroutine_yield() end
 		local x = string_byte(str, i, i)
 		x =  _6bit_to_byte[x]
 		if not x then
@@ -3340,7 +3340,7 @@ function LibDeflate:DecodeForPrint(str)
 	end
 
 	while cache_bitlen >= 8 do
-        if coroutine_running() then coroutine_yield() end
+		if coroutine_running() then coroutine_yield() end
 		local byte = cache % 256
 		buffer_size = buffer_size + 1
 		buffer[buffer_size] = _byte_to_char[byte]

@@ -15,33 +15,38 @@ local MLib = AddonDB.MLib
 ---@class Locale
 local LR = AddonDB.LR
 
+local options = module.options
+
 function module.options:MainScrollButtonsListInitialize()
-    local prettyPrint = module.prettyPrint
-    local encountersList = AddonDB.EJ_DATA.encountersList
-    local isExportOpen
+	local prettyPrint = module.prettyPrint
+	local encountersList = AddonDB.EJ_DATA.encountersList
+	local isExportOpen
 
 
-    local function DeleteData(self) --self
+	local function DeleteData(self) --self
 		local parent = self:GetParent()
 		if not parent.data and not self.data then
 			return
 		end
 		local data = parent.data and parent.data.data or self.data and self.data.data
-        local token = data.token
-        if not IsShiftKeyDown() then
-			StaticPopupDialogs["EXRT_REMINDER_DELETE_CURRENT"] = {
+		local token = data.token
+		if not IsShiftKeyDown() then
+			MLib:DialogPopup({
+				id = "EXRT_REMINDER_DELETE_CURRENT",
+				title = LR["Delete Reminder"],
 				text = LR.Listdelete.."?",
-				button1 = LR.Listdelete,
-				button2 = NO,
-				OnAccept = function()
-                    module:DeleteReminder(data)
-				end,
-				timeout = 0,
-				whileDead = true,
-				hideOnEscape = true,
-				preferredIndex = 3,
-			}
-			StaticPopup_Show("EXRT_REMINDER_DELETE_CURRENT")
+				buttons = {
+					{
+						text = LR.Listdelete,
+						func = function()
+							module:DeleteReminder(data)
+						end,
+					},
+					{
+						text = NO,
+					},
+				},
+			})
 		else
 			module:DeleteReminder(data)
 		end
@@ -51,17 +56,17 @@ function module.options:MainScrollButtonsListInitialize()
 		if not data then
 			return
 		end
-        if not module.SetupFrame then
-            module.options:SetupFrameInitialize()
-        end
+		if not module.SetupFrame then
+			module.options:SetupFrameInitialize()
+		end
 
 		module.SetupFrame.data = MRT.F.table_copy2(data)
 
-        if module.SetupFrame:IsVisible() then
-            module.SetupFrame:Update()
-        else
-            module.SetupFrame:Show()
-        end
+		if module.SetupFrame:IsVisible() then
+			module.SetupFrame:Update()
+		else
+			module.SetupFrame:Show()
+		end
 	end
 
 	local function SendData(self)
@@ -69,12 +74,12 @@ function module.options:MainScrollButtonsListInitialize()
 		if not parent.data then
 			return
 		end
-        local token = parent.data.data.token
-        if token then
-		    module:Sync(false, nil, nil, token)
-        else
-            prettyPrint("ERROR: No token")
-        end
+		local token = parent.data.data.token
+		if token then
+			module:Sync(false, nil, nil, token)
+		else
+			prettyPrint("ERROR: No token")
+		end
 	end
 
 	local function SendFullBossData(self)
@@ -134,8 +139,8 @@ function module.options:MainScrollButtonsListInitialize()
 					self:Hide()
 				end
 			end)
-            local token = parent.data.data.token
-            local stringData = module:Sync(true, nil, nil, token)
+			local token = parent.data.data.token
+			local stringData = module:Sync(true, nil, nil, token)
 			exportWindow.title:SetText(AddonDB.LR.Export)
 			exportWindow:NewPoint("CENTER",UIParent,0,0)
 			exportWindow:Show()
@@ -146,15 +151,15 @@ function module.options:MainScrollButtonsListInitialize()
 			exportWindow.Edit.EditBox:HighlightText()
 			exportWindow.Edit.EditBox:SetFocus()
 			exportWindow.Edit.EditBox:SetScript("OnEscapePressed",function(self)
-                exportWindow:Hide()
-            end)
+				exportWindow:Hide()
+			end)
 		elseif (exportWindow.Edit:GetText():find("^" .. module.SENDER_VERSION .. "%^" .. module.DATA_VERSION)) then -- if export window is open and contains senderVer^dataVer
-            local token = parent.data.data.token
-            local stringData = module:Sync(true, nil, nil, token, true)
+			local token = parent.data.data.token
+			local stringData = module:Sync(true, nil, nil, token, true)
 			exportWindow.Edit:SetText(exportWindow.Edit:GetText() .. "\n" .. stringData)
-        else -- cant find senderVer^dataVer, starting export from start
-            local token = parent.data.data.token
-            local stringData = module:Sync(true, nil, nil, token)
+		else -- cant find senderVer^dataVer, starting export from start
+			local token = parent.data.data.token
+			local stringData = module:Sync(true, nil, nil, token)
 			exportWindow.Edit:SetText(stringData)
 		end
 		exportWindow:ClearAllPoints()
@@ -169,20 +174,20 @@ function module.options:MainScrollButtonsListInitialize()
 		VMRT.Reminder.data[ token ].notSync = 2
 
 		if module.options.Update then
-            module.options.Update()
-        end
+			module.options.Update()
+		end
 
 		module:ReloadAll()
 	end
 
-    self.scrollList = ELib:ScrollButtonsList(self.REMINDERS_SCROLL_LIST):Point("TOPLEFT",0,-2):Size(760,508)
-	ELib:DecorationLine(self.scrollList):Point("TOP",self.scrollList,"BOTTOM",0,0):Point("LEFT",self):Point("RIGHT",self):Size(0,1)
+	options.scrollList = ELib:ScrollButtonsList(options.REMINDERS_SCROLL_LIST):Point("TOPLEFT",0,-2):Size(760,508)
+	ELib:DecorationLine(options.scrollList):Point("TOP",options.scrollList,"BOTTOM",0,0):Point("LEFT",options):Point("RIGHT",options):Size(0,1)
 
-	self.scrollList.ButtonsInLine = 1 --0.992
-	self.scrollList.mouseWheelRange = 50
-	ELib:Border(self.scrollList,0)
+	options.scrollList.ButtonsInLine = 1 --0.992
+	options.scrollList.mouseWheelRange = 50
+	ELib:Border(options.scrollList,0)
 
-    local cursorPoint = UIParent:CreateTexture()
+	local cursorPoint = UIParent:CreateTexture()
 	cursorPoint.toggleX = 200
 	cursorPoint.toggleY = 0
 	cursorPoint:SetSize(4,4)
@@ -212,7 +217,7 @@ function module.options:MainScrollButtonsListInitialize()
 		end
 	end
 
-	function self.scrollList:ButtonClick(button) -- level 2 click
+	function options.scrollList:ButtonClick(button) -- level 2 click
 		local data = self.data
 		if not data then
 			return
@@ -248,13 +253,13 @@ function module.options:MainScrollButtonsListInitialize()
 		self.status = status
 		self:Update(status)
 
-        local data = self:GetParent().data.data
+		local data = self:GetParent().data.data
 		local token = data.token
-        if data.defDisabled then
-            VMRT.Reminder.defEnabled[token] = not VMRT.Reminder.defEnabled[token] or nil
-        else
-            VMRT.Reminder.disabled[token] = not VMRT.Reminder.disabled[token] or nil
-        end
+		if data.defDisabled then
+			module:ToggleDataOption(data.token, "DEF_ENABLED")
+		else
+			module:ToggleDataOption(data.token, "DISABLED")
+		end
 		module:ReloadAll()
 		if self:GetScript("OnEnter") then
 			self:GetScript("OnEnter")(self)
@@ -269,11 +274,11 @@ function module.options:MainScrollButtonsListInitialize()
 	end
 
 	local function GetSoundStatus(token)
-		if not VMRT.Reminder.disableSounds[token] and not VMRT.Reminder.lockedSounds[token] then
+		if not module:GetDataOption(token, "SOUND_DISABLED") and not module:GetDataOption(token, "SOUND_LOCKED")then
 			return 1
-		elseif VMRT.Reminder.lockedSounds[token] then
+		elseif module:GetDataOption(token, "SOUND_LOCKED") then
 			return 2
-		elseif VMRT.Reminder.disableSounds[token] then
+		elseif module:GetDataOption(token, "SOUND_DISABLED") then
 			return 3
 		end
 	end
@@ -287,14 +292,14 @@ function module.options:MainScrollButtonsListInitialize()
 
 		local token = self:GetParent().data.data.token
 		if status == 1 then -- no mute, no lock
-			VMRT.Reminder.disableSounds[token] = nil
-			VMRT.Reminder.lockedSounds[token] = nil
+			module:SetDataOption(token, "SOUND_LOCKED", false)
+			module:SetDataOption(token, "SOUND_DISABLED", false)
 		elseif status == 2 then -- lock, no mute
-			VMRT.Reminder.disableSounds[token] = nil
-			VMRT.Reminder.lockedSounds[token] = true
+			module:SetDataOption(token, "SOUND_LOCKED", true)
+			module:SetDataOption(token, "SOUND_DISABLED", false)
 		elseif status == 3 then -- mute, no lock
-			VMRT.Reminder.disableSounds[token] = true
-			VMRT.Reminder.lockedSounds[token] = nil
+			module:SetDataOption(token, "SOUND_LOCKED", false)
+			module:SetDataOption(token, "SOUND_DISABLED", true)
 		end
 
 		if self:GetScript("OnEnter") then
@@ -349,7 +354,7 @@ function module.options:MainScrollButtonsListInitialize()
 		self:Update(status)
 
 		local token = self:GetParent().data.data.token
-		VMRT.Reminder.locked[token] = not VMRT.Reminder.locked[token] or nil
+		module:ToggleDataOption(token, "LOCKED")
 		if self:GetScript("OnEnter") then
 			self:GetScript("OnEnter")(self)
 		end
@@ -386,9 +391,9 @@ function module.options:MainScrollButtonsListInitialize()
 		button.BorderTop:Hide()
 		button.BorderBottom:Hide()
 
-        local textObj = button:GetTextObj()
-        textObj:SetShadowColor(0,0,0,1)
-        textObj:SetShadowOffset(1,-1)
+		local textObj = button:GetTextObj()
+		textObj:SetShadowColor(0,0,0,1)
+		textObj:SetShadowOffset(1,-1)
 
 		return button
 	end
@@ -417,7 +422,7 @@ function module.options:MainScrollButtonsListInitialize()
 	end
 
 	local function Button_OnEnter(self)
-        ---@type ReminderData
+		---@type ReminderData
 		local data = self.data.data
 		GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
 		module:AddTooltipLinesForData(data)
@@ -425,34 +430,37 @@ function module.options:MainScrollButtonsListInitialize()
 	end
 
 	local function Button_Lvl1_Remove(self)
-		StaticPopupDialogs["EXRT_REMINDER_CLEAR_LVL1_REMOVE"] = {
+		MLib:DialogPopup({
+			id = "EXRT_REMINDER_CLEAR_LVL1_REMOVE",
+			title = LR["Delete Reminders"],
 			text = LR.DeleteSection.."?",
-			button1 = YES,
-			button2 = NO,
-			OnAccept = function()
-				for token,data in next, VMRT.Reminder.data do
-					if
-                        (
-                         (self.bossID and data.boss == self.bossID) or
-                         (type(self.bossID)=="table" and self.bossID[data.boss]) or
-                         (self.zoneID and (tonumber(tostring(data.zoneID):match("^[^, ]+") or "",10) == self.zoneID))
-                        ) and
-						 not VMRT.Reminder.locked[token]
-					then
-						module:DeleteReminder(data,true)
-					end
-				end
-				if module.options.Update then
-                    module.options.Update()
-                end
-				module:ReloadAll()
-			end,
-			timeout = 0,
-			whileDead = true,
-			hideOnEscape = true,
-			preferredIndex = 3,
-		}
-		StaticPopup_Show("EXRT_REMINDER_CLEAR_LVL1_REMOVE")
+			buttons = {
+				{
+					text = YES,
+					func = function()
+						for token,data in next, VMRT.Reminder.data do
+							if
+								(
+								(self.bossID and data.boss == self.bossID) or
+								(type(self.bossID)=="table" and self.bossID[data.boss]) or
+								(self.zoneID and (tonumber(tostring(data.zoneID):match("^[^, ]+") or "",10) == self.zoneID))
+								) and
+								not module:GetDataOption(token, "LOCKED")
+							then
+								module:DeleteReminder(data,true)
+							end
+						end
+						if module.options.Update then
+							module.options.Update()
+						end
+						module:ReloadAll()
+					end,
+				},
+				{
+					text = NO,
+				},
+			},
+		})
 	end
 
 	local function Button_Lvl2_SetTypeIcon(self,iconType)
@@ -468,7 +476,7 @@ function module.options:MainScrollButtonsListInitialize()
 			self.text:FontSize(11)
 			self.text:SetText("t")
 			self.text:Show()
-        elseif iconType == 3 then
+		elseif iconType == 3 then
 			self.text:FontSize(18)
 			self.text:SetText("T")
 			self.text:Show()
@@ -489,54 +497,33 @@ function module.options:MainScrollButtonsListInitialize()
 		end
 	end
 
-    local diffToText
-    if MRT.isCata then
-        diffToText = {
-            [3] = "10N",
-            [4] = "25N",
-            [5] = "10H",
-            [6] = "25H",
-        }
-    else
-        diffToText = {
-            [14] = "N",
-            [15] = "H",
-            [16] = "M",
-            [175] = "10N",
-            [176] = "25N",
-            [193] = "10H",
-            [194] = "25H",
-            [8] = "M+"
-        }
-    end
-
 	local function Button_Lvl2_SetDiffText(self,diff)
-		self.text:SetText(diffToText[diff] or diff)
+		self.text:SetText(type(diff) == "number" and LR.diff_name_short[diff] or diff)
 	end
 
-	function self.scrollList:ModButton(button,level)
+	function options.scrollList:ModButton(button,level)
 		if level == 1 then
 			local textObj = button:GetTextObj()
 			textObj:SetPoint("LEFT",5+30,0)
-            textObj:SetShadowColor(0,0,0,1)
-            textObj:SetShadowOffset(1,-1)
+			textObj:SetShadowColor(0,0,0,1)
+			textObj:SetShadowOffset(1,-1)
 
 			button.bossImg = button:CreateTexture(nil, "ARTWORK")
 			button.bossImg:SetSize(28,28)
 			button.bossImg:SetPoint("LEFT",2,0)
 
-            button.dungImg = button:CreateTexture(nil, "ARTWORK")
+			button.dungImg = button:CreateTexture(nil, "ARTWORK")
 			button.dungImg:SetPoint("TOPLEFT",20,0)
 			button.dungImg:SetPoint("BOTTOMRIGHT",button,"BOTTOM",20,0)
 			button.dungImg:SetAlpha(.4)
-            button.dungImg:SetTexCoord(0,1,.35,.45)
+			button.dungImg:SetTexCoord(0,1,.35,.45)
 
 			button.remove = Button_Create(button,20):Point("RIGHT",button,"RIGHT",-30,0)
 			button.remove:SetScript("OnClick",Button_Lvl1_Remove)
 			button.remove.tooltip1 = LR.RemoveSection
 			button.remove.texture:SetTexture("Interface\\AddOns\\ExRT_Reminder\\Media\\Textures\\delete")
 			-- button.remove.texture:SetAtlas("common-icon-redx")
-            -- button.remove.texture:SetDesaturated(true)
+			-- button.remove.texture:SetDesaturated(true)
 
 			button.expandSend = lineStyledButton(button,LR["Send All For This Boss"]):Point("RIGHT",button.remove,"LEFT",-15,0):Size(150,30):OnClick(SendFullBossData)
 
@@ -579,7 +566,7 @@ function module.options:MainScrollButtonsListInitialize()
 			button.typeicon.SetType = Button_Lvl2_SetTypeIcon
 			button.typeicon:SetType()
 
-            button.difftext = CreateFrame("Frame",nil,button)
+			button.difftext = CreateFrame("Frame",nil,button)
 			button.difftext:SetPoint("LEFT",button.typeicon,"RIGHT",0,0)
 			button.difftext:SetSize(20,20)
 			button.difftext.text = ELib:Text(button.difftext,"A"):Point("CENTER"):Color()
@@ -593,8 +580,8 @@ function module.options:MainScrollButtonsListInitialize()
 			button.msg = ELib:Text(button,"",12):Point("LEFT",button.name,"RIGHT",5,0):Size(185,20)
 
 			button.name:SetFont(button.msg:GetFont())
-            button.name:SetShadowColor(button.msg:GetShadowColor())
-            button.name:SetShadowOffset(button.msg:GetShadowOffset())
+			button.name:SetShadowColor(button.msg:GetShadowColor())
+			button.name:SetShadowOffset(button.msg:GetShadowOffset())
 
 			---
 
@@ -624,7 +611,7 @@ function module.options:MainScrollButtonsListInitialize()
 			button.sound.Update = Button_Sound_Update
 			button.sound.tooltip1 = LR["SoundStatus1"] -- all enabled
 			button.sound.tooltip2 = LR["SoundStatus2"] -- sound is locked
-            button.sound.tooltip3 = LR["SoundStatus3"] -- sound is muted
+			button.sound.tooltip3 = LR["SoundStatus3"] -- sound is muted
 
 			button:SetScript("OnEnter",Button_OnEnter)
 			button:SetScript("OnLeave",Button_OnLeave)
@@ -633,51 +620,39 @@ function module.options:MainScrollButtonsListInitialize()
 		end
 	end
 
-    local COLOR_BLACK1, COLOR_BLACK2 = CreateColor(.15,.15,.15,1), CreateColor(.18,.18,.18,1)
-    local COLOR_GREEN1, COLOR_GREEN2 = CreateColor(.1,.28,.1,1), CreateColor(.16,.37,.1,1)
-    local COLOR_RED1, COLOR_RED2 = CreateColor(.35,.13,.13,1), CreateColor(.44,.14,.14,1)
-    local COLOR_BLUE1, COLOR_BLUE2 = CreateColor(.16,.3,.47,1), CreateColor(.14,.37,.67,1)
-    local COLOR_ORANGE1, COLOR_ORANGE2 = CreateColor(.45,.32,.1,1), CreateColor(.75,.5,0.1,1)
+	local COLOR_BLACK1, COLOR_BLACK2 = CreateColor(.15,.15,.15,1), CreateColor(.18,.18,.18,1)
+	local COLOR_GREEN1, COLOR_GREEN2 = CreateColor(.1,.28,.1,1), CreateColor(.16,.37,.1,1)
+	local COLOR_RED1, COLOR_RED2 = CreateColor(.35,.13,.13,1), CreateColor(.44,.14,.14,1)
+	local COLOR_BLUE1, COLOR_BLUE2 = CreateColor(.16,.3,.47,1), CreateColor(.14,.37,.67,1)
+	local COLOR_ORANGE1, COLOR_ORANGE2 = CreateColor(.45,.32,.1,1), CreateColor(.75,.5,0.1,1)
 
-	function self.scrollList:ModButtonUpdate(button, level)
+	function options.scrollList:ModButtonUpdate(button, level)
 		if level == 1 then
 			local data = button.data
-            local resetBossImg,resetDungImg = true,true
+			local resetBossImg,resetDungImg = true,true
 			if data.bossID then
-                resetBossImg = false
-                local enc_jid = AddonDB.EJ_DATA.encounterIDtoEJ[data.bossID]
-                if enc_jid then
-                    local displayInfo = select(4, EJ_GetCreatureInfo(1, enc_jid))
-                    if displayInfo then
-                        SetPortraitTextureFromCreatureDisplayID(button.bossImg, displayInfo)
-                    else
-                        SetPortraitTextureFromCreatureDisplayID(button.bossImg, 15556)
-                    end
-                else
-                    SetPortraitTextureFromCreatureDisplayID(button.bossImg, 15556)
-                end
-            elseif data.zoneID then
-                resetBossImg = false
-                local zoneID = tonumber(tostring(data.zoneID):match("^[^, ]+") or "",10)
-                local instance_jid = AddonDB.EJ_DATA.instanceIDtoEJ[zoneID]
-                if instance_jid then
-                    local name, description, bgImage, buttonImage1, loreImage, buttonImage2 = EJ_GetInstanceInfo(instance_jid)
-                    if buttonImage2 then
-                        button.bossImg:SetTexture(buttonImage2)
-                    end
-                    if bgImage then
-                        button.dungImg:SetTexture(bgImage)
-                        resetDungImg = false
-                    end
-                else
-                    SetPortraitTextureFromCreatureDisplayID(button.bossImg, 51173)
-                end
-            else
-                resetBossImg = false
-                SetPortraitTextureFromCreatureDisplayID(button.bossImg, 15556)
-            end
+				resetBossImg = false
+				if not AddonDB:SetBossPortait(button.bossImg, data.bossID) then
+					SetPortraitTextureFromCreatureDisplayID(button.bossImg, 15556)
+				end
+			elseif data.zoneID then
+				resetBossImg = false
+				local zoneID = tonumber(tostring(data.zoneID):match("^[^, ]+") or "",10)
+				local foregroundImage, backgroundImage, instanceName = AddonDB:GetInstanceImage(zoneID)
 
-            if resetBossImg then
+				if foregroundImage and backgroundImage then
+					button.bossImg:SetTexture(foregroundImage)
+					button.dungImg:SetTexture(backgroundImage)
+					resetDungImg = false
+				else
+					SetPortraitTextureFromCreatureDisplayID(button.bossImg, 51173)
+				end
+			else
+				resetBossImg = false
+				SetPortraitTextureFromCreatureDisplayID(button.bossImg, 15556)
+			end
+
+			if resetBossImg then
 				button.bossImg:SetTexture("")
 			end
 			if resetDungImg then
@@ -692,20 +667,20 @@ function module.options:MainScrollButtonsListInitialize()
 				button.remove:Hide()
 			end
 
-            if data.zone_bossID then
-                button.bossImg:SetPoint("LEFT",0,0)
-                button.expandSend:SetText(LR["Send All (This Zone)"])
-            else
-                button.bossImg:SetPoint("LEFT",2,0)
-                button.expandSend:SetText(LR["Send All For This Boss"])
-            end
+			if data.zone_bossID then
+				button.bossImg:SetPoint("LEFT",0,0)
+				button.expandSend:SetText(LR["Send All (This Zone)"])
+			else
+				button.bossImg:SetPoint("LEFT",2,0)
+				button.expandSend:SetText(LR["Send All For This Boss"])
+			end
 
 		elseif level == 2 then
 			button:GetTextObj():SetWordWrap(false)
 
 			local data = button.data
 			local reminderData = data.data
-            if not reminderData then return end
+			if not reminderData then return end
 			if reminderData.notSync == 2 then
 				button:GetTextObj():SetTextColor(1,0.5,0)
 			else
@@ -715,8 +690,8 @@ function module.options:MainScrollButtonsListInitialize()
 				reminderData.msg and reminderData.msg ~= "" and module:FormatMsg(reminderData.msg) or
 				reminderData.spamMsg and "|cff0088ffCHAT:|r " .. (module:FormatMsg(reminderData.spamMsg)) .. "|r" or
 				reminderData.nameplateText and "|cff0088ffNAMEPLATE:|r " .. (module:FormatMsg(reminderData.nameplateText)) or
-                reminderData.tts and "|cff0088ffTTS:|r " .. (module:FormatMsg(reminderData.tts)) or
-                reminderData.glow and "|cff0088ffFRAME GLOW:|r " .. (module:FormatMsg(reminderData.glow)) or
+				reminderData.tts and "|cff0088ffTTS:|r " .. (module:FormatMsg(reminderData.tts)) or
+				reminderData.glow and "|cff0088ffFRAME GLOW:|r " .. (module:FormatMsg(reminderData.glow)) or
 				"")
 
 			if data.nohud and not button.ishudhidden then
@@ -732,22 +707,22 @@ function module.options:MainScrollButtonsListInitialize()
 				button.personal:Show()
 				button.ishudhidden = false
 			end
-            if reminderData.defDisabled then
-                if VMRT.Reminder.defEnabled[ reminderData.token ] then
-                    button.onoff.status = 1
-                else
-                    button.onoff.status = 2
-                end
-            else
-                if not VMRT.Reminder.disabled[ reminderData.token ] then
-                    button.onoff.status = 1
-                else
-                    button.onoff.status = 2
-                end
-            end
+			if reminderData.defDisabled then
+				if module:GetDataOption(reminderData.token, "DEF_ENABLED") then
+					button.onoff.status = 1
+				else
+					button.onoff.status = 2
+				end
+			else
+				if not module:GetDataOption(reminderData.token, "DISABLED") then
+					button.onoff.status = 1
+				else
+					button.onoff.status = 2
+				end
+			end
 			button.onoff:Update(button.onoff.status)
 
-			if not VMRT.Reminder.locked[ reminderData.token ] then
+			if not module:GetDataOption(reminderData.token, "LOCKED") then
 				button.lock.status = 1
 			else
 				button.lock.status = 2
@@ -783,17 +758,17 @@ function module.options:MainScrollButtonsListInitialize()
 					button.typeicon:SetType(4)
 				elseif data.spamMsg then      --CHAT
 					button.typeicon:SetType(6)
-                elseif data.msgSize == 3 or data.msgSize == 4 or data.msgSize == 5 then
-                    button.typeicon:SetType(8)
+				elseif data.msgSize == 3 or data.msgSize == 4 or data.msgSize == 5 then
+					button.typeicon:SetType(8)
 				else                          -- NORMAL TEXT
-                    -- button.typeicon:SetType(1)
-                    if data.msgSize == 1 then
-                        button.typeicon:SetType(2)
-                    elseif data.msgSize == 2 then
-                        button.typeicon:SetType(3)
-                    else
-                        button.typeicon:SetType(1)
-                    end
+					-- button.typeicon:SetType(1)
+					if data.msgSize == 1 then
+						button.typeicon:SetType(2)
+					elseif data.msgSize == 2 then
+						button.typeicon:SetType(3)
+					else
+						button.typeicon:SetType(1)
+					end
 
 				end
 				local diff = data.diff
@@ -819,54 +794,54 @@ function module.options:MainScrollButtonsListInitialize()
 				button.dSend:Tooltip("ID: ".. data.data.token)
 				button.dExport:Tooltip("ID: ".. data.data.token)
 			end
-            if data.data.disabled then
-                if not VMRT.Reminder.alternativeColorScheme then
-                    button.Texture:SetGradient("HORIZONTAL", COLOR_BLACK1, COLOR_BLACK2) --black
-                else
-                    button.Texture:SetGradient("HORIZONTAL", COLOR_BLACK1, COLOR_BLACK2) --black
-                end
-                button.onoff.texture:SetDesaturated(1)
-                return
-            else
-                button.onoff.texture:SetDesaturated()
-            end
+			if data.data.disabled then
+				if not VMRT.Reminder.alternativeColorScheme then
+					button.Texture:SetGradient("HORIZONTAL", COLOR_BLACK1, COLOR_BLACK2) --black
+				else
+					button.Texture:SetGradient("HORIZONTAL", COLOR_BLACK1, COLOR_BLACK2) --black
+				end
+				button.onoff.texture:SetDesaturated(1)
+				return
+			else
+				button.onoff.texture:SetDesaturated()
+			end
 			if module:CheckPlayerCondition(data.data) then -- loaded
 				if data.data.isPersonal then
-                    if VMRT.Reminder.alternativeColorScheme then
-					    button.Texture:SetGradient("HORIZONTAL", COLOR_GREEN1, COLOR_GREEN2) -- green
-                    else
-                        button.Texture:SetGradient("HORIZONTAL", COLOR_BLUE1, COLOR_BLUE2) -- blue
-                    end
-                else
-                    if VMRT.Reminder.alternativeColorScheme then
-                        button.Texture:SetGradient("HORIZONTAL", COLOR_BLUE1, COLOR_BLUE2) -- blue
-                    else
-                        button.Texture:SetGradient("HORIZONTAL", COLOR_GREEN1, COLOR_GREEN2) -- green
-                    end
-                end
+					if VMRT.Reminder.alternativeColorScheme then
+						button.Texture:SetGradient("HORIZONTAL", COLOR_GREEN1, COLOR_GREEN2) -- green
+					else
+						button.Texture:SetGradient("HORIZONTAL", COLOR_BLUE1, COLOR_BLUE2) -- blue
+					end
+				else
+					if VMRT.Reminder.alternativeColorScheme then
+						button.Texture:SetGradient("HORIZONTAL", COLOR_BLUE1, COLOR_BLUE2) -- blue
+					else
+						button.Texture:SetGradient("HORIZONTAL", COLOR_GREEN1, COLOR_GREEN2) -- green
+					end
+				end
 			else -- not loaded
 				if data.data.isPersonal then
-                    if VMRT.Reminder.alternativeColorScheme then
-					    button.Texture:SetGradient("HORIZONTAL", COLOR_RED1, COLOR_RED2) -- red
-                    else
-					    button.Texture:SetGradient("HORIZONTAL", COLOR_ORANGE1, COLOR_ORANGE2) -- orange
-                    end
-                else
-                    if VMRT.Reminder.alternativeColorScheme then
-                        button.Texture:SetGradient("HORIZONTAL", COLOR_ORANGE1, COLOR_ORANGE2) -- orange
-                    else
-                        button.Texture:SetGradient("HORIZONTAL", COLOR_RED1, COLOR_RED2) -- red
-                    end
-                end
+					if VMRT.Reminder.alternativeColorScheme then
+						button.Texture:SetGradient("HORIZONTAL", COLOR_RED1, COLOR_RED2) -- red
+					else
+						button.Texture:SetGradient("HORIZONTAL", COLOR_ORANGE1, COLOR_ORANGE2) -- orange
+					end
+				else
+					if VMRT.Reminder.alternativeColorScheme then
+						button.Texture:SetGradient("HORIZONTAL", COLOR_ORANGE1, COLOR_ORANGE2) -- orange
+					else
+						button.Texture:SetGradient("HORIZONTAL", COLOR_RED1, COLOR_RED2) -- red
+					end
+				end
 			end
 		end
 	end
 
-	function self:UpdateData()
+	function options:UpdateData()
 		local currZoneID = select(8, GetInstanceInfo())
 
 		local Mdata = {}
-        local zoneHeaders = {}
+		local zoneHeaders = {}
 		for token,data in next, VMRT.Reminder.data do
 			local tableToAdd
 
@@ -877,25 +852,25 @@ function module.options:MainScrollButtonsListInitialize()
 				zoneID = tonumber(tostring(zoneID):match("^[^, ]+") or "",10)
 			end
 
-            local function AddZone(zoneID)
+			local function AddZone(zoneID)
 				local zoneData = MRT.F.table_find3(Mdata,zoneID,"zoneID")
 				if not zoneData then
 					local instanceName = LR.instance_name[zoneID]
 
-                    zoneData = {
-                        zoneID = zoneID,
-                        name = instanceName ..(currZoneID == zoneID and " |cff00ff00("..LR.Now..")|r" or ""),
-                        data = {},
-                        uid = "zone"..zoneID,
-                    }
-                    Mdata[#Mdata+1] = zoneData
+					zoneData = {
+						zoneID = zoneID,
+						name = instanceName ..(currZoneID == zoneID and " |cff00ff00("..LR.Now..")|r" or ""),
+						data = {},
+						uid = "zone"..zoneID,
+					}
+					Mdata[#Mdata+1] = zoneData
 
 					zoneHeaders[zoneID] = zoneData
 				end
 				return zoneData
 			end
 
-            local searchPat = module.options.search
+			local searchPat = module.options.search
 			if module:SearchInData(data,searchPat) then
 				if bossID then
 					local bossData = MRT.F.table_find3(Mdata,bossID,"bossID")
@@ -929,24 +904,24 @@ function module.options:MainScrollButtonsListInitialize()
 						Mdata[#Mdata+1] = bossData
 					end
 
-                    local ej_bossID = AddonDB.EJ_DATA.encounterIDtoEJ[bossID]
-                    if ej_bossID and EJ_GetEncounterInfo then
-                        local name, description, journalEncounterID, rootSectionID, link, journalInstanceID, dungeonEncounterID, instanceID = EJ_GetEncounterInfo(ej_bossID)
-                        if journalInstanceID then
-                            local name, description, bgImage, buttonImage1, loreImage, buttonImage2, dungeonAreaMapID, link, shouldDisplayDifficulty, mapID = EJ_GetInstanceInfo(journalInstanceID)
-                            if mapID then
-                                local zoneData = AddZone(mapID)
-                                if not zoneData.zone_bossID then
-                                    zoneData.zone_bossID = {}
-                                end
-                                zoneData.zone_bossID[bossID] = true
-                            end
-                        end
-                    end
+					local ej_bossID = AddonDB.EJ_DATA.encounterIDtoEJ[bossID]
+					if ej_bossID and EJ_GetEncounterInfo then
+						local name, description, journalEncounterID, rootSectionID, link, journalInstanceID, dungeonEncounterID, instanceID = EJ_GetEncounterInfo(ej_bossID)
+						if journalInstanceID then
+							local name, description, bgImage, buttonImage1, loreImage, buttonImage2, dungeonAreaMapID, link, shouldDisplayDifficulty, mapID = EJ_GetInstanceInfo(journalInstanceID)
+							if mapID then
+								local zoneData = AddZone(mapID)
+								if not zoneData.zone_bossID then
+									zoneData.zone_bossID = {}
+								end
+								zoneData.zone_bossID[bossID] = true
+							end
+						end
+					end
 
 					tableToAdd = bossData.data
 				elseif zoneID then
-                    tableToAdd = AddZone(zoneID).data
+					tableToAdd = AddZone(zoneID).data
 				else
 					local otherData = MRT.F.table_find3(Mdata,0,"otherID")
 					if not otherData then
@@ -973,13 +948,13 @@ function module.options:MainScrollButtonsListInitialize()
 
 		sort(Mdata,function(a,b)
 			if a.zoneID and b.zoneID then
-                return module.GetInstanceSortIndex(a.zoneID,100000-a.zoneID) < module.GetInstanceSortIndex(b.zoneID,100000-b.zoneID)
-            elseif a.zoneID then
-                return true
-            elseif b.zoneID then
-                return false
+				return AddonDB:GetInstanceSortIndex(a.zoneID,100000-a.zoneID) < AddonDB:GetInstanceSortIndex(b.zoneID,100000-b.zoneID)
+			elseif a.zoneID then
+				return true
+			elseif b.zoneID then
+				return false
 			elseif a.bossID and b.bossID then
-				return module.GetEncounterSortIndex(a.bossID,100000-a.bossID) < module.GetEncounterSortIndex(b.bossID,100000-b.bossID)
+				return AddonDB:GetEncounterSortIndex(a.bossID,100000-a.bossID) < AddonDB:GetEncounterSortIndex(b.bossID,100000-b.bossID)
 			elseif a.otherID then
 				return false
 			elseif b.otherID then
@@ -1001,14 +976,14 @@ function module.options:MainScrollButtonsListInitialize()
 				elseif a.diff ~= b.diff then
 					return a.diff > b.diff
 				elseif a.name:lower() ~= b.name:lower() then
-					return a.name:lower() < b.name:lower()
+					return a.name:lower():gsub("%.",strchar(255)) < b.name:lower():gsub("%.",strchar(255))
 				else
 					return a.uid < b.uid
 				end
 			end)
 		end
 
-        --re add boss to dungeons
+		--re add boss to dungeons
 		for i=#Mdata,1,-1 do
 			local bossID = Mdata[i].bossID
 			if bossID then
@@ -1030,14 +1005,122 @@ function module.options:MainScrollButtonsListInitialize()
 
 		module.options.scrollList.data = Mdata
 		module.options.scrollList:Update(true)
-        if module.options.timeLine then
-            module.options.timeLine:Update()
-        end
+		if module.options.timeLine then
+			module.options.timeLine:Update()
+		end
 
 		if module.options.lastUpdate then
 			module.options.lastUpdate:Update()
 		end
 	end
 
-	self:UpdateData()
+	local AddButton = MLib:Button(options.REMINDERS_SCROLL_LIST,LR.Add,13):Point("TOPLEFT",options.scrollList,"BOTTOMLEFT",4,-5):Size(100,20):OnClick(function()
+		if not module.SetupFrame then
+			options:SetupFrameInitialize()
+		end
+
+		module.SetupFrame.data = CopyTable(module.datas.newReminderTemplate)
+
+		if module.SetupFrame:IsVisible() then
+			module.SetupFrame:Update()
+		else
+			module.SetupFrame:Show()
+		end
+	end)
+
+	options.lastUpdate = ELib:Text(options.REMINDERS_SCROLL_LIST,"",11):Point("LEFT",AddButton,"RIGHT",10,0):Color()
+	function options.lastUpdate:Update()
+		if VMRT.Reminder.LastUpdateName and VMRT.Reminder.LastUpdateTime then
+			self:SetText( L.NoteLastUpdate..": "..VMRT.Reminder.LastUpdateName.." ("..date("%H:%M:%S %d.%m.%Y",VMRT.Reminder.LastUpdateTime)..")" )
+		end
+	end
+	options.lastUpdate:Update()
+
+	options.SyncButton = MLib:Button(options.REMINDERS_SCROLL_LIST,LR.SendAll,13):Point("TOPLEFT",AddButton,"BOTTOMLEFT",0,-5):Size(100,20):OnClick(function()
+		MLib:DialogPopup({
+			id = "EXRT_REMINDER_SYNC_ALL_CONFIRMATION",
+			title = LR["Sync All"],
+			text = LR.SyncAllConfirm,
+			buttons = {
+				{
+					text = YES,
+					func = function()
+						module:Sync()
+					end,
+				},
+				{
+					text = NO,
+				},
+			},
+		})
+	end)
+
+	options.ResetForAllButton = MLib:Button(options.REMINDERS_SCROLL_LIST,LR.DeleteAll,13):Point("TOPRIGHT",options.scrollList,"BOTTOMRIGHT",-5,-30):Size(120,20):OnClick(function()
+		MLib:DialogPopup({
+			id = "EXRT_REMINDER_DELETE_ALL_ALERT",
+			title = LR.DeleteAll.."?",
+			buttons = {
+				{
+					text = YES,
+					func = function()
+						wipe(VMRT.Reminder.data)
+						if options.Update then
+							options.Update()
+						end
+						module:ReloadAll()
+					end,
+				},
+				{
+					text = NO,
+				},
+			},
+		})
+	end)
+
+	options.ExportButton = MLib:Button(options.REMINDERS_SCROLL_LIST,LR.ExportAll,13):Point("RIGHT",options.ResetForAllButton,"LEFT",-5,0):Size(120,20):OnClick(function()
+		local export = module:Sync(true)
+		MRT.F:Export(export)
+	end)
+
+	local importWindow
+	options.ImportButton = MLib:Button(options.REMINDERS_SCROLL_LIST,LR.Import,13):Point("RIGHT",options.ExportButton,"LEFT",-5,0):Size(80,20):OnClick(function()
+		if not importWindow then
+			importWindow = ELib:Popup(LR.Import):Size(650,615)
+			importWindow.Close.NormalTexture:SetVertexColor(1,0,0,1)
+			importWindow.Edit = ELib:MultiEdit(importWindow):Point("TOP",0,-20):Size(640,570)
+			importWindow.Save = MLib:Button(importWindow,LR.Import,13):Tooltip(LR.ImportTip):Point("BOTTOM",0,2):Size(120,20):OnClick(function()
+				importWindow:Hide()
+				if IsShiftKeyDown() then
+					MLib:DialogPopup({
+						id = "EXRT_REMINDER_CLEAR_IMPORT_ALERT",
+						title = LR["Clear Import"],
+						text = LR.ClearImport,
+						buttons = {
+							{
+								text = ACCEPT,
+								func = function()
+									wipe(VMRT.Reminder.data)
+									module:ProcessTextToData(importWindow.Edit:GetText(),true)
+								end,
+							},
+							{
+								text = CANCEL,
+							},
+						},
+					})
+				else
+					module:ProcessTextToData(importWindow.Edit:GetText(),true)
+				end
+			end)
+		end
+		importWindow.Edit:SetText("")
+		importWindow:NewPoint("CENTER",UIParent,0,0)
+		importWindow:Show()
+		importWindow.Edit.EditBox:SetScript("OnEscapePressed",function(self)
+			importWindow:Hide()
+		end)
+		importWindow.Edit.EditBox:SetFocus()
+	end)
+
+	options:UpdateData()
 end

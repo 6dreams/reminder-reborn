@@ -10,7 +10,7 @@ local LibDeflate = LibStub:GetLibrary("LibDeflate")
 ---@class WAChecker: MRTmodule
 local module = MRT.A.WAChecker
 if not module then
-    module = AddonDB:New("WAChecker",MRT.L.WAChecker)
+	module = AddonDB:New("WAChecker",MRT.L.WAChecker)
 end
 
 
@@ -112,7 +112,7 @@ end
 
 
 local fieldsToClear = {
-        load = {
+		load = {
 		use_never = true,
 		use_ingroup = true,
 		ingroup = true,
@@ -123,21 +123,21 @@ local fieldsToClear = {
 		use_instance_type = true,
 		instance_type = true,
 	},
-        grow = true,
-        xOffset = true,
-        yOffset = true,
-        width = true,
-        height = true,
-        zoom = true,
-        scale = true,
-        texture = true,
-        barColor = true,
-        barColor2 = true,
-        enableGradient = true,
-        backgroundColor = true,
-        color = true,
-        font = true,
-        fontSize = true,
+		grow = true,
+		xOffset = true,
+		yOffset = true,
+		width = true,
+		height = true,
+		zoom = true,
+		scale = true,
+		texture = true,
+		barColor = true,
+		barColor2 = true,
+		enableGradient = true,
+		backgroundColor = true,
+		color = true,
+		font = true,
+		fontSize = true,
 	alpha = true,
 	align = true,
 	anchorFrameType = true,
@@ -157,22 +157,22 @@ local fieldsToClear = {
 	gridWidth = true,
 	limit = true,
 	useLimit = true,
-     	subRegions = {},
-        conditions = {},
-        actions = {
-            start = {
-                glow_color = true,
-                use_glow_color = true,
-                glow_type = true,
-                glow_lines = true,
-                glow_length = true,
-                glow_thickness = true,
-                glow_frequency = true,
-                sound = true,
-                sound_channel = true,
+	 	subRegions = {},
+		conditions = {},
+		actions = {
+			start = {
+				glow_color = true,
+				use_glow_color = true,
+				glow_type = true,
+				glow_lines = true,
+				glow_length = true,
+				glow_thickness = true,
+				glow_frequency = true,
+				sound = true,
+				sound_channel = true,
 		do_sound = true,
-            },
-        },
+			},
+		},
 	config = true,
 
 	preferToUpdate = true,
@@ -182,16 +182,16 @@ local fieldsToClear = {
 	sortHybridTable = true,
 	controlledChildren = true,
 	uid = true,
-    authorMode = true,
-    skipWagoUpdate = true,
-    ignoreWagoUpdate = true,
-    information = {
-        saved = true,
-    },
+	authorMode = true,
+	skipWagoUpdate = true,
+	ignoreWagoUpdate = true,
+	information = {
+		saved = true,
+	},
 }
 
 do
-    local subregionKeep = {
+	local subregionKeep = {
 	anchorXOffset = true,
 	anchorYOffset = true,
 
@@ -199,9 +199,9 @@ do
 	text_anchorXOffset = true,
 	text_anchorYOffset = true,
 	text_automaticWidth = true,
-        text_color = true,
+		text_color = true,
 	text_fixedWidth = true,
-        text_font = true,
+		text_font = true,
 	text_fontSize = true,
 	text_fontType = true,
 	text_justify = true,
@@ -213,43 +213,43 @@ do
 	text_wordWrap = true,
 
 	glow = true,
-        glowBorder = true,
-        glowColor = true,
+		glowBorder = true,
+		glowColor = true,
 	glowFrequency = true,
 	glowLength = true,
-        glowLines = true,
-        glowScale = true,
-        glowThickness = true,
-        glowType = true,
+		glowLines = true,
+		glowScale = true,
+		glowThickness = true,
+		glowType = true,
 	glowXOffset = true,
 	glowYOffset = true,
-        useGlowColor = true,
+		useGlowColor = true,
 
 	border_color = true,
 	border_edge = true,
 	border_offset = true,
 	border_size = true,
 	border_visible = true,
-    }
+	}
 
-    local conditionKeep = {
-        glow_color = true,
-        use_glow_color = true,
-        glow_type = true,
-        glow_lines = true,
-        glow_length = true,
-        glow_thickness = true,
-        glow_frequency = true,
-        sound = true,
-        sound_channel = true,
+	local conditionKeep = {
+		glow_color = true,
+		use_glow_color = true,
+		glow_type = true,
+		glow_lines = true,
+		glow_length = true,
+		glow_thickness = true,
+		glow_frequency = true,
+		sound = true,
+		sound_channel = true,
 	[1] = true,
 	[2] = true,
 	[3] = true,
 	[4] = true,
-    }
+	}
 
-    for i = 1, 10 do
-        tinsert(fieldsToClear.subRegions, CopyTable(subregionKeep))
+	for i = 1, 10 do
+		tinsert(fieldsToClear.subRegions, CopyTable(subregionKeep))
 	local changes_template = {
 		value = CopyTable(conditionKeep)
 	}
@@ -257,10 +257,10 @@ do
 	for j=1,10 do
 		tinsert(changes,changes_template)
 	end
-        tinsert(fieldsToClear.conditions, {
+		tinsert(fieldsToClear.conditions, {
 		changes = changes
-        })
-    end
+		})
+	end
 end
 
 local function ClearFields(table,fields)
@@ -302,7 +302,7 @@ function module:SendReq2(ownList)
 		local c = 0
 		if type(ownList) == "table" then
 			for WA_name in next, ownList do
-                local WA_data = WeakAurasSaved.displays[WA_name]
+				local WA_data = WeakAurasSaved.displays[WA_name]
 				str = str..WA_name.."''"..module:hash(MRT.F.table_to_string(module:wa_clear(WA_data))).."''"
 				c = c + 1
 			end
@@ -395,13 +395,13 @@ end
 local lastSenderTime,lastSender = 0
 
 function module.main:ADDON_LOADED() -- doesn't work if module is registered from MRT, but will work if module is registered from this file
-    module:RegisterAddonMessage()
+	module:RegisterAddonMessage()
 end
 
 local extra_resp_to_old = {
-    [0] = 1,
-    [1] = 5,
-    [2] = 2,
+	[0] = 1,
+	[1] = 5,
+	[2] = 2,
 }
 
 function module:addonMessage(sender, prefix, prefix2, ...)
@@ -474,39 +474,39 @@ function module:addonMessage(sender, prefix, prefix2, ...)
 			if module.options:IsVisible() and module.options.ScheduleUpdate then
 				module.options.ScheduleUpdate()
 			end
-        elseif prefix2 == "Y" then
-            local str1, str2 = ...
-            module.db.responces2[ sender ] = module.db.responces2[ sender ] or {}
-            module.db.responces[ sender ] = module.db.responces[ sender ] or {}
-            if str1 == "NOWA" then
-                module.db.responces2[ sender ].noWA = true
-                module.db.responces[ sender ].noWA = true
-                return
-            elseif str1 == "DATA" then
-                local _, wa_ver = ...
-                module.db.responces2[ sender ].wa_ver = wa_ver
-                module.db.responces[ sender ].wa_ver = wa_ver
+		elseif prefix2 == "Y" then
+			local str1, str2 = ...
+			module.db.responces2[ sender ] = module.db.responces2[ sender ] or {}
+			module.db.responces[ sender ] = module.db.responces[ sender ] or {}
+			if str1 == "NOWA" then
+				module.db.responces2[ sender ].noWA = true
+				module.db.responces[ sender ].noWA = true
+				return
+			elseif str1 == "DATA" then
+				local _, wa_ver = ...
+				module.db.responces2[ sender ].wa_ver = wa_ver
+				module.db.responces[ sender ].wa_ver = wa_ver
 
-                if module.options:IsVisible() and module.options.UpdatePage then
-                    module.options.UpdatePage()
-                end
-                return
-            end
-            if ... == "H" then
-                if not module.db.syncStr2 then
-                    module.db.syncStr2 = {}
-                end
-                module.db.syncStr2[ sender ] = ""
-            end
-            local str = table.concat({select(... == "H" and 2 or 1,...)}, "\t")
+				if module.options:IsVisible() and module.options.UpdatePage then
+					module.options.UpdatePage()
+				end
+				return
+			end
+			if ... == "H" then
+				if not module.db.syncStr2 then
+					module.db.syncStr2 = {}
+				end
+				module.db.syncStr2[ sender ] = ""
+			end
+			local str = table.concat({select(... == "H" and 2 or 1,...)}, "\t")
 
 			module.db.syncStr2[ sender ] = (module.db.syncStr2[ sender ] or "") .. str
-            if module.db.syncStr2[ sender ]:find("#F#$") then
-                local str = module.db.syncStr2[ sender ]:sub(1,-4)
-                module.db.syncStr2[ sender ] = nil
+			if module.db.syncStr2[ sender ]:find("#F#$") then
+				local str = module.db.syncStr2[ sender ]:sub(1,-4)
+				module.db.syncStr2[ sender ] = nil
 
-                local decoded = LibDeflate:DecodeForWoWAddonChannel(str)
-                local decompressed = LibDeflate:DecompressDeflate(decoded)
+				local decoded = LibDeflate:DecodeForWoWAddonChannel(str)
+				local decompressed = LibDeflate:DecompressDeflate(decoded)
 
 				local workingReq
 				for j=#module.db.lastReq2,1,-1 do
@@ -524,47 +524,47 @@ function module:addonMessage(sender, prefix, prefix2, ...)
 						module.db.responces[ sender ][ workingReq[i][1] ] = extra_resp_to_old[r]
 					end
 				end
-            end
+			end
 
-            if module.options:IsVisible() and module.options.UpdatePage then
-                module.options.UpdatePage()
-            end
-        elseif prefix2 == "SWA" then
-            local id, playername = ...
+			if module.options:IsVisible() and module.options.UpdatePage then
+				module.options.UpdatePage()
+			end
+		elseif prefix2 == "SWA" then
+			local id, playername = ...
 
-            if module.db.synqWAData[sender] then
-                if WeakAurasSaved.displays[ id ] then
-                    local str = module.db.synqWAData[sender]:sub(7)
-                    local decoded = LibDeflate:DecodeForWoWAddonChannel(str)
-                    if decoded then
-                        local decompressed = LibDeflate:DecompressDeflate(decoded)
-                        if decompressed then
-                            local LibSerialize = LibStub("LibSerialize")
-                            local success, deserialized = LibSerialize:Deserialize(decompressed)
-                            if success and deserialized.d then
-                                local hash1 = module:hash(MRT.F.table_to_string(module:wa_clear(deserialized.d)))
-                                local hash2 = module:hash(MRT.F.table_to_string(module:wa_clear(WeakAurasSaved.displays[ id ])))
-                                if hash1 == hash2 then
-                                    -- print('aura is same')
-                                    return
-                                end
-                            end
-                        end
-                    end
-                end
+			if module.db.synqWAData[sender] then
+				if WeakAurasSaved.displays[ id ] then
+					local str = module.db.synqWAData[sender]:sub(7)
+					local decoded = LibDeflate:DecodeForWoWAddonChannel(str)
+					if decoded then
+						local decompressed = LibDeflate:DecompressDeflate(decoded)
+						if decompressed then
+							local LibSerialize = LibStub("LibSerialize")
+							local success, deserialized = LibSerialize:Deserialize(decompressed)
+							if success and deserialized.d then
+								local hash1 = module:hash(MRT.F.table_to_string(module:wa_clear(deserialized.d)))
+								local hash2 = module:hash(MRT.F.table_to_string(module:wa_clear(WeakAurasSaved.displays[ id ])))
+								if hash1 == hash2 then
+									-- print('aura is same')
+									return
+								end
+							end
+						end
+					end
+				end
 
-                local link = "|Hgarrmission:weakauras|h|cFF8800FF["..playername.." |r|cFF8800FF- "..id.."]|h|r"
-                SetItemRef("garrmission:weakauras",link)
+				local link = "|Hgarrmission:weakauras|h|cFF8800FF["..playername.." |r|cFF8800FF- "..id.."]|h|r"
+				SetItemRef("garrmission:weakauras",link)
 
-                local Comm = LibStub:GetLibrary("AceComm-3.0")
+				local Comm = LibStub:GetLibrary("AceComm-3.0")
 
-                Comm.callbacks:Fire("WeakAuras", module.db.synqWAData[sender], "RAID", playername)
-            end
-        end
+				Comm.callbacks:Fire("WeakAuras", module.db.synqWAData[sender], "RAID", playername)
+			end
+		end
 	elseif prefix == "wac2" then
 		if prefix2 == "G" then
 			local time = GetTime()
-            if lastSender ~= sender and (time - lastSenderTime) < 1.5 then
+			if lastSender ~= sender and (time - lastSenderTime) < 1.5 then
 				return
 			end
 			lastSender = sender
@@ -597,7 +597,7 @@ function module:addonMessage(sender, prefix, prefix2, ...)
 				module:SendResp()
 			end
 		end
-    elseif prefix == "wac3" then
+	elseif prefix == "wac3" then
 		if prefix2 == "G" then
 			if not sync_db.wac3_G_syncStr then sync_db.wac3_G_syncStr = {} end
 			if not sync_db.wac3_G_senderToCount then sync_db.wac3_G_senderToCount = {} end
@@ -805,5 +805,5 @@ function module:SendWA_OG(id)
 		end
 		MRT.F.SendExMsgExt(opt,"wac3","D\t"..newIndex.."\t"..msg)
 	end
-	MRT.F.SendExMsg("wachk", "SWA\t"..id.."\t"..fullName)
+	MRT.F.SendExMsgExt({maxPer5Sec = 50},"wachk", "SWA\t"..id.."\t"..fullName)
 end

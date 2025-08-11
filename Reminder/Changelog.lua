@@ -8,6 +8,120 @@ AddonDB.Changelog = [=[
  - Also note that |cFF8855FFWeakAuras Sync|r and |cff80ff00Raid Analyzer|r modules are also included with this addon.
 |r
 
+
+ v.63
+* MoP Classic fixes
+
+ v.62.1
+* Fixed sending WAs using whisper channel
+* Fixed encounters list for MoP Classic
+* Fixed borders in new popup dialogs
+
+ v.62
+* Fixed issue when changelog was truncated because it was too long
+* Addon is now using its own popup dialogs to avoid taint
+
+ v.61.2
+* Added timeline data for MFO Mythic and Heroic encounters based on PTR testing
+* Added timeline data for ToES and HoF encounters based on beta testing
+
+ v.60.1
+* Fixed mark condition for combat log triggers
+
+ v.60
+* Added initial MoP Classic support
+* Added timeline data for MSV encounters based on beta testing
+
+ v.59
+* Personal reminder options such as disable, lock updates, disable sound, lock sound are now attached to the current reminder data profile(active set of reminders)
+* Option to lock sound for the reminder now also locks TTS on hide
+
+ v.58
+* Added profiles system for visual settings such as anchors, text/bars appearance, tts and glow settings
+* Added option to set frame strata for reminder bars
+* Improved display of font names and bar texture names from SharedMedia
+* Fixed issue when certain instances were named incorrectly
+* Fixed issue when text frame strata option was not working
+* Fixed issue when some glow options was missing from settings
+
+ v.57.8
+* Fixed version check for BigWigs users
+
+ v.57.7
+* Fixed issue when glow reminder was not showing if listed players was out of raid group
+
+ v.57
+|cffee5555** Breaking changes to addon communication system|r
+ - Fixed issue when cross realm comms could be sent out of order which lead to failed decompression/deserialization
+ - Players with older versions of the addon will not be able to accept or send reminders, WAs, etc. to those with the updated version
+* NoteAnalyzer: added @!$_#+& as separator signs to better match player names
+* Improved performance of data compression for retail
+
+ v.56
+* Added option to set tts on hide
+* Added option to set delay for sounds and tts
+
+ v.55.1
+* Fixes
+
+ v.55
+* Simrun now respects time scale adjustments
+* Added option to pause timeline simulation to resume it later
+* Added option to start timeline simulation from a specific time
+* Simulation speed multiplier now can be changed with a slider
+
+ v.54.2
+* Fixes
+
+ v.54.1
+* Fixes
+
+ v.54
+* Added option to select separate tts voice for russian speech
+* Simulating test fight in timeline now may use timeline data to simulate combat log events
+ - Only supported events: cast start, cast success, aura applied, aura removed
+ - Source/target fields are not supported for simulated events
+ - Do not expect events that are fired frequently(e.g. aura applied to the whole raid) to have proper counters
+* A lot of timeline fixes
+ - Fixed automatic name generation for reminders
+ - Reminders that use phase trigger and check spell cooldown now properly show only once during the phase
+ - Improved display of currently selected boss, now always shows difficulty and duration of the fight
+ - Display a separate reminder for each comma separated value in trigger's activation delay time
+ - If "Repeatable Spells" is enabled display a separate reminder for each combat log event if counter is not specified
+* Export to note now also includes unformatted timestamp
+* Import from note now sets difficulty of the current timeline boss to imported reminders
+* New version notifications now only appear with major updates for public version of the addon
+
+ v.53.4
+* Updated Mythic Gallywix timeline data
+* Timelines now always show all phases for the fight
+* Fixed phase handling for fights where first phase is not 1(e.g. Mythic Gallywix and Mug'Zee)
+
+ v.53.3
+* Fixes to Mythic Gallywix timeline data
+* Fixes to Mythic Mug'zee timeline data
+
+ v.53.2
+* Added Mythic Gallywix timeline data
+* Added Mythic Mug'zee timeline data
+
+ v.53
+* Updated Mythic One-Armed Bandit timeline data
+
+ v.52.5
+* Updated Mythic Vexie timeline data
+* Updated Mythic Stix Bunkjunker timeline data
+* Updated Mythic Sprocketmonger Lockenstock timeline data
+* Reminder TTS now automatically converts marks formatted like {rt1} to english text
+
+ v.52.1
+* Added Mythic Cauldron of Carnage timeline data
+* Added Mythic Rik Reverb timeline data
+
+ v.52
+* Added Heroic Gallywix timeline data
+* Updated Heroic Mug'Zee timeline data
+
  v.51.2
 * Added Mug'Zee and M+ dungeons timeline data from ptr
 

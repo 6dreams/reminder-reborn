@@ -33,10 +33,11 @@ frame:SetScript("OnDragStart", function(self)
 end)
 frame:SetScript("OnDragStop", function(self)
 	self:StopMovingOrSizing()
-	VMRT.Reminder.Left = self:GetLeft()
-	VMRT.Reminder.Top = self:GetTop()
-	frame:ClearAllPoints()
-	frame:SetPoint("TOPLEFT",UIParent,"BOTTOMLEFT",VMRT.Reminder.Left,VMRT.Reminder.Top)
+	local offsetLeft, offsetBottom = self:GetCenter()
+	VMRT.Reminder.VisualSettings.Text_PosX = offsetLeft - (GetScreenWidth() / 2)
+	VMRT.Reminder.VisualSettings.Text_PosY = offsetBottom - (GetScreenHeight() / 2)
+	self:ClearAllPoints()
+	self:SetPoint("CENTER",UIParent,"CENTER",VMRT.Reminder.VisualSettings.Text_PosX,VMRT.Reminder.VisualSettings.Text_PosY)
 end)
 
 frame.dot = frame:CreateTexture(nil, "BACKGROUND",nil,-6)
@@ -66,7 +67,7 @@ function frame:CreateText(t,i,textSizeScale)
 
 	text.tss = textSizeScale -- 1 big -- 2 normal -- 3 small
 
-    text.tmr = self:CreateFontString(nil,"ARTWORK")
+	text.tmr = self:CreateFontString(nil,"ARTWORK")
 
 	self:UpdateTextStyle(text)
 
@@ -77,40 +78,44 @@ function frame:UpdateTextStyle(obj)
 	if not VMRT then
 		return
 	end
-	local font = VMRT.Reminder.Font or MRT.F.defFont
-	local outline = VMRT.Reminder.OutlineType or "OUTLINE, OUTLINE"
-	local fontSizeBig = VMRT.Reminder.FontSizeBig or 60
-	local fontSize = VMRT.Reminder.FontSize or 40
-	local fontSizeSmall = VMRT.Reminder.FontSizeSmall or 20
-    local hasShadow = VMRT.Reminder.Shadow
-    local frameStata = VMRT.Reminder.FrameState or "HIGH"
-    frame:SetFrameStrata(frameStata)
+	local font = VMRT.Reminder.VisualSettings.Text_Font or MRT.F.defFont
+	local outline = VMRT.Reminder.VisualSettings.Text_FontOutlineType or "OUTLINE, OUTLINE"
+	local fontSizeBig = VMRT.Reminder.VisualSettings.Text_FontSizeBig or 60
+	local fontSize = VMRT.Reminder.VisualSettings.Text_FontSize or 40
+	local fontSizeSmall = VMRT.Reminder.VisualSettings.Text_FontSizeSmall or 20
+	local hasShadow = VMRT.Reminder.VisualSettings.Text_FontShadow
+	local frameStata = VMRT.Reminder.FrameState or "HIGH"
+	frame:SetFrameStrata(frameStata)
 
 	local ahText = (VMRT.Reminder.JustifyH == 1 and "LEFT") or (VMRT.Reminder.JustifyH == 2 and "RIGHT") or ""
 	local avTextT,avTextB = "TOP","BOTTOM"
 	if VMRT.Reminder.GrowUp then -- TODO
 		avTextT,avTextB = avTextB,avTextT
 	end
-	local te = VMRT.Reminder.FontTimerExcluded
+	local te = VMRT.Reminder.VisualSettings.Text_FontTimerExcluded
 
 	local rpf = avTextT..ahText
 	local rpt = avTextB..ahText
 
 	for o,t in next, (obj and {{obj}} or {self.textBigD,self.textD,self.textSmallD}) do
 		for ci,text in next, t do
-            local fSize = text.tss == 1 and fontSizeBig or text.tss == 2 and fontSize or fontSizeSmall
-			text:SetFont(font, fSize, outline)
-            text.tmr:SetFont(font, fSize, outline)
-            if hasShadow then
-                text:SetShadowOffset(1,-1)
-                text.tmr:SetShadowOffset(1,-1)
-            else
-                text:SetShadowOffset(0,0)
-                text.tmr:SetShadowOffset(0,0)
-            end
-            text.tmr:SetPoint("LEFT",text,"RIGHT",0,0) --floor(fSize / 10 + 0.5)
+			local fSize = text.tss == 1 and fontSizeBig or text.tss == 2 and fontSize or fontSizeSmall
+			if not text:SetFont(font, fSize, outline) then
+				text:SetFont(MRT.F.defFont, fSize, outline)
+			end
+			if not text.tmr:SetFont(font, fSize, outline) then
+				text.tmr:SetFont(MRT.F.defFont, fSize, outline)
+			end
+			if hasShadow then
+				text:SetShadowOffset(1,-1)
+				text.tmr:SetShadowOffset(1,-1)
+			else
+				text:SetShadowOffset(0,0)
+				text.tmr:SetShadowOffset(0,0)
+			end
+			text.tmr:SetPoint("LEFT",text,"RIGHT",0,0) --floor(fSize / 10 + 0.5)
 
-            text.te = te
+			text.te = te
 
 			text.rpf = rpf
 			text.rpt = rpt
@@ -169,13 +174,13 @@ end
 
 
 do
-    -- local countdownTypes = module.datas.countdownType
+	-- local countdownTypes = module.datas.countdownType
 	local tmr = 0
-    local sReminders = module.db.showedReminders
+	local sReminders = module.db.showedReminders
 	frame:SetScript("OnUpdate",function(self,elapsed)
 		tmr = tmr + elapsed
 		if tmr > 0.03 then
-		    tmr = 0
+			tmr = 0
 
 			if frame.unlocked then	--test mode active
 				return
@@ -202,7 +207,7 @@ do
 						countdownFormat = module.datas.countdownType[data.countdownType or 2][3]
 						showed.countdownFormat = countdownFormat
 					end
-                    local table
+					local table
 					if data.msgSize == 2 then
 						table = self.textBig
 					elseif data.msgSize == 1 then
@@ -218,7 +223,7 @@ do
 				end
 			end
 
-            self:Update()
+			self:Update()
 			if total_c == 0 then
 				self:Hide()
 			end

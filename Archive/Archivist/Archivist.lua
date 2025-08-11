@@ -8,11 +8,10 @@ You should have received a copy of the CC0 Public Domain Dedication along with t
 If not, see http://creativecommons.org/publicdomain/zero/1.0/.
 ]]
 
+---@class AddonDB
+local AddonDB = select(2, ...)
 local embedder, namespace = ...
 local addonName, Archivist = "Archivist", {}
--- Our only library! (not so only now uWu )
-local LibDeflateAsync = LibStub("LibDeflateAsync-reminder")
-local LibSerializeAsync = LibStub("LibSerializeAsync-reminder")
 
 do -- boilerplate & static values
 	Archivist.buildDate = "@build-time@"
@@ -28,8 +27,8 @@ do -- boilerplate & static values
 	local unloader = CreateFrame("FRAME")
 	unloader:RegisterEvent("PLAYER_LOGOUT")
 	unloader:SetScript("OnEvent", function()
-        Archivist.LOGOUT = true
-        -- namespace.OnArchivistUnload() -- AddonDB
+		Archivist.LOGOUT = true
+		-- namespace.OnArchivistUnload() -- AddonDB
 		Archivist:DeInitialize()
 	end)
 	if embedder == "Archivist" then
@@ -471,8 +470,8 @@ do -- function Archivist:Archive(data)
 	-- 			return (val:gsub("[\\&,^@$#:]", replace))
 	-- 		elseif valType == "table" then
 	-- 			if not seenObjects[val] then
-    --                 if coroutine.running() then coroutine.yield() end
-    --                 -- cross referencing is a thing. Not to hard to serialize but do be careful
+	--                 if coroutine.running() then coroutine.yield() end
+	--                 -- cross referencing is a thing. Not to hard to serialize but do be careful
 	-- 				local index = #serializedObjects + 1
 	-- 				seenObjects[val] = index
 	-- 				local serialized = {}
@@ -494,17 +493,8 @@ do -- function Archivist:Archive(data)
 	-- 	tinsert(serializedObjects, "")
 	-- 	return tconcat(serializedObjects, ',')
 	-- end
-    local configForDeflate = {level = 9}
-    local configForLS = {
-        errorOnUnserializableType = false
-    }
 	function Archivist:Archive(data)
-        local LibDeflate = LibDeflateAsync
-
-		-- local serialized = serialize(data)
-		local serialized = LibSerializeAsync:SerializeEx(configForLS, data)
-		local compressed = LibDeflate:CompressDeflate(serialized,configForDeflate)
-		local encoded = LibDeflate:EncodeForPrint(compressed)
+		local encoded = AddonDB:CompressTable(data, true)
 		return encoded
 	end
 end
@@ -528,10 +518,10 @@ do -- function Archivist:DeArchive(encoded)
 	-- local function escapify(c)
 	-- 	return unused2Escape[c] or c
 	-- end
-    -- local parseCount = 0
-    -- local function parse(value, objectList)
+	-- local parseCount = 0
+	-- local function parse(value, objectList)
 
-    --     local firstChar = value:sub(1,1)
+	--     local firstChar = value:sub(1,1)
 	-- 	local remainder = value:sub(2)
 	-- 	if firstChar == "@" then
 	-- 		return true, "BOOL", remainder
@@ -549,8 +539,8 @@ do -- function Archivist:DeArchive(encoded)
 	-- 		local val = parse(str, objectList)
 	-- 		return val, "VALUE", rest
 	-- 	elseif firstChar == "&" then
-    --         parseCount = parseCount + 1
-    --         if coroutine.running() and parseCount % 20 == 0 then coroutine.yield() end
+	--         parseCount = parseCount + 1
+	--         if coroutine.running() and parseCount % 20 == 0 then coroutine.yield() end
 	-- 		local num, rest = remainder:match("([^\\&,^@$#:]*)(.*)")
 	-- 		return objectList[tonumber(num)], "OBJECT", rest
 	-- 	else
@@ -572,7 +562,7 @@ do -- function Archivist:DeArchive(encoded)
 	-- 		objects[i] = {}
 	-- 	end
 	-- 	for index = 1, #serializedObjects - 1 do
-    --         if coroutine.running() then coroutine.yield() end
+	--         if coroutine.running() then coroutine.yield() end
 
 	-- 		local str = serializedObjects[index]
 	-- 		local object = objects[index]
@@ -598,13 +588,11 @@ do -- function Archivist:DeArchive(encoded)
 	-- end
 
 	function Archivist:DeArchive(encoded)
-        local LibDeflate = LibDeflateAsync
-
-		local compressed = LibDeflate:DecodeForPrint(encoded)
-		local serialized = LibDeflate:DecompressDeflate(compressed)
-
-        local success, data = LibSerializeAsync:Deserialize(serialized)
-
+		local data, error = AddonDB:DecompressTable(encoded,true)
+		if not data then
+			print("[ReminderArchivist] Decompress failed: " .. error)
+			return nil
+		end
 		return data
 	end
 end

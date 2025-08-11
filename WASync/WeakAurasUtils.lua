@@ -33,12 +33,10 @@ local random = random
 local WeakAuras = WeakAuras
 local CopyTable = CopyTable
 local ipairs = ipairs
-local next = next
 local coroutine_yield = coroutine.yield
 local coroutine_wrap = coroutine.wrap
 local type = type
 local tonumber = tonumber
-
 
 local Serializer = LibStub:GetLibrary("AceSerializer-3.0")
 local Compresser = LibStub:GetLibrary("LibCompress")
@@ -51,89 +49,89 @@ local LibSerializeAsync = LibStub:GetLibrary("LibSerializeAsync-reminder")
 local prettyPrint = module.prettyPrint
 
 local function shouldInclude(data, includeGroups, includeLeafs)
-    if data.controlledChildren then
-        return includeGroups
-    else
-        return includeLeafs
-    end
+	if data.controlledChildren then
+		return includeGroups
+	else
+		return includeLeafs
+	end
 end
 
 local function Traverse(data, includeSelf, includeGroups, includeLeafs)
-    if includeSelf and shouldInclude(data, includeGroups, includeLeafs) then
-        coroutine_yield(data)
-    end
+	if includeSelf and shouldInclude(data, includeGroups, includeLeafs) then
+		coroutine_yield(data)
+	end
 
-    if data.controlledChildren then
-        for _, child in ipairs(data.controlledChildren) do
-            Traverse(WeakAuras.GetData(child), true, includeGroups, includeLeafs)
-        end
-    end
+	if data.controlledChildren then
+		for _, child in ipairs(data.controlledChildren) do
+			Traverse(WeakAuras.GetData(child), true, includeGroups, includeLeafs)
+		end
+	end
 end
 
 local function TraverseLeafs(data)
-    return Traverse(data, false, false, true)
+	return Traverse(data, false, false, true)
 end
 
 local function TraverseLeafsOrAura(data)
-    return Traverse(data, true, false, true)
+	return Traverse(data, true, false, true)
 end
 
 local function TraverseGroups(data)
-    return Traverse(data, true, true, false)
+	return Traverse(data, true, true, false)
 end
 
 local function TraverseSubGroups(data)
-    return Traverse(data, false, true, false)
+	return Traverse(data, false, true, false)
 end
 
 local function TraverseAllChildren(data)
-    return Traverse(data, false, true, true)
+	return Traverse(data, false, true, true)
 end
 
 local function TraverseAll(data)
-    return Traverse(data, true, true, true)
+	return Traverse(data, true, true, true)
 end
 
 local function TraverseParents(data)
-    while data.parent do
-        local parentData = WeakAuras.GetData(data.parent)
-        coroutine_yield(parentData)
-        data = parentData
-    end
+	while data.parent do
+		local parentData = WeakAuras.GetData(data.parent)
+		coroutine_yield(parentData)
+		data = parentData
+	end
 end
 
 -- Only non-group auras, not include self
 local function pTraverseLeafs(data)
-    return coroutine_wrap(TraverseLeafs), data
+	return coroutine_wrap(TraverseLeafs), data
 end
 
 -- The root if it is a non-group, otherwise non-group children
 local function pTraverseLeafsOrAura(data)
-    return coroutine_wrap(TraverseLeafsOrAura), data
+	return coroutine_wrap(TraverseLeafsOrAura), data
 end
 
 -- All groups, includes self
 local function pTraverseGroups(data)
-    return coroutine_wrap(TraverseGroups), data
+	return coroutine_wrap(TraverseGroups), data
 end
 
 -- All groups, excludes self
 local function pTraverseSubGroups(data)
-    return coroutine_wrap(TraverseSubGroups), data
+	return coroutine_wrap(TraverseSubGroups), data
 end
 
 -- All Children, excludes self
 local function pTraverseAllChildren(data)
-    return coroutine_wrap(TraverseAllChildren), data
+	return coroutine_wrap(TraverseAllChildren), data
 end
 
 -- All Children and self
 local function pTraverseAll(data)
-    return coroutine_wrap(TraverseAll), data
+	return coroutine_wrap(TraverseAll), data
 end
 
 local function pTraverseParents(data)
-    return coroutine_wrap(TraverseParents), data
+	return coroutine_wrap(TraverseParents), data
 end
 module.pTraverseAllChildren = pTraverseAllChildren
 module.pTraverseSubGroups = pTraverseSubGroups
@@ -145,123 +143,123 @@ module.pTraverseParents = pTraverseParents
 
 
 function module.ValidateUniqueDataIds(silent)
-    -- ensure that there are no duplicated uids anywhere in the database
+	-- ensure that there are no duplicated uids anywhere in the database
 
-    local seenUIDs = {}
-    local db = WeakAurasSaved
-    for _, data in next, db.displays do
-        if type(data.uid) == "string" then
-            if seenUIDs[data.uid] then
-                if not silent then
-                    prettyPrint("Duplicate uid \""..data.uid.."\" detected in saved variables between \""..data.id.."\" and \""..seenUIDs[data.uid].id.."\".")
-                end
-                data.uid = WeakAuras.GenerateUniqueID()
-                seenUIDs[data.uid] = data
-                else
-                seenUIDs[data.uid] = data
-            end
-        elseif data.uid ~= nil then
-            if not silent then
-                prettyPrint("Invalid uid detected in saved variables for \""..data.id.."\"")
-            end
-            data.uid = WeakAuras.GenerateUniqueID()
-            seenUIDs[data.uid] = data
-        end
-    end
+	local seenUIDs = {}
+	local db = WeakAurasSaved
+	for _, data in next, db.displays do
+		if type(data.uid) == "string" then
+			if seenUIDs[data.uid] then
+				if not silent then
+					prettyPrint("Duplicate uid \""..data.uid.."\" detected in saved variables between \""..data.id.."\" and \""..seenUIDs[data.uid].id.."\".")
+				end
+				data.uid = WeakAuras.GenerateUniqueID()
+				seenUIDs[data.uid] = data
+				else
+				seenUIDs[data.uid] = data
+			end
+		elseif data.uid ~= nil then
+			if not silent then
+				prettyPrint("Invalid uid detected in saved variables for \""..data.id.."\"")
+			end
+			data.uid = WeakAuras.GenerateUniqueID()
+			seenUIDs[data.uid] = data
+		end
+	end
 end
 
 function module.SyncParentChildRelationships(silent)
-    -- 1. Find all auras where data.parent ~= nil or data.controlledChildren ~= nil
-    --    If an aura has data.parent which doesn't exist, then remove data.parent
-    --    If an aura has data.parent which doesn't have data.controlledChildren, then remove data.parent
-    -- 2. For each aura with data.controlledChildren, iterate through the list of children and remove entries where:
-    --    The child doesn't exist in the database
-    --    The child ID is duplicated in data.controlledChildren (only the first will be kept)
-    --    The child's data.parent points to a different parent
-    --    The parent is a dynamic group and the child is a group/dynamic group
-    --    Otherwise, mark the child as having a valid parent relationship
-    -- 3. For each aura with data.parent, remove data.parent if it was not marked to have a valid relationship in 2.
+	-- 1. Find all auras where data.parent ~= nil or data.controlledChildren ~= nil
+	--    If an aura has data.parent which doesn't exist, then remove data.parent
+	--    If an aura has data.parent which doesn't have data.controlledChildren, then remove data.parent
+	-- 2. For each aura with data.controlledChildren, iterate through the list of children and remove entries where:
+	--    The child doesn't exist in the database
+	--    The child ID is duplicated in data.controlledChildren (only the first will be kept)
+	--    The child's data.parent points to a different parent
+	--    The parent is a dynamic group and the child is a group/dynamic group
+	--    Otherwise, mark the child as having a valid parent relationship
+	-- 3. For each aura with data.parent, remove data.parent if it was not marked to have a valid relationship in 2.
 
-    local db = WeakAurasSaved
+	local db = WeakAurasSaved
 
-    local parents = {}
-    local children = {}
-    local childHasParent = {}
+	local parents = {}
+	local children = {}
+	local childHasParent = {}
 
-    for ID, data in next, db.displays do
-        local id = data.id or ID
-        if data.parent then
-            if not db.displays[data.parent] then
-                if not(silent) then
-                    prettyPrint("Detected corruption in saved variables: "..id.." has a nonexistent parent.")
-                end
-                data.parent = nil
-            elseif not db.displays[data.parent].controlledChildren then
-                if not silent then
-                    prettyPrint("Detected corruption in saved variables: "..id.." thinks "..data.parent..
-                    " controls it, but "..data.parent.." is not a group.")
-                end
-            data.parent = nil
-            else
-                children[id] = data
-            end
-        end
-        if data.controlledChildren then
-            parents[id] = data
-        end
-    end
+	for ID, data in next, db.displays do
+		local id = data.id or ID
+		if data.parent then
+			if not db.displays[data.parent] then
+				if not(silent) then
+					prettyPrint("Detected corruption in saved variables: "..id.." has a nonexistent parent.")
+				end
+				data.parent = nil
+			elseif not db.displays[data.parent].controlledChildren then
+				if not silent then
+					prettyPrint("Detected corruption in saved variables: "..id.." thinks "..data.parent..
+					" controls it, but "..data.parent.." is not a group.")
+				end
+			data.parent = nil
+			else
+				children[id] = data
+			end
+		end
+		if data.controlledChildren then
+			parents[id] = data
+		end
+	end
 
-    for id, data in next, parents do
-        local groupChildren = {}
-        local childrenToRemove = {}
-        local dynamicGroup = data.regionType == "dynamicgroup"
-        for index, childID in ipairs(data.controlledChildren) do
-            local child = children[childID]
-            if not child then
-                if not silent then
-                    prettyPrint("Detected corruption in saved variables: "..id.." thinks it controls "..childID.." which doesn't exist.")
-                end
-                childrenToRemove[index] = true
-            elseif child.parent ~= id then
-                if not silent then
-                    prettyPrint("Detected corruption in saved variables: "..id.." thinks it controls "..childID.." which it does not.")
-                end
-                childrenToRemove[index] = true
-            elseif dynamicGroup and child.controlledChildren then
-                if not silent then
-                    prettyPrint("Detected corruption in saved variables: "..id.." is a dynamic group and controls "..childID.." which is a group/dynamicgroup.")
-                end
-                child.parent = nil
-                children[child.id] = nil
-                childrenToRemove[index] = true
-            elseif groupChildren[childID] then
-                if not silent then
-                    prettyPrint("Detected corruption in saved variables: "..id.." has "..childID.." as a child in multiple positions.")
-                end
-                childrenToRemove[index] = true
-            else
-                groupChildren[childID] = index
-                childHasParent[childID] = true
-            end
-        end
-        if next(childrenToRemove) ~= nil then
-            for i = #data.controlledChildren, 1, -1 do
-                if childrenToRemove[i] then
-                    tremove(data.controlledChildren, i)
-                end
-            end
-        end
-    end
+	for id, data in next, parents do
+		local groupChildren = {}
+		local childrenToRemove = {}
+		local dynamicGroup = data.regionType == "dynamicgroup"
+		for index, childID in ipairs(data.controlledChildren) do
+			local child = children[childID]
+			if not child then
+				if not silent then
+					prettyPrint("Detected corruption in saved variables: "..id.." thinks it controls "..childID.." which doesn't exist.")
+				end
+				childrenToRemove[index] = true
+			elseif child.parent ~= id then
+				if not silent then
+					prettyPrint("Detected corruption in saved variables: "..id.." thinks it controls "..childID.." which it does not.")
+				end
+				childrenToRemove[index] = true
+			elseif dynamicGroup and child.controlledChildren then
+				if not silent then
+					prettyPrint("Detected corruption in saved variables: "..id.." is a dynamic group and controls "..childID.." which is a group/dynamicgroup.")
+				end
+				child.parent = nil
+				children[child.id] = nil
+				childrenToRemove[index] = true
+			elseif groupChildren[childID] then
+				if not silent then
+					prettyPrint("Detected corruption in saved variables: "..id.." has "..childID.." as a child in multiple positions.")
+				end
+				childrenToRemove[index] = true
+			else
+				groupChildren[childID] = index
+				childHasParent[childID] = true
+			end
+		end
+		if next(childrenToRemove) ~= nil then
+			for i = #data.controlledChildren, 1, -1 do
+				if childrenToRemove[i] then
+					tremove(data.controlledChildren, i)
+				end
+			end
+		end
+	end
 
-    for id, data in next, children do
-        if not childHasParent[id] then
-            if not silent then
-                prettyPrint("Detected corruption in saved variables: "..id.." should be controlled by "..data.parent.." but isn't.")
-            end
-            local parent = parents[data.parent]
-            tinsert(parent.controlledChildren, id)
-        end
-    end
+	for id, data in next, children do
+		if not childHasParent[id] then
+			if not silent then
+				prettyPrint("Detected corruption in saved variables: "..id.." should be controlled by "..data.parent.." but isn't.")
+			end
+			local parent = parents[data.parent]
+			tinsert(parent.controlledChildren, id)
+		end
+	end
 end
 
 
@@ -349,14 +347,14 @@ local B64tobyte = {
 local decodeB64Table = {}
 
 local function decodeB64(str)
-    local bit8 = decodeB64Table;
-    local decoded_size = 0;
-    local ch;
-    local i = 1;
-    local bitfield_len = 0;
-    local bitfield = 0;
-    local l = #str;
-    while true do
+	local bit8 = decodeB64Table;
+	local decoded_size = 0;
+	local ch;
+	local i = 1;
+	local bitfield_len = 0;
+	local bitfield = 0;
+	local l = #str;
+	while true do
 		if bitfield_len >= 8 then
 			decoded_size = decoded_size + 1;
 			bit8[decoded_size] = string_char(bit_band(bitfield, 255));
@@ -370,8 +368,8 @@ local function decodeB64(str)
 			break;
 		end
 		i = i + 1;
-    end
-    return table_concat(bit8, "", 1, decoded_size)
+	end
+	return table_concat(bit8, "", 1, decoded_size)
 end
 
 
@@ -423,7 +421,7 @@ local configForDeflate = {level = 9}
 local function TableToString(inTable, forChat)
 	local serialized = LibSerializeAsync:SerializeEx(configForLS, inTable)
 
-    local compressed = LibDeflateAsync:CompressDeflate(serialized, configForDeflate)
+	local compressed = C_EncodingUtil and C_EncodingUtil.CompressString(serialized, Enum.CompressionMethod.Deflate, Enum.CompressionLevel.OptimizeForSize) or LibDeflateAsync:CompressDeflate(serialized, configForDeflate)
 
 	local encoded = "!WA:2!"
 	if(forChat) then
@@ -435,100 +433,104 @@ local function TableToString(inTable, forChat)
 end
 
 local function StringToTable(inString, fromChat)
-    -- encoding format:
-    -- version 0: simple b64 string, compressed with LC and serialized with AS
-    -- version 1: b64 string prepended with "!", compressed with LD and serialized with AS
-    -- version 2+: b64 string prepended with !WA:N! (where N is encode version)
-    --   compressed with LD and serialized with LS
-    local _, _, encodeVersion, encoded = inString:find("^(!WA:%d+!)(.+)$")
-    if encodeVersion then
-      	encodeVersion = tonumber(encodeVersion:match("%d+"))
-    else
-      	encoded, encodeVersion = inString:gsub("^%!", "")
-    end
+	-- encoding format:
+	-- version 0: simple b64 string, compressed with LC and serialized with AS
+	-- version 1: b64 string prepended with "!", compressed with LD and serialized with AS
+	-- version 2+: b64 string prepended with !WA:N! (where N is encode version)
+	--   compressed with LD and serialized with LS
+	local _, _, encodeVersion, encoded = inString:find("^(!WA:%d+!)(.+)$")
+	if encodeVersion then
+	  	encodeVersion = tonumber(encodeVersion:match("%d+"))
+	else
+	  	encoded, encodeVersion = inString:gsub("^%!", "")
+	end
 
-    local decoded
-    if(fromChat) then
-      	if encodeVersion > 0 then
-        	decoded = LibDeflateAsync:DecodeForPrint(encoded)
-      	else
-        	decoded = decodeB64(encoded)
-      	end
-    else
-      	decoded = LibDeflateAsync:DecodeForWoWAddonChannel(encoded)
-    end
+	local decoded
+	if(fromChat) then
+	  	if encodeVersion > 0 then
+			decoded = LibDeflateAsync:DecodeForPrint(encoded)
+	  	else
+			decoded = decodeB64(encoded)
+	  	end
+	else
+	  	decoded = LibDeflateAsync:DecodeForWoWAddonChannel(encoded)
+	end
 
-    if not decoded then
-      	return L["Error decoding."]
-    end
+	if not decoded then
+	  	return L["Error decoding."]
+	end
 
-    local decompressed
-    if encodeVersion > 0 then
-      	decompressed = LibDeflateAsync:DecompressDeflate(decoded)
-      	if not(decompressed) then
-        	return L["Error decompressing"]
-      	end
-    else
-      -- We ignore the error message, since it's more likely not a weakaura.
-      	decompressed = Compresser:Decompress(decoded)
-      	if not(decompressed) then
-        	return L["Error decompressing. This doesn't look like a WeakAuras import."]
-      	end
-    end
+	local decompressed
+	if encodeVersion > 0 then
+	  	decompressed = C_EncodingUtil and C_EncodingUtil.DecompressString(decoded) or LibDeflateAsync:DecompressDeflate(decoded)
+	  	if not(decompressed) then
+			return L["Error decompressing"]
+	  	end
+	else
+	  -- We ignore the error message, since it's more likely not a weakaura.
+	  	decompressed = Compresser:Decompress(decoded)
+	  	if not(decompressed) then
+			return L["Error decompressing. This doesn't look like a WeakAuras import."]
+	  	end
+	end
 
-    local success, deserialized
-    if encodeVersion < 2 then
-      	success, deserialized = Serializer:Deserialize(decompressed)
-    else
-      	success, deserialized = LibSerializeAsync:Deserialize(decompressed)
-    end
-    if not(success) then
-      	return L["Error deserializing"]
-    end
-    return deserialized
+	local success, deserialized
+	if encodeVersion < 2 then
+	  	success, deserialized = Serializer:Deserialize(decompressed)
+	else
+	  	success, deserialized = LibSerializeAsync:Deserialize(decompressed)
+	end
+	if not(success) then
+	  	return L["Error deserializing"]
+	end
+	return deserialized
   end
 
-local function DisplayToString(data, forChat)
-  --local data = WeakAuras.GetData(id);
-  	if(data) then
-    	data.uid = data.uid or GenerateUniqueID()
-    	-- Check which transmission version we want to use
-    	local version = 1421
-    	for child in pTraverseSubGroups(data) do -- luacheck: ignore
-      		version = 2000
-      		break;
-    	end
-		local transmitData = CompressDisplay(data, version);
-		local transmit = {
-			m = "d",
-			d = transmitData,
-			v = version,
-			s = versionString
-		};
-		if(data.controlledChildren) then
-			transmit.c = {};
-			local uids = {}
-			local index = 1
-			for child in pTraverseAllChildren(data) do
-				if child.uid then
-					if uids[child.uid] then
-						child.uid = GenerateUniqueID()
-					else
-						uids[child.uid] = true
-					end
-				else
+local function DisplayToTransmit(data)
+	if not data then return nil end
+
+	data.uid = data.uid or GenerateUniqueID()
+	-- Check which transmission version we want to use
+	local version = 1421
+	for child in pTraverseSubGroups(data) do -- luacheck: ignore
+		version = 2000
+		break;
+	end
+	local transmitData = CompressDisplay(data, version);
+	local transmit = {
+		m = "d",
+		d = transmitData,
+		v = version,
+		s = versionString
+	};
+	if(data.controlledChildren) then
+		transmit.c = {};
+		local uids = {}
+		local index = 1
+		for child in pTraverseAllChildren(data) do
+			if child.uid then
+				if uids[child.uid] then
 					child.uid = GenerateUniqueID()
+				else
+					uids[child.uid] = true
 				end
-				transmit.c[index] = CompressDisplay(child, version);
-				index = index + 1
+			else
+				child.uid = GenerateUniqueID()
 			end
+			transmit.c[index] = CompressDisplay(child, version);
+			index = index + 1
 		end
-    	return TableToString(transmit, forChat);
-  	else
-    	return "";
-  	end
+	end
+	return transmit
+end
+
+local function DisplayToString(data, forChat)
+	local transmit = DisplayToTransmit(data)
+	return transmit and TableToString(transmit, forChat) or ""
+
 end
 module.TableToString = TableToString
 module.StringToTable = StringToTable
 module.DisplayToString = DisplayToString
 module.CompressDisplay = CompressDisplay
+module.DisplayToTransmit = DisplayToTransmit

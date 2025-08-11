@@ -1,16 +1,22 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/">
-    <Script file="Reminder.lua"/>
-    <Script file="ReminderTextFrame.lua"/>
-    <Script file="ReminderGSUB.lua"/>
-    <Script file="ReminderData.lua"/>
-    <Script file="ReminderSender.lua"/>
+	<Script file="Reminder.lua"/>
+	<Script file="ReminderData.lua"/>
+	<Script file="ReminderModernize.lua"/>
+	<Script file="ReminderGSUB.lua"/>
+	<Script file="ReminderTextFrame.lua"/>
+	<Script file="ReminderSender.lua"/>
 	<Script file="ReminderUtilities.lua"/>
-    <Script file="ReminderOptions/MainScrollButtonsList.lua"/>
-    <Script file="ReminderOptions/BinScrollButtonsList.lua"/>
-    <Script file="ReminderOptions/SetupFrame.lua"/>
-    <Script file="ReminderOptions/History.lua"/>
-    <Script file="ReminderOptions/Options.lua"/>
-    <Script file="ReminderOptions/TimelineData.lua"/>
-    <Script file="ReminderOptions/Timeline.lua"/>
-    <Script file="Changelog.lua"/>
+	<Script file="ReminderOptions/MainScrollButtonsList.lua"/>
+	<Script file="ReminderOptions/BinScrollButtonsList.lua"/>
+	<Script file="ReminderOptions/SetupFrame.lua"/>
+	<Script file="ReminderOptions/History.lua"/>
+	<Script file="ReminderOptions/LastSyncWindow.lua"/>
+	<Script file="ReminderOptions/ChangelogTab.lua"/>
+	<Script file="ReminderOptions/HelpTab.lua"/>
+	<Script file="ReminderOptions/VersionsTab.lua"/>
+	<Script file="ReminderOptions/Options.lua"/>
+	<Script file="ReminderOptions/TimelineData.lua"/>
+	<Script file="ReminderOptions/TimelineDataClassic.lua"/>
+	<Script file="ReminderOptions/Timeline.lua"/>
+	<Script file="Changelog.lua"/>
 </Ui>

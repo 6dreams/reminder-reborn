@@ -54,30 +54,30 @@ local RealClassColors = {
 	["||cff8687ed"] = true,
 	["||cffc59a6c"] = true,
 	["||cffa9d271"] = true,
-    --CLASSIC COLORCODES
-    ["||cffc79c6e"] = true, -- WARRIOR
-    ["||cff9797ed"] = true, -- WARLOCK
-    ["||cff0070de"] = true, -- SHAMAN
-    ["||cfffff569"] = true, -- ROGUE
-    ["||cfff58cba"] = true, -- PALADIN
-    ["||cff00ff96"] = true, -- MONK??
-    ["||cff40c7eb"] = true, -- MAGE
-    ["||cffabd473"] = true, -- HUNTER
-    ["||cffff7d0a"] = true, -- DRUID
-    ["||cffc41f3b"] = true, -- DEATHKNIGHT
+	--CLASSIC COLORCODES
+	["||cffc79c6e"] = true, -- WARRIOR
+	["||cff9797ed"] = true, -- WARLOCK
+	["||cff0070de"] = true, -- SHAMAN
+	["||cfffff569"] = true, -- ROGUE
+	["||cfff58cba"] = true, -- PALADIN
+	["||cff00ff96"] = true, -- MONK??
+	["||cff40c7eb"] = true, -- MAGE
+	["||cffabd473"] = true, -- HUNTER
+	["||cffff7d0a"] = true, -- DRUID
+	["||cffc41f3b"] = true, -- DEATHKNIGHT
 }
-local SEP = " ,\n\r:%{%}%(%)+%[%]\""
-local PAT_SEP =  "[" .. SEP .. "]"
-local PAT_SEP_INVERSE = "[^" .. SEP .. "]+"
-local PAT_SEP_CAPTURE = "(" .. PAT_SEP .. ")"
+
+local PAT_SEP = AddonDB.STRING_PATTERNS.PAT_SEP
+local PAT_SEP_CAPTURE = AddonDB.STRING_PATTERNS.PAT_SEP_CAPTURE
+local PAT_SEP_INVERSE = AddonDB.STRING_PATTERNS.PAT_SEP_INVERSE
 
 local function NoteAnalyzerInit()
 
-    local NoteAnalyzer = parentModule.options:NewPage("Note Analyzer")
-    local self = NoteAnalyzer
-    module.opts = self
+	local NoteAnalyzer = parentModule.options:NewPage("Note Analyzer")
+	local self = NoteAnalyzer
+	module.opts = self
 
-    self.NoteEditBox = ELib:MultiEdit(self):Point("BOTTOMRIGHT", self, "BOTTOMRIGHT", -5, 35):Size(616, 370)
+	self.NoteEditBox = ELib:MultiEdit(self):Point("BOTTOMRIGHT", self, "BOTTOMRIGHT", -5, 35):Size(616, 370)
 	ELib:Border(self.NoteEditBox, 0, .24, .25, .30, 1)
 
 	--NoteEditBox lines
@@ -122,7 +122,7 @@ local function NoteAnalyzerInit()
 			text = text:gsub("|([cr])", "||%1")
 		end
 		CurrentUnformatedText = text
-        -- print("OnTextChanged")
+		-- print("OnTextChanged")
 	end
 
 	-- local last_highlight_start,last_highlight_end,last_cursor_pos = 0,0,0
@@ -271,16 +271,12 @@ local function NoteAnalyzerInit()
 		end
 		NoteAnalyzer.repeatedPlayers:SetText(repPlayersText)
 
-		for _, name, _, class in MRT.F.IterateRoster, GroupToCount do
-			name = MRT.F.delUnitNameServer(name)
-			local cR, cG, cB = MRT.F.classColorNum(class)
-			local colorCode = MRT.F.classColor(class)
-
+		for unit in AddonDB:IterateGroupMembers(GroupToCount) do
+			local name = UnitName(unit)
 			if playersInNote[name] then
-				-- AssignedInRaid[name] = {cR,cG,cB,colorCode}
 				playersInNote[name] = nil
 			else
-				InRaidNotAssigned[name] = { cR, cG, cB, colorCode }
+				InRaidNotAssigned[name] = true
 				playersInNote[name] = nil
 			end
 		end
@@ -296,20 +292,19 @@ local function NoteAnalyzerInit()
 			obj.iconText = ""
 			obj.iconTextShift = ""
 			obj.html:SetText("")
-			obj.html:SetTextColor(1, 1, 1, 1)
 		end
 
 		local index1 = 0
-		for k, color in next, InRaidNotAssigned do
-			local r, g, b, colorCode = unpack(color)
+		for name in next, InRaidNotAssigned do
 			index1 = index1 + 1
+			local coloredName = AddonDB:ClassColorName(name)
+
 			local obj = NoteAnalyzer.raidnames1[index1]
 			if not obj then return end
 
-			obj.iconText = k
-			obj.iconTextShift = "||c" .. colorCode .. k .. "||r"
-			obj.html:SetText(k)
-			obj.html:SetTextColor(r, g, b, 1)
+			obj.iconText = name
+			obj.iconTextShift = coloredName:gsub("|","||")
+			obj.html:SetText(coloredName)
 		end
 
 
@@ -328,13 +323,12 @@ local function NoteAnalyzerInit()
 			local obj = NoteAnalyzer.raidnames2[index2]
 			if not obj then return end
 			obj.iconText = nameColored
-            if name == "" then -- workaround for - symbol
-                obj.iconTextShift = nameColored
-            else
-                obj.iconTextShift = name
-            end
+			if name == "" then -- workaround for - symbol
+				obj.iconTextShift = nameColored
+			else
+				obj.iconTextShift = name
+			end
 			obj.html:SetText(nameColored)
-			obj.html:SetTextColor(1, 1, 1, 1)
 		end
 	end
 
@@ -428,7 +422,6 @@ local function NoteAnalyzerInit()
 		NoteAnalyzer.NoteEditBox.EditBox:SetCursorPosition(pos)
 
 		self.lastSelected.html:SetText(self.lastSelected.html:GetText():gsub("^>", ""))
-		self.lastSelected.html:SetTextColor(1, 1, 1, 1)
 		self.lastSelected = nil
 
 		Analyze(true)
@@ -458,12 +451,10 @@ local function NoteAnalyzerInit()
 	local function SelectPlayer(self2)
 		if self2.iconText == "" then return end
 		if self.lastSelected then
-			self.lastSelected.html:SetText(self.lastSelected.html:GetText():gsub("^>", ""))
-			self.lastSelected.html:SetTextColor(1, 1, 1, 1)
+			self.lastSelected.html:SetText(self.lastSelected.html:GetText():gsub("^|cffff0000>|r", ""))
 		end
 		self.lastSelected = self2
-		self2.html:SetText(">" .. self2.html:GetText())
-		self2.html:SetTextColor(1, 0, 0, 1)
+		self2.html:SetText("|cffff0000>|r" .. self2.html:GetText())
 	end
 
 	self.raidnames2 = {}
@@ -489,64 +480,64 @@ local function NoteAnalyzerInit()
 	do
 		local function NoteBackupsDropDown_SetValue(_, key, i)
 			if VMRT.NoteChecker.NoteBackups[key] then
-                if i then
-                    CurrentUnformatedText = VMRT.NoteChecker.NoteBackups[key][i].text
-                    UpdateText()
-                else
-                    if IsShiftKeyDown() and IsAltKeyDown() then
-                        VMRT.NoteChecker.NoteBackups[key] = nil
-                        ELib:DropDownClose()
-                        return
-                    end
-                    CurrentUnformatedText = VMRT.NoteChecker.NoteBackups[key]
-                    UpdateText()
-                end
+				if i then
+					CurrentUnformatedText = VMRT.NoteChecker.NoteBackups[key][i].text
+					UpdateText()
+				else
+					if IsShiftKeyDown() and IsAltKeyDown() then
+						VMRT.NoteChecker.NoteBackups[key] = nil
+						ELib:DropDownClose()
+						return
+					end
+					CurrentUnformatedText = VMRT.NoteChecker.NoteBackups[key]
+					UpdateText()
+				end
 			end
-            ELib:DropDownClose()
-        end
+			ELib:DropDownClose()
+		end
 
-        function self.NoteBackupsDropDown:PreUpdate()
-            NoteAnalyzer.NoteBackupsDropDown.List = {}
-            local List = NoteAnalyzer.NoteBackupsDropDown.List
-            for noteName,noteData in next, VMRT.NoteChecker.NoteBackups do
-                if type(noteData) == "table" then
-                    -- VMRT.NoteChecker.NoteBackups[i].name = VMRT.NoteChecker.NoteBackups[i].name or "Note " .. i
-                    local subMenu = {}
-                    for i = 1, #noteData do
-                        subMenu[#subMenu+1] = {
-                            text = noteData[i].name .. " " .. i .. " - " .. date("%d.%m.%Y %H:%M:%S", noteData[i].time),
-                            func = NoteBackupsDropDown_SetValue,
-                            arg1 = noteName,
-                            arg2 = i,
-                            tooltip = (date("%d.%m.%Y %H:%M:%S", noteData[i].time))
-                        }
-                    end
+		function self.NoteBackupsDropDown:PreUpdate()
+			NoteAnalyzer.NoteBackupsDropDown.List = {}
+			local List = NoteAnalyzer.NoteBackupsDropDown.List
+			for noteName,noteData in next, VMRT.NoteChecker.NoteBackups do
+				if type(noteData) == "table" then
+					-- VMRT.NoteChecker.NoteBackups[i].name = VMRT.NoteChecker.NoteBackups[i].name or "Note " .. i
+					local subMenu = {}
+					for i = 1, #noteData do
+						subMenu[#subMenu+1] = {
+							text = noteData[i].name .. " " .. i .. " - " .. date("%d.%m.%Y %H:%M:%S", noteData[i].time),
+							func = NoteBackupsDropDown_SetValue,
+							arg1 = noteName,
+							arg2 = i,
+							tooltip = (date("%d.%m.%Y %H:%M:%S", noteData[i].time))
+						}
+					end
 
-                    List[#List+1] = {
-                        text = VMRT.NoteChecker.NoteBackups[noteName][1].name,
-                        subMenu = subMenu,
-                        func = function()
-                            if IsShiftKeyDown() and IsAltKeyDown() then
-                                VMRT.NoteChecker.NoteBackups[noteName] = nil
-                                ELib:DropDownClose()
-                            end
-                        end ,
-                    }
-                else
-                    List[#List+1] = {
-                        text = "Note " .. #List+1,
-                        func = NoteBackupsDropDown_SetValue,
-                        arg1 = noteName,
-                    }
-                end
+					List[#List+1] = {
+						text = VMRT.NoteChecker.NoteBackups[noteName][1].name,
+						subMenu = subMenu,
+						func = function()
+							if IsShiftKeyDown() and IsAltKeyDown() then
+								VMRT.NoteChecker.NoteBackups[noteName] = nil
+								ELib:DropDownClose()
+							end
+						end ,
+					}
+				else
+					List[#List+1] = {
+						text = "Note " .. #List+1,
+						func = NoteBackupsDropDown_SetValue,
+						arg1 = noteName,
+					}
+				end
 
-            end
-        end
+			end
+		end
 	end
 
-    self.NoteBackupsCheck = ELib:Check(self, "Save backups", VMRT.NoteChecker.MakeBackups):Left():Point("BOTTOMRIGHT", self.NoteBackupsDropDown, "TOPRIGHT", 0, 5):OnClick(function(self)
-        VMRT.NoteChecker.MakeBackups = self:GetChecked()
-    end)
+	self.NoteBackupsCheck = ELib:Check(self, "Save backups", VMRT.NoteChecker.MakeBackups):Left():Point("BOTTOMRIGHT", self.NoteBackupsDropDown, "TOPRIGHT", 0, 5):OnClick(function(self)
+		VMRT.NoteChecker.MakeBackups = self:GetChecked()
+	end)
 
 	self.manualReplacement = MLib:Button(self, LR["Manual Replacement"]):Size(140, 20):Point("BOTTOMRIGHT", self.NoteBackupsCheck,"TOPRIGHT", 0, 5):OnClick(function()
 		MRT.F.ShowInput2(LR["Change names manually"],function(res)
@@ -600,15 +591,15 @@ local function NoteAnalyzerInit()
 		CurrentUnformatedText = VMRT.Note.Text1 or ""
 		UpdateText()
 
-        self:Anim(false)
-        module.db.LastNoteUpdate = false
+		self:Anim(false)
+		module.db.LastNoteUpdate = false
 	end):Tooltip(function(self)
 		if self.t and VMRT.Note.LastUpdateName and VMRT.Note.LastUpdateTime then
 			return format(LR["Last note update was sent by %s at %s"], VMRT.Note.LastUpdateName, date("%d.%m.%Y %H:%M:%S", VMRT.Note.LastUpdateTime))
 		end
 	end)
 
-    function self.LoadCurrentNoteButton:Anim(on)
+	function self.LoadCurrentNoteButton:Anim(on)
 		if on then
 			self.t = self.t or 0
 			self:SetScript("OnUpdate",function(self,elapsed)
@@ -631,11 +622,11 @@ local function NoteAnalyzerInit()
 
 	self.SaveNoteButton = MLib:Button(self.NoteEditBox, LR["Send Note"]):Size(0, 30):Point("LEFT",self.NoteEditBox, "BOTTOMLEFT", 2, 0):Point("RIGHT", self, "BOTTOMRIGHT", -2, 0):Point("BOTTOM", self,"BOTTOM", 0, 2):OnClick(function()
 		if CurrentUnformatedText == "" then
-            print(LR["Note is empty. Probably a bug?"])
-            return
-        end
+			print(LR["Note is empty. Probably a bug?"])
+			return
+		end
 
-        VMRT.Note.Text1 = CurrentUnformatedText
+		VMRT.Note.Text1 = CurrentUnformatedText
 		MRT.A.Note.frame:Save()
 	end)
 
@@ -662,15 +653,15 @@ local function NoteAnalyzerInit()
 	end)
 
 	self.allowNumbersCheck = ELib:Check(self, LR["Allow numbers in names"], VMRT.NoteChecker.allowNumbers):Point("TOPLEFT",self.ReplaceOnlySelected, "BOTTOMLEFT", 0, -5):Size(15, 15):OnClick(function(self)
-        VMRT.NoteChecker.allowNumbers = self:GetChecked()
+		VMRT.NoteChecker.allowNumbers = self:GetChecked()
 	end)
 
 	self.allowNonLetterSymbolsCheck = ELib:Check(self, LR["Allow non letter symbols in names"],VMRT.NoteChecker.allowNonLetterSymbols):Tooltip(LR["Non letter symbols are:"] .. "\n" .. "' - \" { } : ( ) + - [ ]"):Point("TOPLEFT", self.allowNumbersCheck,"BOTTOMLEFT", 0, -5):Size(15, 15):OnClick(function(self)
-        VMRT.NoteChecker.allowNonLetterSymbols = self:GetChecked()
+		VMRT.NoteChecker.allowNonLetterSymbols = self:GetChecked()
 	end)
 
 	self.allowHashtagCheck = ELib:Check(self, LR["Allow # symbol in names"], VMRT.NoteChecker.allowHashtag):Point("TOPLEFT",self.allowNonLetterSymbolsCheck, "BOTTOMLEFT", 0, -5):Size(15, 15):OnClick(function(self)
-        VMRT.NoteChecker.allowHashtag = self:GetChecked()
+		VMRT.NoteChecker.allowHashtag = self:GetChecked()
 	end)
 
 	self.totalPlayers = ELib:Text(self, "", 12):Point("TOPLEFT", self.allowHashtagCheck, "BOTTOMLEFT", 0, -10):Color():Shadow()
@@ -680,28 +671,26 @@ end
 tinsert(parentModule.options.ModulesToLoad,NoteAnalyzerInit)
 
 function module.main:ADDON_LOADED()
-    VMRT = _G.VMRT
-    VMRT.NoteChecker = VMRT.NoteChecker or {}
+	VMRT = _G.VMRT
+	VMRT.NoteChecker = VMRT.NoteChecker or {}
 	VMRT.NoteChecker.NoteBackups = VMRT.NoteChecker.NoteBackups or {}
-
-    module:RegisterAddonMessage()
 end
 
 local function SaveNoteBackup()
 	local text = MRT.F.GetNote()
-    local noteName = VMRT.Note.DefName or ""
+	local noteName = VMRT.Note.DefName or ""
 	if text:trim() ~= "" then
 
-        VMRT.NoteChecker.NoteBackups[noteName] = VMRT.NoteChecker.NoteBackups[noteName] or {}
-        if #VMRT.NoteChecker.NoteBackups[noteName] > 0 and VMRT.NoteChecker.NoteBackups[noteName][1].text == text then
-            return
-        end
+		VMRT.NoteChecker.NoteBackups[noteName] = VMRT.NoteChecker.NoteBackups[noteName] or {}
+		if #VMRT.NoteChecker.NoteBackups[noteName] > 0 and VMRT.NoteChecker.NoteBackups[noteName][1].text == text then
+			return
+		end
 
 		tinsert(VMRT.NoteChecker.NoteBackups[noteName], 1, {text = text, time = time(),name = noteName})
 
-        while #VMRT.NoteChecker.NoteBackups[noteName] > 15 do
-            tremove(VMRT.NoteChecker.NoteBackups[noteName], 16)
-        end
+		while #VMRT.NoteChecker.NoteBackups[noteName] > 15 do
+			tremove(VMRT.NoteChecker.NoteBackups[noteName], 16)
+		end
 	end
 
 	module.db.BackupTimer = nil
@@ -710,23 +699,17 @@ local function SaveNoteBackup()
 	end
 end
 
-function module:addonMessage(sender, prefix, prefix2, ...)
-    if prefix == "multiline" then
-		if VMRT.Note.OnlyPromoted and IsInRaid() and not MRT.F.IsPlayerRLorOfficer(sender) then
-			return
-		end
-
-		if VMRT.NoteChecker.MakeBackups and not module.db.BackupTimer then
-			module.db.BackupTimer = MRT.F.ScheduleTimer(SaveNoteBackup, 15)
-		end
-
-        if module.opts then
-            if CurrentUnformatedText ~= VMRT.Note.Text1 then
-                module.opts.LoadCurrentNoteButton:Anim(true)
-            else
-                module.opts.LoadCurrentNoteButton:Anim(false)
-            end
-        end
-
+MRT.F:RegisterCallback("Note_ReceivedText", function(note)
+	if VMRT.NoteChecker.MakeBackups and not module.db.BackupTimer then
+		module.db.BackupTimer = MRT.F.ScheduleTimer(SaveNoteBackup, 15)
 	end
-end
+
+	if module.opts then
+		if (CurrentUnformatedText and CurrentUnformatedText:trim()) ~= (VMRT.Note.Text1 and VMRT.Note.Text1:trim()) then
+			module.opts.LoadCurrentNoteButton:Anim(true)
+		else
+			module.opts.LoadCurrentNoteButton:Anim(false)
+		end
+	end
+end)
+

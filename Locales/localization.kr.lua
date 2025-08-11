@@ -45,7 +45,7 @@ LR.AddTrigger = "활성 조건 추가"
 LR.DeleteTrigger = "|cffee5555활성 조건 삭제|r"
 LR.Source = "소스"
 LR.Target = "대상"
-LR.YellowAlertTip = "|cffffff00알림 기간과 활성 조건 활성화 시간은\n'시간이 지정되지 않은' 활성 조건이 0이 아니어야 함.\n\n시간 지정되지 않은 활성 조건에서 활성화 시간을 지정하세요."
+LR.YellowAlertTip = "|cffffff00알림 기간과 활성 조건 활성화 시간은\n'시간이 지정되지 않은' 활성 조건이 0이 아니어야 함\n\n시간 지정되지 않은 활성 조건에서 활성화 시간을 지정하세요."
 LR.EnvironmentalDMGTip = "1 - 낙사\n2 - 익사\n3 - 피로\n4 - 화염\n5 - 용암\n6 - 점액"
 LR.DifficultyID = "난이도 ID:"
 LR.Difficulty = "난이도:"
@@ -477,7 +477,7 @@ LR["extraCheck"] = "추가 활성화 조건:"
 LR.sametargets = "활성 조건의 동일한 대상"
 LR.sametargetsTip = "모든 활성 조건(1개 이상)의 유닛이 동일한 경우에만 표시됨"
 
-LR["NameplateGlowTypeDef"] = "기본값"
+LR.NameplateGlowTypeDef = "기본값"
 LR.NameplateGlowType1 = "픽셀 반짝임"
 LR.NameplateGlowType2 = "동작 버튼 반짝임"
 LR.NameplateGlowType3 = "자동시전 빛남"
@@ -650,7 +650,7 @@ LR["Using data compression to store big amounts of data. High data usage is norm
 
 LR["Aura not updated"] = "오라 업데이트 안됨"
 LR["Aura updated"] = "오라 업데이트 됨"
-LR["User didn't respond"] = "사용자가 응답하지 않음"
+LR["User didn't respond"] = "응답하지 않음"
 
 LR.WASyncLineNameTip1 = "WA 보유 확인은 이름 클릭\n버전 확인은 오른쪽 클릭\nWA 채팅 링크는 Shift 클릭"
 LR.WASyncLineNameTip2 = "사용자의 WeakAuras 애드온 버전을 확인하려면 줄 이름을 클릭하세요"
@@ -683,9 +683,6 @@ LR["invertTip"] = "리마인더를 활성화하는 데 필요한 활성 조건 �
 LR["Marked To Send"] = "전송으로 표시됨"
 LR["Was ever sent"] = "한 번이라도 전송됨"
 LR["Updated less then 2 weeks ago"] = "2주 이내에 업데이트됨"
-
-LR["ActionDelete"] = "리마인더 삭제"
-LR["ActionSend"] = "리마인더 수락"
 
 LR["rtextNote"] = "알림/아이콘"
 LR["rtextNoteTip"] = "알림에 아이콘만 포함된 경우 3개의 아이콘\n그 외에는 단순히 알림만 표시"
@@ -724,7 +721,7 @@ LR.SpellIDBWTip = "BigWigs/DBM 애드온에서 사용하는 주문ID. 이 주문
 LR["No Mark"] = "징표 없음"
 
 LR["ActionDelete"] = "리마인더 삭제"
-LR["ActionSend"] = "리마인더 수락"
+LR["ActionSend"] = "리마인더 전송"
 
 LR.msgSize = "메시지 유형:"
 
@@ -750,7 +747,28 @@ LR["Update inviters list"] = "초대자 목록 업데이트"
 
 LR.RGList = "MT 목록:"
 LR.RGConditions = "목록 조건:"
-LR.RGConditionsTip = "|cffffffff여러 값을 가질 수 있으며, 하나라도 만족하면 리마인더가 로드됩니다.\n|cffffff00x-y|r 플레이어 범위, 플레이어가 x와 y 사이의 목록에 있으면 통과\n|cffffff00x%y|r - x부터 시작하여 매 y번째\n|cffffff00x/y|r - 목록이 y 부분으로 나뉘며, 플레이어가 x 부분에 있으면 통과\n|cffffff00Rx|r - 끝에서부터 카운트 시작|r"
+LR.RGConditionsTip = [[|cffffffff여러 값을 입력할 수 있으며, 기본적으로 그 중 하나라도 충족하면 조건을 통과합니다. |cffffff00+|r로 여러 조건을 조합하면, 조건이 누적 적용됩니다.
+
+|cffffff00-|r를 모든 조건 앞에 붙이면 조건이 반전되어, 조건을 충족하지 않을 때 통과로 간주됩니다.
+
+|cffffff00R|r을 조건 앞에 붙이면 리스트의 순서가 반대로 적용되어 확인합니다. 예: R1 - 리스트의 마지막 플레이어, R1/3 - 리스트의 마지막 1/3 구간
+
+|cffffff00x|r - 리스트에서 x번째 플레이어만 조건을 통과합니다
+|cffffff00x%y|r - y마다 x번째부터, 예: 2%3 - 2, 5, 8, 11번째 등
+|cffffff00x-y|r - x부터 y까지 범위에 속한 플레이어는 조건을 통과합니다. 예: 2-4 - 2, 3, 4번째
+|cffffff00x/y|r - 리스트를 y개로 나누고, x번째 구간에 속하면 조건을 통과합니다. 균등하게 나눌 수 없을 경우 앞쪽 구간이 더 많아집니다. 예: 10명을 3구간으로 나누면 4, 3, 3명씩(1-4, 5-7, 8-10)
+
+|cffffff00>=x|r - 플레이어의 위치가 x 이상일 때
+|cffffff00>x|r - 플레이어의 위치가 x 초과일 때
+|cffffff00<=x|r - 플레이어의 위치가 x 이하일 때
+|cffffff00<x|r - 플레이어의 위치가 x 미만일 때
+|cffffff00!x|r - 플레이어가 리스트의 x번째가 아닐 때
+
+누적 조건 예시:
+|cffffff001/3,+!R6|r - 리스트의 첫 1/3에 속하면서, 끝에서 6번째 플레이어는 제외
+
+누적 조건은 일반 조건과 조합할 수 있습니다. 예시:
+|cffffff00R1/3,+!R6,7|r - 리스트의 마지막 1/3에 속한 플레이어 중, 끝에서 6번째는 제외하고, 리스트의 7번째는 포함|r]]
 LR.RGOnly = "MT 플레이어만"
 LR.RGOnlyTip = "MTDB에 있는 플레이어만 목록에 포함"
 
@@ -761,7 +779,7 @@ LR.SplitsLastImport = "마지막 가져오기"
 LR.SplitsShouldNotBeInRaid = " 공격대에 있으면 안 됨:"
 
 LR.AssignmentsListID = "목록 ID"
-LR.AssignmentsHelpTip = "우선순위:\n이름 > 커스텀 조건 > 별칭 > 전문화 > 직업 > 하위 역할(밀리/원거리) > 역할 > 기타"
+LR.AssignmentsHelpTip = "우선순위:\n이름 > 커스텀 조건 > 별칭 > \"캐릭터 DB에 없음\"> 전문화 > 직업 > 하위 역할(근접/원거리) > 역할 > 중첩 목록 > 목록에 없음"
 LR.AssignmentsAutoSendTip = "목록 자동 전송"
 LR.AssignmentsTestTip = "일반 클릭: 우선순위 테스트\nShift 클릭: 목록 테스트\nAlt 클릭: MTDB의 플레이어를 우선으로 테스트"
 LR.AssignmentsAutoSendEditTip = [=[|cffffffff준비 체크 또는 지역 전환 시
@@ -791,12 +809,12 @@ LR.AssignmentsIgnoreValidationTip = "자동 전송 시 목록 유효성 검사 �
 LR["NotTank"] = "탱커 아님"
 LR["Copy trigger"] = "활성 조건 복사"
 LR["Use TTS files if possible"] = "가능하면 TTS 파일 사용"
-LR["Categories to ignore when importing:"] = "가져올 때 무시할 카테고리:"
+LR["Categories to ignore when importing:"] = "무시할 카테고리:"
 LR.Focus = "주시"
 LR["Restore"] = "복원하기"
 
-LR["You are not Raid Leader or Raid Assistant"] = "공대장이나 부공대장이 아닙니다"
-LR["Not Raid Leader or Raid Assistant"] = "공대장이나 부공대장이 아닙니다"
+LR["You are not Raid Leader or Raid Assistant"] = "공대장이나 부공이 아닙니다"
+LR["Not Raid Leader or Raid Assistant"] = "공대장이나 부공이 아닙니다"
 LR.WASyncUpdateSkipTitle = "정말 업데이트를 거절하시겠습니까?"
 LR.Skip = "거절"
 LR.WASNoPermission = "%s님이 WA를 보내려고 합니다. %s"
@@ -814,7 +832,7 @@ LR.WASyncShowInWA = "WeakAuras에서 보기"
 LR.WASyncShowInWATip = "접속 후 WA 창을 한 번도 열지 않았다면 이 옵션을 한번 더 선택해야 해당 WA를 선택해줍니다"
 
 LR.WASyncReloadPrompt = "%s님이 /reload를 요청했습니다"
-LR["Ask for Reload UI after import"] = "가져오기 후 /reload 요청"
+LR["Ask for Reload UI after import"] = "/reload 요청"
 LR.WASyncKeywordToSendTip = "모든 전송 대기 중인 WA 버전을 요청하려면 Shift 클릭"
 
 LR.barTicks = "바 틱:"
@@ -838,7 +856,6 @@ LR.timeLineDisable = "타임라인에 표시 안 함"
 LR.durationReverse = "미리 표시"
 LR.durationReverseTip = "선택한 시간보다 X초 전에 메시지를 표시합니다 (X - 지속 시간 길이)"
 LR.TEST = "테스트"
-LR.StartTestFight = "테스트 시작"
 LR.OnlyMine = "내 것만"
 LR.ImportHistory = "풀 기록 가져오기"
 LR.ExportHistory = "풀 기록 내보내기"
@@ -872,14 +889,14 @@ LR["rshortnumTip"] = [[숫자를 축약합니다. 예시:
 LR.TimerExcluded = "타이머 정렬 사용"
 LR.TimerExcludedTip = "타이머 업데이트 시 텍스트가 흔들리는 것을 방지하려면 비활성화하세요."
 LR["QS_20"] = "쐐기돌 시작"
-LR.StartTestFightTip = "풀, 단계, 쐐기돌 시작 활성 조건이 있는 알림에서만 작동합니다.\n  x3배속 (Shift 클릭)\nx10배속 (Shift+Alt 클릭)"
+LR.StartTestFightTip = "|cff80ff00\"풀\", \"단계\", \"M+ 시작\", \"전투 로그\"의 시전 시작, 시전 성공, +오라, -오라|r\n이벤트가 있는 알림에만 작동"
 
 LR.GlobalTimeScale = "전역 시간 스케일"
 LR.TimeScaleT1 = "~"
-LR.TimeScaleTip1 = "시간 형식을 사용할 수 있습니다 (5:25)"
-LR.TimeScaleT2 = "초. +"
+LR.TimeScaleTip1 = "시간 형식 가능 (5:25)"
+LR.TimeScaleT2 = "~   +"
 LR.TimeScaleT3 = "초"
-LR.TimeScaleTip2 = "음수일 수 있음"
+LR.TimeScaleTip2 = "음수 가능"
 LR.FilterCasts = "시전"
 LR.FilterAuras = "오라"
 LR.PresetFilter = "보스 사전 설정 필터"
@@ -888,7 +905,7 @@ LR.RepeatableFilterTip = "고급 카운터 조건이 사용된 경우 각 주문
 LR.Boss2 = "보스"
 LR.AdvancedEdit = "고급 모드에서 편집"
 LR.HideOne = "리마인더 숨기기"
-LR.HideOneTip = "보스가 변경될 때까지 이 리마인더를 숨깁니다.\n(비분류 메뉴에 배치됨)"
+LR.HideOneTip = "보스가 변경될 때까지 이 리마인더를 숨깁니다.\n(미분류에 배치됨)"
 LR.CustomDurationLen = "커스텀 지속 시간 설정"
 LR.ChangeColorRng  = "색상 변경 (랜덤)"
 LR.ImportAdd = "알림에 추가"
@@ -919,6 +936,7 @@ role2 - 보조 역할 (MHEALER, RHEALER, MDD, RDD)
 alias - 플레이어 별칭
 class - 플레이어 직업 (WARRIOR, PALADIN, etc.)
 spec - 플레이어 전문화 ID (71, 72, etc.)
+group - 플레이어 공대 파티 번호
 
 |cffffd100class == DEMONHUNTER and alias == "트개"|r]]
 LR.CustomDurationLenMore = "%s에 대한 지속 시간을 초 단위로 설정합니다."
@@ -984,7 +1002,7 @@ LR["%s is starting |A:unitframeicon-chromietime:20:20|a live session"] = "%s ◀
 LR["Cooldown:"] = "쿨다운:"
 LR["Leave empty for reset to default value"] = "기본값으로 재설정하려면 비워두세요"
 LR["Charges:"] = "충전:"
-LR["Reminder is untimed"] = "알림이 시간 지정되지 않음"
+LR["Reminder is untimed"] = "시간 지정되지 않음"
 LR["GUID"] = "GUID"
 LR["NPC ID"] = "NPC ID"
 LR["Spawn Time"] = "생성 시간"
@@ -1035,14 +1053,14 @@ LR["Last version check:"] = "마지막 버전 확인:"
 LR["Open editor"] = "편집기 열기"
 LR["Edit custom encounter"] = "커스텀 교전 편집"
 LR["Not enough permissions to request reload UI"] = "Reload UI를 요청할 권한이 없습니다."
-LR["Get DebugLog"] = "디버그 로그 가져오기"
+LR["Get DebugLog"] = "디버그 로그"
 LR["Request ReloadUI"] = "ReloadUI 요청"
 LR["Manual Replacement"] = "수동 교체"
 LR["Change names manually"] = "수동으로 이름 변경"
 LR["Name to find:"] = "찾을 이름:"
 LR["New name:"] = "새 이름:"
 LR["Error"] = "오류"
-LR["Custom EH"] = "커스텀 EH"
+LR["Custom EH"] = "EH"
 LR["Use custom error handler for this WA"] = "이 WA에 커스텀 오류 핸들러 사용"
 LR["Request WA"] = "WA 요청"
 LR["Player has to be in the same guild to request WA"] = "플레이어가 같은 길드에 있어야 WA를 요청할 수 있음"
@@ -1054,14 +1072,43 @@ LR["Hold shift to save and send reminder"] = "저장 및 전송은 shift 클릭"
 
 LR["SoundStatus1"] = "소리 활성화"
 LR["SoundStatus2"] = "소리 잠금, 알림 업데이트에 영향 받지 않음"
-LR["SoundStatus3"] = "소리 음소거"
-LR["PersonalStatus1"] = "알림을 개인용으로 설정, 다른 플레이어에게 전송되지 않음"
-LR["PersonalStatus2"] = "알림을 전역으로 설정"
+LR["SoundStatus3"] = "소리 비활성화"
+LR["PersonalStatus1"] = "개인용으로 설정, 전송되지 않음"
+LR["PersonalStatus2"] = "공용으로 설정"
 LR["Current spell settings will be lost. Reset to default preset?"] = "현재 주문 설정이 사라집니다. 기본값으로 재설정하시겠습니까?"
-LR.OptPlayersTooltip = "내 전송에 대해 “항상 수락”을 적용한 플레이어 목록"
+LR.OptPlayersTooltip = "알림 전송에 \"|cffffff00항상|r\"이 적용된 플레이어 목록"
+
+LR["Lua error in overwritten BigWigs module '%s': %s"] = "덮어쓴 BigWigs 모듈 '%s'에서 Lua 오류 발생: %s"
+LR["Use default TTS Voice"] = "기본 TTS 음성 사용"
+LR["Text"] = "메시지"
+LR["Text To Speech"] = "TTS"
+LR["Raid Frame Glow"] = "프레임 반짝임"
+LR["Nameplate Glow"] = "이름표 반짝임"
+LR["Bars"] = "바"
+LR["Default TTS Voice"] = "기본 TTS 음성"
+LR["Alternative TTS Voice"] = "한국어 TTS 음성"
+LR["TTS Volume"] = "TTS 음량"
+LR["TTS Rate"] = "TTS 속도"
+
+LR["Timeline simulation"] = "타임라인 시뮬레이션"
+LR["Start simulation"] = "|cff80ff00시뮬레이션 시작|r"
+LR["Cancel simulation"] = "|cff80ff00시뮬레이션 취소|r"
+LR["Pause simulation"] = "|cff80ff00시뮬레이션 일시 중지|r"
+LR["Resume simulation"] = "|cff80ff00시뮬레이션 재개|r"
+LR["Simulation start time"] = "시뮬레이션 시작 시간"
+LR["Simulation speed multiplier"] = "시뮬레이션 속도 배율"
+
+LR["ttsOnHide"] = "숨길 때 TTS:"
+LR["sound_delayTip"] = "사운드 지연(초)"
+LR["sound_delayTip2"] = "사운드 지연(초), 음수 값은 종료 'X' 초 전"
+
+ LR["DataProfileTip1"] = "현재 활성 및 삭제된 알림 세트 포함."
+ LR["VisualProfileTip1"] = "앵커, 텍스트/바 모양, TTS 및 반짝임 설정 포함."
+ LR["Visual Profile"] = "|cff00ffff비주얼 프로필|r"
+ LR["Delete visual profile"] = "비주얼 프로필 삭제"
 
 LR.HelpText =
-[=[슬래시 명령어:
+([=[슬래시 명령어:
     |cffaaaaaa/리마인더|r or |cffaaaaaa/rem|r - |cffff8000Reminder MT|r
     |cffaaaaaa/동기화|r or |cffaaaaaa/was|r - |cFF00FFFFWeakAuras Sync|r
 ]=] ..
@@ -1267,7 +1314,22 @@ LR.HelpText =
 
     #리마인더는 두 번째 줄의 모든 플레이어에 대해 로드됩니다.
     블록의 위치 순환 순서로 인해: 1, 2, 1, 2, 1, 2 등.
+]=]):gsub("\t", "    ") -- \t(tab) may not be printable atleast for some fonts, so replacing it with spaces
 
-test
-]=]
-LR.HelpText = LR.HelpText:gsub("\t", "    ") -- \t(tab) may not be printable atleast for some fonts, so replacing it with spaces
+LR["Not in list"] = "목록에 없음"
+LR["Not in characters DB"] = "캐릭터 DB에 없음"
+LR["Select nested list"] = "중첩 목록 선택"
+LR["NotInDBTip"] = "DB에 없는 캐릭터를 위한 특별한 위치를 목록에 설정합니다.\n\nMTOnly 옵션으로 목록을 받아와도 이 캐릭터들은 이 목록에 포함됩니다."
+LR["NotInListTip"] = "목록에 없는 캐릭터를 위한 특별한 위치를 목록에 설정합니다.\n\n목록에서 GUID 기준으로 캐릭터를 정렬할 때 유일한 우선순위로 사용할 수 있습니다."
+
+LR["Export for AutoImport"] = "AutoImport로 내보내기"
+LR["Show full diffs"] = "전체 차이점 보기"
+LR["Please select two auras to compare"] = "비교할 오라 두 개 선택"
+LR["Diff is too long, showing first 100000 characters only, full length:"] = "차이점이 너무 길어 처음 100,000자만 표시. 전체 길이:"
+LR["Imports have different UIDs, cannot be matched. Try checking full diffs"] = "가져온 항목의 UID가 달라 일치시킬 수 없음. 전체 차이점 보기로 시도"
+LR["Error comparing auras: "] = "오라 비교 오류: "
+LR["Import has no UID, cannot be matched."] = "가져온 항목에 UID가 없어 일치시킬 수 없음."
+LR["Don't check on spell CD"] = "주문 재사용 대기시간에는 확인하지 않음"
+-- LR["%s note is not synced\nSend note?"]  = "%s note is not synced\nSend note?"
+-- LR["Delete Reminders"] = "Delete Reminders"
+-- LR["Skip Import"] = "Skip Import"

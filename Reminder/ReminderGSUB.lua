@@ -140,23 +140,23 @@ local raidCDList = {
 }
 
 local externalCDList = {
-    [71] = 3411,
-    [72] = 3411,
-    [73] = 3411,
-    [65] = 6940,
-    [66] = 6940,
-    [70] = 6940,
-    [256] = 33206,
-    [257] = 47788,
-    [270] = 116849,
-    [105] = 102342,
-    [1468] = 357170,
+	[71] = 3411,
+	[72] = 3411,
+	[73] = 3411,
+	[65] = 6940,
+	[66] = 6940,
+	[70] = 6940,
+	[256] = 33206,
+	[257] = 47788,
+	[270] = 116849,
+	[105] = 102342,
+	[1468] = 357170,
 }
 
 local freedomCDList = {
-    PALADIN = 1044,
-    HUNTER = 272682,
-    MONK = 116841,
+	PALADIN = 1044,
+	HUNTER = 272682,
+	MONK = 116841,
 }
 
 -- local textureToSpell = {}
@@ -531,12 +531,10 @@ do
 	}
 	local listOfReplacers = {}
 
-	function module:CreateListOfReplacers()
-		for k,v in next, module.C do
-			if v.replaceres then
-				for _,r in ipairs(v.replaceres) do
-					listOfReplacers[r] = true
-				end
+	for k, v in next, module.C do
+		if v.replaceres then
+			for _,r in ipairs(v.replaceres) do
+				listOfReplacers[r] = true
 			end
 		end
 	end
@@ -795,49 +793,49 @@ do
 			return (defSpecName[specid or 0] or specname and specname:lower())..rest
 		elseif word == "defCDIcon" then
 			local icon = defCDList[select(2,UnitClass'player') or ""]
-            if not icon and not gsub_trigger_params_now then
-                return "{spell:22812}" .. rest
-            end
+			if not icon and not gsub_trigger_params_now then
+				return "{spell:22812}" .. rest
+			end
 			return (icon and "{spell:"..icon.."}" or "")..rest
 		elseif word == "damageImmuneCDIcon" then
 			local icon = damageImmuneCDList[select(2,UnitClass'player') or ""]
-            if not icon and not gsub_trigger_params_now then
-                return "{spell:45438}" .. rest
-            end
+			if not icon and not gsub_trigger_params_now then
+				return "{spell:45438}" .. rest
+			end
 			return (icon and "{spell:"..icon.."}" or "")..rest
 		elseif word == "sprintCDIcon" then
 			local icon = sprintCDList[select(2,UnitClass'player') or ""]
-            if not icon and not gsub_trigger_params_now then
-                return "{spell:106898}" .. rest
-            end
+			if not icon and not gsub_trigger_params_now then
+				return "{spell:106898}" .. rest
+			end
 			return (icon and "{spell:"..icon.."}" or "")..rest
 		elseif word == "healCDIcon" then
 			local specid,specname = GetSpecializationInfo(GetSpecialization() or 1)
 			local icon = healCDList[specid or 0]
-            if not icon and not gsub_trigger_params_now then
-                return "{spell:31884}" .. rest
-            end
+			if not icon and not gsub_trigger_params_now then
+				return "{spell:31884}" .. rest
+			end
 			return (icon and "{spell:"..icon.."}" or "")..rest
 		elseif word == "raidCDIcon" then
 			local specid,specname = GetSpecializationInfo(GetSpecialization() or 1)
 			local icon = raidCDList[specid or 0]
-            if not icon and not gsub_trigger_params_now then
-                return "{spell:31821}" .. rest
-            end
+			if not icon and not gsub_trigger_params_now then
+				return "{spell:31821}" .. rest
+			end
 			return (icon and "{spell:"..icon.."}" or "")..rest
-        elseif word == "externalCDIcon" then
-            local specid,specname = GetSpecializationInfo(GetSpecialization() or 1)
-            local icon = externalCDList[specid or 0]
-            if not icon and not gsub_trigger_params_now then
-                return "{spell:6940}" .. rest
-            end
-            return (icon and "{spell:"..icon.."}" or "")..rest
-        elseif word == "freedomCDIcon" then
-            local icon = freedomCDList[UnitClassBase("player") or ""]
-            if not icon and not gsub_trigger_params_now then
-                return "{spell:1044}" .. rest
-            end
-            return (icon and "{spell:"..icon.."}" or "")..rest
+		elseif word == "externalCDIcon" then
+			local specid,specname = GetSpecializationInfo(GetSpecialization() or 1)
+			local icon = externalCDList[specid or 0]
+			if not icon and not gsub_trigger_params_now then
+				return "{spell:6940}" .. rest
+			end
+			return (icon and "{spell:"..icon.."}" or "")..rest
+		elseif word == "freedomCDIcon" then
+			local icon = freedomCDList[UnitClassBase("player") or ""]
+			if not icon and not gsub_trigger_params_now then
+				return "{spell:1044}" .. rest
+			end
+			return (icon and "{spell:"..icon.."}" or "")..rest
 		elseif word == "notePlayer" or word == "notePlayerRight" then
 			if gsub_trigger_params_now and gsub_trigger_params_now._data then
 				local notePattern = gsub_trigger_params_now._data.notepat
@@ -900,7 +898,7 @@ do
 		end
 	end
 
-    local conditionList = {
+	local conditionList = {
 		["warrior"] = 1,
 		["paladin"] = 1,
 		["hunter"] = 1,
@@ -917,6 +915,7 @@ do
 		["healer"] = 2,
 		["heal"] = 2,
 		["dd"] = 2,
+		["damager"] = 2,
 		["tank"] = 2,
 	}
 
@@ -961,7 +960,9 @@ do
 				elseif condType == 2 then
 					if combatRole:lower() == c then
 						status = true
-					elseif combatRole == "HEALER" and c == "heal" then
+					elseif (combatRole == "HEALER" and c == "heal") or
+						(combatRole == "DAMAGER" and c == "dd")
+					then
 						status = true
 					end
 				end
@@ -1004,154 +1005,157 @@ do
 	local replace_counter = false
 	local replace_forchat = false
 
-    local playerName = UnitName'player'
+	local playerName = UnitName'player'
 
-    local function GSUB_Notepos(str,word,num,rest)
-        if not gsub_trigger_params_now then return "" end
-        local data = gsub_trigger_params_now._data
-        if not data or not data.notepat then return "" end
-        local y,x = strsplit(":",str,2)
-        local reverse, pat = data.notepat:match("^(%-?)([^{]+)")
-        pat = pat and pat:trim()
-        local cacheKey = (data.noteIsBlock and "block" or "line") .. pat
-        y = tonumber(y)
-        x = tonumber(x)
-        local notePatsCache = module.db.notePatsCache
-        if cacheKey:find("^block") then
-            if notePatsCache[cacheKey] then
-                local currCache = notePatsCache[cacheKey]
-                if y then
-                    y = y % #currCache
-                    if y == 0 then y = #currCache end
-                    if x and currCache[y] then -- targeted spot
-                        x = x % #currCache[y]
-                        if x == 0 then x = #currCache[y] end
-                        if currCache[y][x] then
-                            return currCache[y][x]
-                        end
-                    else -- iterate whole line
-                        local str = ""
-                        for i=1,#currCache[y] do
-                            if currCache[y][i] then
-                                str = str .. currCache[y][i] .. " "
-                            end
-                        end
-                        return str:gsub("%s+$","")
-                    end
-                -- else -- iterate whole cache
-                    -- for i=1,#currCache do
-                    --     for j=1,#currCache[i] do
-                    --         if currCache[i][j] then
-                    --             return currCache[i][j]
-                    --         end
-                    --     end
-                    -- end
-                end
+	local function GSUB_Notepos(str,word,num,rest)
+		if not gsub_trigger_params_now then return "" end
+		local data = gsub_trigger_params_now._data
+		if not data or not data.notepat then return "" end
+		local y,x = strsplit(":",str,2)
+		local reverse, pat = data.notepat:match("^(%-?)([^{]+)")
+		pat = pat and pat:trim()
+		local cacheKey = (data.noteIsBlock and "block" or "line") .. pat
+		y = tonumber(y)
+		x = tonumber(x)
+		local notePatsCache = module.db.notePatsCache
+		if cacheKey:find("^block") then
+			if notePatsCache[cacheKey] then
+				local currCache = notePatsCache[cacheKey]
+				if y then
+					y = y % #currCache
+					if y == 0 then y = #currCache end
+					if x and currCache[y] then -- targeted spot
+						x = x % #currCache[y]
+						if x == 0 then x = #currCache[y] end
+						if currCache[y][x] then
+							return currCache[y][x]
+						end
+					else -- iterate whole line
+						local str = ""
+						for i=1,#currCache[y] do
+							if currCache[y][i] then
+								str = str .. currCache[y][i] .. " "
+							end
+						end
+						return str:gsub("%s+$","")
+					end
+				-- else -- iterate whole cache
+					-- for i=1,#currCache do
+					--     for j=1,#currCache[i] do
+					--         if currCache[i][j] then
+					--             return currCache[i][j]
+					--         end
+					--     end
+					-- end
+				end
 
-                return "" -- have cache but no player found
-            end
-        else -- patt is for lines
-            if notePatsCache[cacheKey] then
-                local currCache = notePatsCache[cacheKey]
-                if y then -- targeted spot
-                    y = y % #currCache
-                    if y == 0 then y = #currCache end
-                    if currCache[y] then
-                        return currCache[y]
-                    end
-                    return "" -- have cache but no player found
-                else -- iterate whole line
-                    local str = ""
-                    for i,name in next, currCache do
-                        str = str .. name .. " "
-                    end
-                    return str:gsub("%s+$","")
-                end
-            end
-        end
-        -- if notePatsCache[cacheKey] then
-        --     local currCache = notePatsCache[cacheKey]
-        --     if x and y then
-        --         return currCache and currCache[y] and currCache[y][x]
-        --     elseif y then
-        --         return currCache and type(currCache[y]) == 'string' and currCache[y] or ""
-        --     end
+				return "" -- have cache but no player found
+			end
+		else -- patt is for lines
+			if notePatsCache[cacheKey] then
+				local currCache = notePatsCache[cacheKey]
+				if y then -- targeted spot
+					y = y % #currCache
+					if y == 0 then y = #currCache end
+					if currCache[y] then
+						return currCache[y]
+					end
+					return "" -- have cache but no player found
+				else -- iterate whole line
+					local str = ""
+					for i,name in next, currCache do
+						str = str .. name .. " "
+					end
+					return str:gsub("%s+$","")
+				end
+			end
+		end
+		-- if notePatsCache[cacheKey] then
+		--     local currCache = notePatsCache[cacheKey]
+		--     if x and y then
+		--         return currCache and currCache[y] and currCache[y][x]
+		--     elseif y then
+		--         return currCache and type(currCache[y]) == 'string' and currCache[y] or ""
+		--     end
 
-        --     return "" .. rest-- have cache but no player found
-        -- end
+		--     return "" .. rest-- have cache but no player found
+		-- end
 
-    end
+	end
 
-    local function GSUB_RGAPIList(str)
-        local id,condition,rgonly = strsplit(":",str,3)
-        local list = module:RGAPIGetList(id,rgonly == "1")
-        if list then
-           local l = AddonDB.RGAPI:GetPlayersListCondition(list,condition)
-           return table_concat(l," ")
-        end
-    end
+	local function GSUB_RGAPIList(str)
+		if not AddonDB.RGAPI then return "" end
+
+		local id, condition, rgonly = strsplit(":", str,3)
+		local list = AddonDB.RGAPI:GetListCached(id, rgonly == "1")
+		if list then
+			AddonDB.RGAPI:ConvertGUIDsToNames(list)
+		   	local l = AddonDB.RGAPI:GetPlayersListCondition(list, condition)
+		   	return table_concat(l, " ")
+		end
+	end
 
 
-    local function GSUB_TriggerActivations(str)
-        if gsub_trigger_params_now and gsub_trigger_params_now._reminder then
-            local trigger = gsub_trigger_params_now._reminder.triggers[tonumber(str or "?") or 1]
-            if trigger then
-                return trigger.triggerActivations or 0
-            end
-            return ""
-        end
-    end
+	local function GSUB_TriggerActivations(str)
+		if gsub_trigger_params_now and gsub_trigger_params_now._reminder then
+			local trigger = gsub_trigger_params_now._reminder.triggers[tonumber(str or "?") or 1]
+			if trigger then
+				return trigger.triggerActivations or 0
+			end
+			return ""
+		end
+	end
 
-    local function GSUB_ReminderActivations()
-        if gsub_trigger_params_now and gsub_trigger_params_now._reminder then
-            return gsub_trigger_params_now._reminder.remActivations or 0
-        end
-    end
+	local function GSUB_ReminderActivations()
+		if gsub_trigger_params_now and gsub_trigger_params_now._reminder then
+			return gsub_trigger_params_now._reminder.remActivations or 0
+		end
+	end
 
-    local GSUB_AbbreviateNum
-    local locale = GetLocale()
-    if (locale == "koKR" or locale == "zhCN" or locale == "zhTW") then
-        local symbol_1K, symbol_10K, symbol_1B, symbol_1T = "천", "만", "억", "조" -- default to kr
-        if (locale == "zhCN") then
-            symbol_1K, symbol_10K, symbol_1B, symbol_1T = "千", "万", "亿", "兆"
-        elseif (locale == "zhTW") then
-            symbol_1K, symbol_10K, symbol_1B, symbol_1T = "千", "萬", "億", "兆"
-        end
+	local GSUB_AbbreviateNum
+	local locale = GetLocale()
+	if (locale == "koKR" or locale == "zhCN" or locale == "zhTW") then
+		local symbol_1K, symbol_10K, symbol_1B, symbol_1T = "천", "만", "억", "조" -- default to kr
+		if (locale == "zhCN") then
+			symbol_1K, symbol_10K, symbol_1B, symbol_1T = "千", "万", "亿", "兆"
+		elseif (locale == "zhTW") then
+			symbol_1K, symbol_10K, symbol_1B, symbol_1T = "千", "萬", "億", "兆"
+		end
 
-        function GSUB_AbbreviateNum(str)
-            local num = tonumber(str)
-            if num then
-                if (num >= 1000000000000) then
-                    return format("%.2f", num / 1000000000000):gsub("[%.0]+$", "") .. symbol_1T
-                elseif (num >= 100000000) then
-                    return format("%.2f", num / 100000000):gsub("[%.0]+$", "") .. symbol_1B
-                elseif (num >= 10000) then
-                    return format("%.2f", num / 10000):gsub("[%.0]+$", "") .. symbol_10K
-                elseif (num >= 1000) then
-                    return format("%.2f", num / 1000):gsub("[%.0]+$", "") .. symbol_1K
-                else
-                    return format("%.0f", num)
-                end
-            end
-            return str
-        end
-    else
-        function GSUB_AbbreviateNum(str)
-            local num = tonumber(str)
-            if num then
-                if (num > 999999999) then
-                    return format("%.1f", num/1000000000):gsub("[%.0]+$","") .. "B"
-                elseif (num > 1000000) then
-                    return format ("%.1f", num/1000000):gsub("[%.0]+$","") .. "M"
-                elseif (num > 999) then
-                    return format ("%.1f", num/1000):gsub("[%.0]+$","") .. "K"
-                end
+		function GSUB_AbbreviateNum(str)
+			local num = tonumber(str)
+			if num then
+				if (num >= 1000000000000) then
+					return format("%.2f", num / 1000000000000):gsub("[%.0]+$", "") .. symbol_1T
+				elseif (num >= 100000000) then
+					return format("%.2f", num / 100000000):gsub("[%.0]+$", "") .. symbol_1B
+				elseif (num >= 10000) then
+					return format("%.2f", num / 10000):gsub("[%.0]+$", "") .. symbol_10K
+				elseif (num >= 1000) then
+					return format("%.2f", num / 1000):gsub("[%.0]+$", "") .. symbol_1K
+				else
+					return format("%.0f", num)
+				end
+			end
+			return str
+		end
+	else
+		function GSUB_AbbreviateNum(str)
+			local num = tonumber(str)
+			if num then
+				if (num > 999999999) then
+					return format("%.1f", num/1000000000):gsub("[%.0]+$","") .. "B"
+				elseif (num > 1000000) then
+					return format ("%.1f", num/1000000):gsub("[%.0]+$","") .. "M"
+				elseif (num > 999) then
+					return format ("%.1f", num/1000):gsub("[%.0]+$","") .. "K"
+				end
 
-                return format ("%.0f", str)
-            end
-            return str
-        end
-    end
+				return format ("%.0f", str)
+			end
+			return str
+		end
+	end
 
 	local handlers_nocloser = {
 		spell = GSUB_Icon,
@@ -1166,11 +1170,11 @@ do
 		sub = GSUB_Sub,
 		trim = GSUB_Trim,
 		setparam = GSUB_Setparam,
-        notepos = GSUB_Notepos,
-        rgapilist = GSUB_RGAPIList,
-        triggerActivations = GSUB_TriggerActivations,
-        remActivations = GSUB_ReminderActivations,
-        shortnum = GSUB_AbbreviateNum,
+		notepos = GSUB_Notepos,
+		rgapilist = GSUB_RGAPIList,
+		triggerActivations = GSUB_TriggerActivations,
+		remActivations = GSUB_ReminderActivations,
+		shortnum = GSUB_AbbreviateNum,
 		funit = GSUB_PlayersList_All,
 	}
 
@@ -1197,7 +1201,7 @@ do
 			--print('nc',word,arg)
 			replace_counter = true
 			return handler(arg) or ""
-        elseif handlers_nocloser_withname[word] then
+		elseif handlers_nocloser_withname[word] then
 			replace_counter = true
 			return handlers_nocloser_withname[word](mword,arg) or ""
 		elseif word == "rt" then
@@ -1253,7 +1257,7 @@ do
 		local subcount = 0
 		while true do
 			replace_counter = false
-            if printLog then
+			if printLog then
 				prettyPrint('Iteration',subcount,"|cffaaaaaa"..msg.."|r")
 			end
 			subcount = subcount + 1

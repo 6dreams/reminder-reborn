@@ -17,6 +17,9 @@ module.PUBLIC = AddonDB.PUBLIC
 ---@class Locale
 local LR = AddonDB.LR
 
+---@class MLib
+local MLib = AddonDB.MLib
+
 local LCG = LibStub("LibCustomGlow-1.0")
 local LGF = LibStub("LibGetFrame-1.0")
 local LGFNullOpt = {}
@@ -32,7 +35,7 @@ local strsplit, GetTime, UnitPower, UnitGetTotalAbsorbs, UnitClassBase = strspli
 local next, ipairs, bit, string_gmatch, tremove, pcall, format, wipe, type, select, loadstring, bit_band, unpack = next, ipairs, bit, string.gmatch, tremove, pcall, format, wipe, type, select, loadstring, bit.band, unpack
 local UnitInRaid, IsInRaid, IsInGroup, UnitInParty, UnitTokenFromGUID, UnitIsUnit = UnitInRaid, IsInRaid, IsInGroup, UnitInParty, UnitTokenFromGUID or MRT.NULLfunc, UnitIsUnit
 local min, max, time, date, GetInstanceInfo, IsEncounterInProgress = math.min, math.max, time, date, GetInstanceInfo, IsEncounterInProgress
-local C_VoiceChat, tinsert, tIndexOf, print = C_VoiceChat, tinsert, tIndexOf, print
+local C_VoiceChat, tinsert, print = C_VoiceChat, tinsert, print
 
 local C_VoiceChat_SpeakText = C_VoiceChat.SpeakText
 
@@ -43,9 +46,11 @@ local GetSpellCooldown = AddonDB.GetSpellCooldown
 local GetSpecialization = AddonDB.GetSpecialization
 local GetSpecializationInfo = AddonDB.GetSpecializationInfo
 
+local GUIDIsPlayer = C_PlayerInfo.GUIDIsPlayer
+
 
 local function prettyPrint(...)
-    print("|cffff8000[Reminder]|r", ...)
+	print("|cffff8000[Reminder]|r", ...)
 end
 module.prettyPrint = prettyPrint
 
@@ -68,10 +73,11 @@ frameBars:SetScript("OnDragStart", function(self)
 end)
 frameBars:SetScript("OnDragStop", function(self)
 	self:StopMovingOrSizing()
-	VMRT.Reminder.BarsLeft = self:GetLeft()
-	VMRT.Reminder.BarsTop = self:GetTop()
-    frameBars:ClearAllPoints()
-	frameBars:SetPoint("TOPLEFT",UIParent,"BOTTOMLEFT",VMRT.Reminder.BarsLeft,VMRT.Reminder.BarsTop)
+	local offsetLeft, offsetBottom = self:GetCenter()
+	VMRT.Reminder.VisualSettings.Bar_PosX = (offsetLeft) - (GetScreenWidth() / 2)
+	VMRT.Reminder.VisualSettings.Bar_PosY = (offsetBottom) - (GetScreenHeight() / 2)
+	frameBars:ClearAllPoints()
+	frameBars:SetPoint("CENTER",UIParent,"CENTER",VMRT.Reminder.VisualSettings.Bar_PosX,VMRT.Reminder.VisualSettings.Bar_PosY)
 end)
 
 frameBars.dot = frameBars:CreateTexture(nil, "BACKGROUND",nil,-6)
@@ -142,8 +148,10 @@ function frameBars:GetBar()
 	local bar = CreateFrame("Frame",nil,self)
 	self.bars[#self.bars+1] = bar
 
-	local height = VMRT.Reminder.BarHeight or 30
-	local width = VMRT.Reminder.BarWidth or 300
+	local VisualSettings = VMRT.Reminder.VisualSettings
+
+	local height = VisualSettings.Bar_Height or 30
+	local width = VisualSettings.Bar_Width or 300
 	local fontSize = floor(height*0.5/2)*2
 
 	bar:SetSize(width,height)
@@ -157,38 +165,38 @@ function frameBars:GetBar()
 	bar.progress = bar:CreateTexture(nil, "BORDER")
 	bar.progress:SetPoint("TOPLEFT",0,0)
 	bar.progress:SetPoint("BOTTOMLEFT",0,0)
-	bar.progress:SetTexture(VMRT.Reminder.BarTexture or [[Interface\AddOns\MRT\media\bar34.tga]])
+	bar.progress:SetTexture(VisualSettings.Bar_Texture or [[Interface\AddOns\MRT\media\bar34.tga]])
 
 	bar.text = bar:CreateFontString(nil,"ARTWORK")
 	bar.text:SetPoint("LEFT",3,0)
-	bar.text:SetFont(VMRT.Reminder.BarFont or MRT.F.defFont, fontSize, VMRT.Reminder.OutlineType or "OUTLINE, OUTLINE")
+	bar.text:SetFont(VisualSettings.Bar_Font or MRT.F.defFont, fontSize, VisualSettings.Text_FontOutlineType)
 	bar.text:SetTextColor(1,1,1,1)
-    if VMRT.Reminder.Shadow then
-        bar.text:SetShadowOffset(1, -1)
+	if VisualSettings.Text_FontShadow then
+		bar.text:SetShadowOffset(1, -1)
 	else
-        bar.text:SetShadowOffset(0, 0)
+		bar.text:SetShadowOffset(0, 0)
 	end
 
 	bar.text_prev = 0
 
 	bar.time = bar:CreateFontString(nil,"ARTWORK")
 	bar.time:SetPoint("LEFT",self,"RIGHT",-height,0)
-	bar.time:SetFont(VMRT.Reminder.BarFont or MRT.F.defFont, fontSize, VMRT.Reminder.OutlineType or "OUTLINE, OUTLINE")
+	bar.time:SetFont(VisualSettings.Bar_Font or MRT.F.defFont, fontSize, VisualSettings.Text_FontOutlineType)
 	bar.time:SetTextColor(1,1,1,1)
-    if VMRT.Reminder.Shadow then
-        bar.time:SetShadowOffset(1, -1)
+	if VisualSettings.Text_FontShadow then
+		bar.time:SetShadowOffset(1, -1)
 	else
-        bar.time:SetShadowOffset(0, 0)
+		bar.time:SetShadowOffset(0, 0)
 	end
 	bar.time:SetJustifyH("LEFT")
 	bar.time.w = 0
 
-    bar.iconFrame = CreateFrame("Frame",nil,bar)
+	bar.iconFrame = CreateFrame("Frame",nil,bar)
 	bar.icon = bar.iconFrame:CreateTexture(nil, "BORDER", nil, 2)
 	bar.icon:SetWidth(height)
 	bar.icon:SetPoint("TOPRIGHT",bar,"TOPLEFT",0,0)
 	bar.icon:SetPoint("BOTTOMRIGHT",bar,"BOTTOMLEFT",0,0)
-    ELib:Border(bar.icon,1,0,0,0,1)
+	ELib:Border(bar.icon,1,0,0,0,1)
 	bar.iconFrame:Hide()
 
 	bar.ticks = {}
@@ -262,7 +270,7 @@ do
 			if soundTemplate then
 				for i=1,min(5,time-0.3) do
 					local sound = soundTemplate .. i .. ".ogg"
-					local tmr = ScheduleTimer(PlaySoundFile, time-(i+0.3), sound, "Master")
+					local tmr = MRT.F.ScheduleTimer(PlaySoundFile, time-(i+0.3), sound, "Master")
 					module.db.timers[#module.db.timers+1] = tmr
 					clist[#clist+1] = tmr
 				end
@@ -364,47 +372,51 @@ function frameBars:StopAllBars()
 end
 
 function module:UpdateVisual(onlyFont)
-    module.frame:UpdateTextStyle()
+	module.frame:UpdateTextStyle()
+	local VisualSettings = VMRT.Reminder.VisualSettings
 
-    local width = VMRT.Reminder.BarWidth or 300
-	local height = VMRT.Reminder.BarHeight or 30
+	local width = VisualSettings.Bar_Width or 300
+	local height = VisualSettings.Bar_Height or 30
 	local fontSize = floor(height*0.5/2)*2
-	local texture = VMRT.Reminder.BarTexture or [[Interface\AddOns\MRT\media\bar34.tga]]
-	local barfont = VMRT.Reminder.BarFont or MRT.F.defFont
+	local texture = VisualSettings.Bar_Texture or [[Interface\AddOns\MRT\media\bar34.tga]]
+	local barfont = VisualSettings.Bar_Font or MRT.F.defFont
+	local fontFlags = VisualSettings.Text_FontOutlineType or "OUTLINE, OUTLINE"
 	for i=1,#frameBars.bars do
 		local bar = frameBars.bars[i]
 
 		bar:SetSize(width,height*(bar.size or 1))
 		bar.progress:SetTexture(texture)
-		bar.text:SetFont(barfont, fontSize, VMRT.Reminder.OutlineType or "OUTLINE, OUTLINE")
-		bar.time:SetFont(barfont, fontSize, VMRT.Reminder.OutlineType or "OUTLINE, OUTLINE")
-        if VMRT.Reminder.Shadow then
-            bar.text:SetShadowOffset(1, -1)
-            bar.time:SetShadowOffset(1, -1)
-        else
-            bar.text:SetShadowOffset(0, 0)
-            bar.time:SetShadowOffset(0, 0)
-        end
+		bar.text:SetFont(barfont, fontSize, fontFlags)
+		bar.time:SetFont(barfont, fontSize, fontFlags)
+		if VisualSettings.Text_FontShadow then
+			bar.text:SetShadowOffset(1, -1)
+			bar.time:SetShadowOffset(1, -1)
+		else
+			bar.text:SetShadowOffset(0, 0)
+			bar.time:SetShadowOffset(0, 0)
+		end
 		bar.icon:SetWidth((height*(bar.size or 1)))
 		bar.height = height
 		bar.width = width
 	end
 
-    if onlyFont then
-        return
-    end
-    local frame = module.frame
+	if onlyFont then
+		return
+	end
+	local frame = module.frame
 
-    if VMRT.Reminder.Left and VMRT.Reminder.Top then
+	if VisualSettings.Text_PosX and VisualSettings.Text_PosY then
 		frame:ClearAllPoints()
-		frame:SetPoint("TOPLEFT",UIParent,"BOTTOMLEFT",VMRT.Reminder.Left,VMRT.Reminder.Top)
+		frame:SetPoint("CENTER",UIParent,"CENTER",VisualSettings.Text_PosX,VisualSettings.Text_PosY)
 	end
 
-    if frame.unlocked then
-        frame.dot:Show()
-        frame:EnableMouse(true)
-        frame:SetMovable(true)
-        wipe(frame.text)
+	frame:SetFrameStrata(VisualSettings.Text_FrameStrata)
+
+	if frame.unlocked then
+		frame.dot:Show()
+		frame:EnableMouse(true)
+		frame:SetMovable(true)
+		wipe(frame.text)
 		wipe(frame.textBig)
 		wipe(frame.textSmall)
 		frame.text[#frame.text+1] = module:FormatMsg("Test message Тест1 {spell:23920}{spell:23920}{spell:23920}")
@@ -414,9 +426,9 @@ function module:UpdateVisual(onlyFont)
 		frame.textSmall[#frame.textSmall+1] = module:FormatMsg("Small message Тест2")
 		frame.textSmall[#frame.textSmall+1] = " 6.7"
 		frame:Update()
-        frame:Show()
+		frame:Show()
 
-        frameBars.dot:Show()
+		frameBars.dot:Show()
 		frameBars:EnableMouse(true)
 		frameBars:SetMovable(true)
 		frameBars:StopAllBars()
@@ -424,29 +436,30 @@ function module:UpdateVisual(onlyFont)
 		frameBars:StartBar("test"..tostring({}),11,"Big Test Bar",1.5)
 		frameBars:StartBar("test"..tostring({}),11,"Small Test Bar",0.68)
 		frameBars:Show()
-    else
-        frame.dot:Hide()
+	else
+		frame.dot:Hide()
 		frame:EnableMouse(false)
 		frame:SetMovable(false)
 
-        wipe(frame.text)
-        wipe(frame.textBig)
-        wipe(frame.textSmall)
-        frame:Update()
-        frame:Hide()
+		wipe(frame.text)
+		wipe(frame.textBig)
+		wipe(frame.textSmall)
+		frame:Update()
+		frame:Hide()
 
-        frameBars.dot:Hide()
+		frameBars.dot:Hide()
 		frameBars:EnableMouse(false)
 		frameBars:SetMovable(false)
 		frameBars:StopAllBars()
 		frameBars:Hide()
-    end
-
-
-    if VMRT.Reminder.BarsLeft and VMRT.Reminder.BarsTop then
-		frameBars:ClearAllPoints()
-		frameBars:SetPoint("TOPLEFT",UIParent,"BOTTOMLEFT",VMRT.Reminder.BarsLeft,VMRT.Reminder.BarsTop)
 	end
+
+
+	if VisualSettings.Bar_PosX and VisualSettings.Bar_PosY then
+		frameBars:ClearAllPoints()
+		frameBars:SetPoint("CENTER",UIParent,"CENTER",VisualSettings.Bar_PosX,VisualSettings.Bar_PosY)
+	end
+	frameBars:SetFrameStrata(VisualSettings.Bar_FrameStrata)
 end
 
 
@@ -459,13 +472,14 @@ local ChatSpamTimers = {}
 
 local ChatSpamUntimed = {}
 
-local glow_frame_monitor = {}
+local glow_frame_monitor = nil
 
 module.db.nameplateFrames = {}
 module.db.nameplateHL = {}
 module.db.nameplateGUIDToFrames = {}
 module.db.nameplateGUIDToUnit = {}
 module.db.onHideSounds = {}
+module.db.onHideTTS = {}
 
 module.db.debug = false
 module.db.timers = {}
@@ -480,9 +494,6 @@ module.db.voiceCountdowns = voiceCountdowns
 
 local notePatsCache = {}
 module.db.notePatsCache = notePatsCache
-
-local listsCache = {}
-module.db.RGListsCache = listsCache
 
 local nameplateUsed
 local eventsUsed, unitsUsed = {}, {}
@@ -504,44 +515,44 @@ local function GetMRTNoteLines()
 end
 
 function module:FindPlayersListInNote(pat,noteIsBlock)
-    local reverse
-    reverse, pat = pat:match("^(%-?)([^{]+)")
+	local reverse
+	reverse, pat = pat:match("^(%-?)([^{]+)")
 	pat = "^"..pat:gsub("([%.%(%)%-%$])","%%%1"):gsub("%b{}","")
-    pat = pat and pat:trim()
+	pat = pat and pat:trim()
 	if not VMRT or not VMRT.Note or not VMRT.Note.Text1 then
 		return
 	end
 	local lines = GetMRTNoteLines()
 	local res
-    if noteIsBlock then
-        local betweenLines = false
-        for i=1,#lines do
-            if lines[i]:trim():find(pat.."Start$") then
-                betweenLines = true
-                res = ""
-                local l = lines[i]:gsub(pat.." *",""):gsub("|c........",""):gsub("|r",""):gsub(" *$",""):gsub("|",""):gsub(" +"," ")
-                res = res .. l .. "\n"
+	if noteIsBlock then
+		local betweenLines = false
+		for i=1,#lines do
+			if lines[i]:trim():find(pat.."Start$") then
+				betweenLines = true
+				res = ""
+				local l = lines[i]:gsub(pat.." *",""):gsub("|c........",""):gsub("|r",""):gsub(" *$",""):gsub("|",""):gsub(" +"," ")
+				res = res .. l .. "\n"
 
-            elseif lines[i]:trim():find(pat.."End$") then
-                betweenLines = false
-                local l = lines[i]:gsub(pat.." *",""):gsub("|c........",""):gsub("|r",""):gsub(" *$",""):gsub("|",""):gsub(" +"," ")
-                res = res .. l .. "\n"
-                break
-            elseif betweenLines then
-                local l = lines[i]:gsub(pat.." *",""):gsub("|c........",""):gsub("|r",""):gsub(" *$",""):gsub("|",""):gsub(" +"," ")
-                res = res .. l .. "\n"
-            end
-        end
-    else
-        for i=1,#lines do
-            if lines[i]:find(pat) then
-                local l = lines[i]:gsub(pat.." *",""):gsub("|c........",""):gsub("|r",""):gsub(" *$",""):gsub("|",""):gsub(" +"," ")
-                if not res then res = "" end
-                res = res..(res ~= "" and " " or "")..l
-                break
-            end
-        end
-    end
+			elseif lines[i]:trim():find(pat.."End$") then
+				betweenLines = false
+				local l = lines[i]:gsub(pat.." *",""):gsub("|c........",""):gsub("|r",""):gsub(" *$",""):gsub("|",""):gsub(" +"," ")
+				res = res .. l .. "\n"
+				break
+			elseif betweenLines then
+				local l = lines[i]:gsub(pat.." *",""):gsub("|c........",""):gsub("|r",""):gsub(" *$",""):gsub("|",""):gsub(" +"," ")
+				res = res .. l .. "\n"
+			end
+		end
+	else
+		for i=1,#lines do
+			if lines[i]:find(pat) then
+				local l = lines[i]:gsub(pat.." *",""):gsub("|c........",""):gsub("|r",""):gsub(" *$",""):gsub("|",""):gsub(" +"," ")
+				if not res then res = "" end
+				res = res..(res ~= "" and " " or "")..l
+				break
+			end
+		end
+	end
 
 	return res
 end
@@ -559,9 +570,9 @@ local function CheckRole(roles,role1, role2)
 end
 
 function module:CheckPlayerCondition(data,myName,myClass,role1,role2,alias)
-    if VMRT.Reminder.alwaysLoad then
-        return true
-    end
+	if VMRT.Reminder.alwaysLoad then
+		return true
+	end
 
 	if not role1 and not role2 then
 		role1, role2 = module:GetPlayerRole()
@@ -574,9 +585,9 @@ function module:CheckPlayerCondition(data,myName,myClass,role1,role2,alias)
 		myClass = UnitClassBase('player')
 	end
 
-    if not alias then
-        alias = AddonDB.RGAPI and AddonDB.RGAPI:GetNick("player")
-    end
+	if not alias then
+		alias = AddonDB.RGAPI and AddonDB.RGAPI:GetNick("player")
+	end
 
 	local isNoteOn,isInNote
 	if data.notepat then
@@ -584,14 +595,14 @@ function module:CheckPlayerCondition(data,myName,myClass,role1,role2,alias)
 		isInNote = module:ParseNote(data) --module:FindPlayerInNote(data.notepat)
 	end
 	if
-        (
-            (not isNoteOn or isInNote) and
+		(
+			(not isNoteOn or isInNote) and
 			(not data.units or (not data.reversed and data.units:find("#"..myName.."#")) or (data.reversed and not data.units:find("#"..myName.."#"))) and
 			(not data.roles or CheckRole(data.roles, role1, role2)) and
 			(not data.classes or data.classes:find("#".. myClass .."#")) and
-            (not data.groups or data.groups:find(GetOwnPartyNum())) and
-            (not data.RGAPIList or AddonDB.RGAPI and module:RGAPICheckListCondition(data.RGAPIList,data.RGAPICondition,data.RGAPIOnlyRG)) and
-            (not data.RGAPIAlias or AddonDB.RGAPI and alias and data.RGAPIAlias:find("#"..alias.."#"))
+			(not data.groups or data.groups:find(GetOwnPartyNum())) and
+			(not data.RGAPIList or AddonDB.RGAPI and AddonDB.RGAPI:CheckListCondition(data.RGAPIList, data.RGAPICondition, data.RGAPIOnlyRG)) and
+			(not data.RGAPIAlias or AddonDB.RGAPI and alias and data.RGAPIAlias:find("#"..alias.."#"))
 		)
 	then
 		return true
@@ -618,7 +629,7 @@ do
 			trigger.count = trigger.count + 1
 
 			if trigger._trigger.cbehavior == 6 then
-				module.db.timers[#module.db.timers+1] = ScheduleTimer(ResetCounter, 5, trigger)
+				module.db.timers[#module.db.timers+1] = MRT.F.ScheduleTimer(ResetCounter, 5, trigger)
 			end
 		end
 	end
@@ -633,26 +644,26 @@ do
 end
 
 function module:RunTrigger(trigger, vars, pullDelayTime, printLog)
-    if printLog then
+	if printLog then
 		prettyPrint(trigger._data.name or "","Run trigger #"..trigger._i)
 	end
-    if trigger.unloaded then return end
+	if trigger.unloaded then return end
 	-- local triggerData = trigger._trigger
 	if trigger.DdelayTime then
 		for i=1,#trigger.DdelayTime do
-            local offset = trigger._data.durrev and trigger._data.duration or 0
-            local delay = trigger.DdelayTime[i] >= offset and trigger.DdelayTime[i]-offset or 0
-            if pullDelayTime then
-                delay = delay - pullDelayTime
-            end
-            if delay > -0.1 then
-                local t = ScheduleTimer(module.ActivateTrigger, max(0.01,delay) / (module.db.simrun and module.db.simrunspeed or 1), 0, trigger, vars)
-                module.db.timers[#module.db.timers+1] = t
-                if trigger.delays then
-                    trigger.delays[#trigger.delays+1] = t
-                end
-            end
-            if printLog then
+			local offset = trigger._data.durrev and trigger._data.duration or 0
+			local delay = trigger.DdelayTime[i] >= offset and trigger.DdelayTime[i]-offset or 0
+			if pullDelayTime then
+				delay = delay - pullDelayTime
+			end
+			if delay > -0.1 then
+				local t = ScheduleTimer(module.ActivateTrigger, max(0.01,delay), 0, trigger, vars)
+				module.db.timers[#module.db.timers+1] = t
+				if trigger.delays then
+					trigger.delays[#trigger.delays+1] = t
+				end
+			end
+			if printLog then
 				prettyPrint("Activation delayed by "..delay.." sec.")
 			end
 		end
@@ -669,7 +680,7 @@ do
 			return
 		end
 		if module.db.debugLog then module:DebugLogAdd("ActivateTrigger",trigger._data.name or trigger._data.msg,vars.uid or vars.guid) end
-        if printLog then
+		if printLog then
 			prettyPrint("Trigger #"..trigger._i.." activated")
 		end
 
@@ -693,9 +704,9 @@ do
 
 		if trigger._trigger.activeTime then
 			module.db.timers[#module.db.timers+1] = ScheduleTimer(module.DeactivateTrigger, max(trigger._trigger.activeTime, 0.01), 0, trigger, vars.uid or vars.guid or 1, true, printLog)
-        elseif not trigger.untimed and trigger._data.hideTextChanged and trigger._data.duration > 0 then
-            module.db.timers[#module.db.timers+1] = ScheduleTimer(module.DeactivateTrigger, max(trigger._data.duration, 0.01), 0, trigger, vars.uid or vars.guid or 1, true, printLog)
-        elseif not trigger.untimed then
+		elseif (not trigger.untimed or trigger._trigger.event == 2) and trigger._data.hideTextChanged and trigger._data.duration > 0 then
+			module.db.timers[#module.db.timers+1] = ScheduleTimer(module.DeactivateTrigger, max(trigger._data.duration, 0.01), 0, trigger, vars.uid or vars.guid or 1, true, printLog)
+		elseif not trigger.untimed then
 			module:DeactivateTrigger(trigger, vars.uid or vars.guid or 1, printLog)
 		end
 	end
@@ -778,11 +789,11 @@ do
 					t = t:gsub("{spell:(%d+):?(%d*)}",("{spell:%1:"..iconSize.."}"):rep(repeatNum))
 					return t, true
 				else
-                    if t and t:find("^{spell:[^}]+}$") then
-                        return t:rep(3), true
-                    else
-                        return t, true
-                    end
+					if t and t:find("^{spell:[^}]+}$") then
+						return t:rep(3), true
+					else
+						return t, true
+					end
 				end
 			end
 		end,
@@ -868,7 +879,7 @@ do
 					local fmt = module:FormatMsg(data.specialTarget,params)
 					if fmt and type(fmt)=="string" then
 						if fmt:find("[;,]") then
-							for c in string_gmatch(fmt, "[^;,]+") do
+							for c in fmt:gmatch("[^;,]+") do
 								guid = (c:find("^guid:") and c:sub(6,100)) or (#c<=100 and UnitGUID(c))
 								if guid then
 									break
@@ -907,12 +918,12 @@ do
 			for i=1,#reminder.delayedActivation do
 				local t = ScheduleTimer(module.ShowReminderVisual, reminder.delayedActivation[i], self, trigger, data, reminder, params)
 				module.db.timers[#module.db.timers+1] = t
-                if printLog then
+				if printLog then
 					prettyPrint("All checks |cff00ff00passed|r. Delayed activation in ",reminder.delayedActivation[i],"sec.")
 				end
 			end
 		else
-            if printLog then
+			if printLog then
 				prettyPrint("All checks |cff00ff00passed|r. Activation now")
 			end
 			module:ShowReminderVisual(trigger,data,reminder,params)
@@ -920,6 +931,8 @@ do
 	end
 
 	function module:ShowReminderVisual(trigger,data,reminder,params)
+
+
 		--hide all showed copies of text reminder
 		if not data.copy then
 			for j=#module.db.showedReminders,1,-1 do
@@ -934,26 +947,35 @@ do
 					tremove(module.db.showedReminders,j)
 				end
 			end
-            -- dont allow duplicating on hide sounds
-            for j=#module.db.onHideSounds,1,-1 do
-                local sound = module.db.onHideSounds[j]
-                if sound.data == data then
-                    if sound.timer then
-                        sound.timer:Cancel()
-                    end
-                    tremove(module.db.onHideSounds,j)
-                end
-            end
-            -- dont allow duplication voice countdowns
-            for j=#module.db.voiceCountdowns,1,-1 do
-                local voice = module.db.voiceCountdowns[j]
-                if voice.data == data then
-                    for k=#voice.voice,1,-1 do
-                        voice.voice[k]:Cancel()
-                    end
-                    tremove(module.db.voiceCountdowns,j)
-                end
-            end
+			-- dont allow duplicating on hide sounds
+			for j=#module.db.onHideSounds,1,-1 do
+				local sound = module.db.onHideSounds[j]
+				if sound.data == data then
+					if sound.timer then
+						sound.timer:Cancel()
+					end
+					tremove(module.db.onHideSounds,j)
+				end
+			end
+			for j=#module.db.onHideTTS,1,-1 do
+				local tts = module.db.onHideTTS[j]
+				if tts.data == data then
+					if tts.timer then
+						tts.timer:Cancel()
+					end
+					tremove(module.db.onHideTTS,j)
+				end
+			end
+			-- dont allow duplication voice countdowns
+			for j=#module.db.voiceCountdowns,1,-1 do
+				local voice = module.db.voiceCountdowns[j]
+				if voice.data == data then
+					for k=#voice.voice,1,-1 do
+						voice.voice[k]:Cancel()
+					end
+					tremove(module.db.voiceCountdowns,j)
+				end
+			end
 		end
 
 		reminder.remActivations = (reminder.remActivations or 0) + 1
@@ -978,8 +1000,12 @@ do
 			module:FormatMsg(data.msg or "",params)
 		end
 
+		if module.db.simrun_mute then
+			return
+		end
+
 		if data.glow and data.glow ~= "" then
-            -- module:HideGlowByData(reminder) -- why i do this?
+			-- module:HideGlowByData(reminder) -- why i do this?
 			module:ParseGlow(data,params)
 		end
 
@@ -993,38 +1019,78 @@ do
 					--	reminder.nameplateguid = params.guid
 				end
 				if reminderDuration ~= 0 then
-					module.db.timers[#module.db.timers+1] = ScheduleTimer(module.NameplateRemoveHighlight, reminderDuration, module, params.guid, data.token)
+					module.db.timers[#module.db.timers+1] = MRT.F.ScheduleTimer(module.NameplateRemoveHighlight, reminderDuration, module, params.guid, data.token)
 				end
 			end
 		end
 
-		if data.tts and not VMRT.Reminder.disableSound and not VMRT.Reminder.disableSounds[data.token] then
-			module:PlayTTS(data.tts,params)
+		if data.tts and not VMRT.Reminder.disableSound and not module:GetDataOption(data.token, "SOUND_DISABLED") then
+			if data.tts_delay then
+				local ttsDelay = data.tts_delay
+				if data.tts_delay < 0 then
+					ttsDelay = reminderDuration + data.tts_delay
+				end
+				local tmr = MRT.F.ScheduleTimer(module.PlayTTS, max(ttsDelay,0.01), module, data.tts, params)
+				module.db.timers[#module.db.timers+1] = tmr
+			else
+				module:PlayTTS(data.tts,params)
+			end
 		end
 
-		if data.sound and not VMRT.Reminder.disableSound and not VMRT.Reminder.disableSounds[data.token] then
-			pcall(PlaySoundFile, data.sound, "Master")
+		if data.sound and not VMRT.Reminder.disableSound and not module:GetDataOption(data.token, "SOUND_DISABLED") then
+			if data.sound_delay then
+				local soundDelay = data.sound_delay
+				if data.sound_delay < 0 then
+					soundDelay = reminderDuration + data.sound_delay
+				end
+				local tmr = MRT.F.ScheduleTimer(PlaySoundFile, max(soundDelay,0.01), data.sound, "Master")
+				module.db.timers[#module.db.timers+1] = tmr
+			else
+				pcall(PlaySoundFile, data.sound, "Master")
+			end
 		end
 
-        if data.soundOnHide and not VMRT.Reminder.disableSound and not VMRT.Reminder.disableSounds[data.token] then
-            if reminderDuration ~= 0 then
-                local tmr = ScheduleTimer(PlaySoundFile, reminderDuration, data.soundOnHide, "Master")
-                module.db.timers[#module.db.timers+1] = tmr
-                module.db.onHideSounds[#module.db.onHideSounds+1] = {
-                    data = data,
-                    params = params,
-                    sound = data.soundOnHide,
-                    timer = tmr,
-                }
-            else
-                local s = {
-                    data = data,
-                    params = params,
-                    sound = data.soundOnHide,
-                }
-                module.db.onHideSounds[#module.db.onHideSounds+1] = s
-            end
-        end
+		if data.soundOnHide and not VMRT.Reminder.disableSound and not module:GetDataOption(data.token, "SOUND_DISABLED") then
+			if reminderDuration ~= 0 then
+				local tmr = MRT.F.ScheduleTimer(PlaySoundFile, max(0.01,reminderDuration + (data.soundOnHide_delay or 0)), data.soundOnHide, "Master")
+				module.db.timers[#module.db.timers+1] = tmr
+				module.db.onHideSounds[#module.db.onHideSounds+1] = {
+					data = data,
+					params = params,
+					sound = data.soundOnHide,
+					timer = tmr,
+				}
+			else
+				local s = {
+					data = data,
+					params = params,
+					sound = data.soundOnHide,
+					delay = data.soundOnHide_delay
+				}
+				module.db.onHideSounds[#module.db.onHideSounds+1] = s
+			end
+		end
+
+		if data.ttsOnHide and not VMRT.Reminder.disableSound and not module:GetDataOption(data.token, "SOUND_DISABLED") then
+			if reminderDuration ~= 0 then
+				local tmr = MRT.F.ScheduleTimer(module.PlayTTS, max(0.01,reminderDuration + (data.ttsOnHide_delay or 0)), module, data.ttsOnHide, params)
+				module.db.timers[#module.db.timers+1] = tmr
+				module.db.onHideTTS[#module.db.onHideTTS+1] = {
+					data = data,
+					params = params,
+					tts = data.ttsOnHide,
+					timer = tmr,
+				}
+			else
+				local s = {
+					data = data,
+					params = params,
+					tts = data.ttsOnHide,
+					delay = data.ttsOnHide_delay
+				}
+				module.db.onHideTTS[#module.db.onHideTTS+1] = s
+			end
+		end
 
 		if data.spamType and data.spamChannel then
 			module:SayChatSpam(data, params)
@@ -1034,27 +1100,27 @@ do
 			module:SendWeakAurasCustomEvent(data.WAmsg,params)
 		end
 
-        if data.voiceCountdown and reminderDuration ~= 0 and reminderDuration >= 1.3 then
-            local clist = {Cancel = CancelSoundTimers}
-            local soundTemplate = module.datas.vcdsounds[ data.voiceCountdown ]
-            if soundTemplate then
-                for i=1,min(5,reminderDuration-0.3) do
-                    local sound = soundTemplate .. i .. ".ogg"
-                    local tmr = ScheduleTimer(PlaySoundFile, reminderDuration-(i+0.3), sound, "Master")
-                    module.db.timers[#module.db.timers+1] = tmr
-                    clist[#clist+1] = tmr
-                end
-                voiceCountdowns[#voiceCountdowns+1] = {
-                    data = data,
-                    params = params,
-                    voice = clist,
-                }
-            end
-        end
+		if data.voiceCountdown and reminderDuration ~= 0 and reminderDuration >= 1.3 then
+			local clist = {Cancel = CancelSoundTimers}
+			local soundTemplate = module.datas.vcdsounds[ data.voiceCountdown ]
+			if soundTemplate then
+				for i=1,min(5,reminderDuration-0.3) do
+					local sound = soundTemplate .. i .. ".ogg"
+					local tmr = MRT.F.ScheduleTimer(PlaySoundFile, reminderDuration-(i+0.3), sound, "Master")
+					module.db.timers[#module.db.timers+1] = tmr
+					clist[#clist+1] = tmr
+				end
+				voiceCountdowns[#voiceCountdowns+1] = {
+					data = data,
+					params = params,
+					voice = clist,
+				}
+			end
+		end
 
-        local isBar = data.msgSize == 3 or data.msgSize == 4 or data.msgSize == 5
-        if isBar then
-            local checkFunc, progressFunc
+		local isBar = data.msgSize == 3 or data.msgSize == 4 or data.msgSize == 5
+		if isBar then
+			local checkFunc, progressFunc
 			if reminderDuration == 0 then
 				if trigger.status and trigger.status.timeLeft then
 					reminderDuration = trigger.status.timeLeft - now
@@ -1095,28 +1161,28 @@ do
 				end
 				local icon = data.barIcon
 				if icon then
-                    if tonumber(icon) == 0 and trigger.status and trigger.status.spellID then -- 0 to use info from trigger
-					    icon = select(3,GetSpellInfo(trigger.status.spellID))
-                    elseif tonumber(icon) then -- icon is spellID
-                        icon = select(3,GetSpellInfo(icon)) or 134400
-                    end
+					if tonumber(icon) == 0 and trigger.status and trigger.status.spellID then -- 0 to use info from trigger
+						icon = select(3,GetSpellInfo(trigger.status.spellID))
+					elseif tonumber(icon) then -- icon is spellID
+						icon = select(3,GetSpellInfo(icon)) or 134400
+					end
 				end
 
 				local barSize = data.msgSize == 4 and 0.68 or data.msgSize == 5 and 1.5 or 1
 
 				frameBars:StartBar(id,reminderDuration,msg,barSize,color,countdownFormat,voice,ticks,icon,checkFunc,progressFunc)
-            end
-        elseif data.msg then
-            local t = {
-                data = data,
-                expirationTime = now + (reminderDuration == 0 and 86400 or reminderDuration or 2),
-                params = params,
-                dur = reminderDuration,
-            }
-            module.db.showedReminders[#module.db.showedReminders+1] = t
+			end
+		elseif data.msg then
+			local t = {
+				data = data,
+				expirationTime = now + (reminderDuration == 0 and 86400 or reminderDuration or 2),
+				params = params,
+				dur = reminderDuration,
+			}
+			module.db.showedReminders[#module.db.showedReminders+1] = t
 
-            module.frame:Show()
-        end
+			module.frame:Show()
+		end
 	end
 end
 
@@ -1126,55 +1192,75 @@ function module:UnloadTrigger(trigger)
 	trigger.unloaded = true
 
 	if data.msg then
-        for j=#module.db.showedReminders,1,-1 do
-            local showed = module.db.showedReminders[j]
-            if showed.data == data then
-                if showed.voice then
-                    showed.voice:Cancel()
-                end
-                tremove(module.db.showedReminders,j)
-            end
-        end
-    end
+		for j=#module.db.showedReminders,1,-1 do
+			local showed = module.db.showedReminders[j]
+			if showed.data == data then
+				if showed.voice then
+					showed.voice:Cancel()
+				end
+				tremove(module.db.showedReminders,j)
+			end
+		end
+	end
 
-    if data.soundOnHide then
-        for j=#module.db.onHideSounds,1,-1 do
-            local sound = module.db.onHideSounds[j]
-            if sound.data == data then
-                pcall(PlaySoundFile, sound.sound, "Master")
-                tremove(module.db.onHideSounds,j)
-            end
-        end
-    end
+	if data.soundOnHide then
+		for j=#module.db.onHideSounds,1,-1 do
+			local sound = module.db.onHideSounds[j]
+			if sound.data == data then
+				if sound.timer then
+					sound.timer:Cancel()
+				end
+				-- pcall(PlaySoundFile, sound.sound, "Master")
+				tremove(module.db.onHideSounds,j)
+			end
+		end
+	end
 
-    if data.glow then
-        module:HideGlowByData(trigger._reminder)
-    end
-    if ChatSpamUntimed and ChatSpamUntimed.data == data then
-        ChatSpamUntimed.timer:Cancel()
-    end
-    if data.nameplateGlow then
-        if reminder.nameplateguid then
-            module:NameplateRemoveHighlight(reminder.nameplateguid)
-            reminder.nameplateguid = nil
-        end
-        for guid,list in next, module.db.nameplateHL do
-            for uid,t in next, list do
-                if t.data == data then
-                    module:NameplateRemoveHighlight(guid, uid)
-                end
-            end
-        end
-    end
+	if data.ttsOnHide then
+		for j=#module.db.onHideTTS,1,-1 do
+			local tts = module.db.onHideTTS[j]
+			if tts.data == data then
+				if tts.timer then
+					tts.timer:Cancel()
+				end
+				tremove(module.db.onHideTTS,j)
+			end
+		end
+	end
 
-    if data.voiceCountdown then
-        for i=1,#voiceCountdowns do
-            if voiceCountdowns[i].data == data then
-                voiceCountdowns[i].voice:Cancel()
-                tremove(voiceCountdowns,i)
-            end
-        end
-    end
+	if data.spamType and data.spamChannel then
+		module:StopChatSpam(data)
+
+	end
+
+	if data.glow then
+		module:HideGlowByData(trigger._reminder)
+	end
+	if ChatSpamUntimed and ChatSpamUntimed.data == data then
+		ChatSpamUntimed.timer:Cancel()
+	end
+	if data.nameplateGlow then
+		if reminder.nameplateguid then
+			module:NameplateRemoveHighlight(reminder.nameplateguid)
+			reminder.nameplateguid = nil
+		end
+		for guid,list in next, module.db.nameplateHL do
+			for uid,t in next, list do
+				if t.data == data then
+					module:NameplateRemoveHighlight(guid, uid)
+				end
+			end
+		end
+	end
+
+	if data.voiceCountdown then
+		for i=1,#voiceCountdowns do
+			if voiceCountdowns[i].data == data then
+				voiceCountdowns[i].voice:Cancel()
+				tremove(voiceCountdowns,i)
+			end
+		end
+	end
 end
 
 function module:CheckUnitTriggerStatus(trigger)
@@ -1217,7 +1303,7 @@ function module:DeactivateTrigger(trigger, uid, isScheduled, printLog)
 		return
 	end
 	if module.db.debugLog then module:DebugLogAdd("DeactivateTrigger",trigger._data.name or trigger._data.msg,uid) end
-    if printLog then
+	if printLog then
 		prettyPrint("Trigger #"..trigger._i.." deactivated")
 	end
 
@@ -1236,42 +1322,62 @@ function module:DeactivateTrigger(trigger, uid, isScheduled, printLog)
 		trigger.status = false
 		module:CheckAllTriggers(trigger, printLog)
 	elseif uid and trigger._data.duration == 0 then -- hide untimed reminder for specific uid/guid
-        if trigger._data.msg then
-            for j=#module.db.showedReminders,1,-1 do
-                local showed = module.db.showedReminders[j]
-                if showed.data == trigger._data and showed.params and (showed.params.uid == uid or showed.params.guid == uid) then
-                    -- if showed.voice then
-                    --     showed.voice:Cancel()
-                    -- end
-                    tremove(module.db.showedReminders,j)
-                end
-            end
-        end
+		if trigger._data.msg then
+			for j=#module.db.showedReminders,1,-1 do
+				local showed = module.db.showedReminders[j]
+				if showed.data == trigger._data and showed.params and (showed.params.uid == uid or showed.params.guid == uid) then
+					-- if showed.voice then
+					--     showed.voice:Cancel()
+					-- end
+					tremove(module.db.showedReminders,j)
+				end
+			end
+		end
 
-        if trigger._data.voiceCountdown then
-            for j=#voiceCountdowns,1,-1 do
-                local voice = voiceCountdowns[j]
-                if voice.data == trigger._data and voice.params and (voice.params.uid == uid or voice.params.guid == uid) then
-                    voice.voice:Cancel()
-                    tremove(voiceCountdowns,j)
-                end
-            end
-        end
+		if trigger._data.voiceCountdown then
+			for j=#voiceCountdowns,1,-1 do
+				local voice = voiceCountdowns[j]
+				if voice.data == trigger._data and voice.params and (voice.params.uid == uid or voice.params.guid == uid) then
+					voice.voice:Cancel()
+					tremove(voiceCountdowns,j)
+				end
+			end
+		end
 
-        if trigger._data.soundOnHide then
-            for j=#module.db.onHideSounds,1,-1 do
-                local sound = module.db.onHideSounds[j]
-                if sound.data == trigger._data and sound.params and (sound.params.uid == uid or sound.params.guid == uid) then
-                    pcall(PlaySoundFile, sound.sound, "Master")
-                    tremove(module.db.onHideSounds,j)
-                end
-            end
-        end
+		if trigger._data.soundOnHide then
+			for j=#module.db.onHideSounds,1,-1 do
+				local sound = module.db.onHideSounds[j]
+				if sound.data == trigger._data and sound.params and (sound.params.uid == uid or sound.params.guid == uid) then
+					if sound.delay then
+						local tmr = MRT.F.ScheduleTimer(PlaySoundFile, max(sound.delay,0.01), sound.sound, "Master")
+						module.db.timers[#module.db.timers+1] = tmr
+					else
+						pcall(PlaySoundFile, sound.sound, "Master")
+					end
+					tremove(module.db.onHideSounds,j)
+				end
+			end
+		end
+
+		if trigger._data.ttsOnHide then
+			for j=#module.db.onHideTTS,1,-1 do
+				local tts = module.db.onHideTTS[j]
+				if tts.data == trigger._data and tts.params and (tts.params.uid == uid or tts.params.guid == uid) then
+					if tts.delay then
+						local tmr = MRT.F.ScheduleTimer(module.PlayTTS, max(tts.delay,0.01), module, tts.tts,tts.params)
+						module.db.timers[#module.db.timers+1] = tmr
+					else
+						module:PlayTTS(tts.tts,tts.params)
+					end
+					tremove(module.db.onHideTTS,j)
+				end
+			end
+		end
 
 
-        if trigger._data.glow then
-            module:HideGlowByUID(trigger._reminder, uid)
-        end
+		if trigger._data.glow then
+			module:HideGlowByUID(trigger._reminder, uid)
+		end
 
 		if trigger._data.nameplateGlow then
 			module:NameplateRemoveHighlight(uid, trigger._data.token)
@@ -1297,236 +1403,253 @@ for k,v in next, unitreplace do unitreplace_rev[v]=k end
 
 -- Kaze MRT Note Timers shenanigans
 do
-    local specToType = {
-        -- Mage
-        [62] = "Ranged", -- Arcane
-        [63] = "Ranged", -- Fire
-        [64] = "Ranged", -- Frost
-        -- Paladin
-        [65] = "Melee", -- Holy
-        [66] = "Melee", -- Protection
-        [70] = "Melee", -- Retribution
-        -- Warrior
-        [71] = "Melee", -- Arms
-        [72] = "Melee", -- Fury
-        [73] = "Melee", -- Protection
-        -- Druid
-        [102] = "Ranged", -- Balance
-        [103] = "Melee", -- Feral
-        [104] = "Melee", -- Guardian
-        [105] = "Ranged", -- Restoration
-        -- Death Knight
-        [250] = "Melee", -- Blood
-        [251] = "Melee", -- Frost
-        [252] = "Melee", -- Unholy
-        -- Hunter
-        [253] = "Ranged", -- Beast Mastery
-        [254] = "Ranged", -- Marksmanship
-        [255] = "Melee", -- Survival
-        -- Priest
-        [256] = "Ranged", -- Discipline
-        [257] = "Ranged", -- Holy
-        [258] = "Ranged", -- Shadow
-        -- Rogue
-        [259] = "Melee", -- Assassination
-        [260] = "Melee", -- Outlaw
-        [261] = "Melee", -- Subtlety
-        -- Shaman
-        [262] = "Ranged", -- Elemental
-        [263] = "Melee", -- Enhancement
-        [264] = "Ranged", -- Restoration
-        -- Warlock
-        [265] = "Ranged", -- Affliction
-        [266] = "Ranged", -- Demonology
-        [267] = "Ranged", -- Destruction
-        -- Monk
-        [268] = "Melee", -- Brewmaster
-        [270] = "Melee", -- Mistweaver
-        [269] = "Melee", -- Windwalker
-        -- Demon Hunter
-        [577] = "Melee", -- Havoc
-        [581] = "Melee", -- Vengeance
-        -- Evoker
-        [1467] = "Ranged", -- Devastation
-        [1468] = "Ranged", -- Preservation
-        [1473] = "Ranged" -- Augmentation
-    }
+	local specToType = {
+		-- Mage
+		[62] = "Ranged", -- Arcane
+		[63] = "Ranged", -- Fire
+		[64] = "Ranged", -- Frost
+		-- Paladin
+		[65] = "Melee", -- Holy
+		[66] = "Melee", -- Protection
+		[70] = "Melee", -- Retribution
+		-- Warrior
+		[71] = "Melee", -- Arms
+		[72] = "Melee", -- Fury
+		[73] = "Melee", -- Protection
+		-- Druid
+		[102] = "Ranged", -- Balance
+		[103] = "Melee", -- Feral
+		[104] = "Melee", -- Guardian
+		[105] = "Ranged", -- Restoration
+		-- Death Knight
+		[250] = "Melee", -- Blood
+		[251] = "Melee", -- Frost
+		[252] = "Melee", -- Unholy
+		-- Hunter
+		[253] = "Ranged", -- Beast Mastery
+		[254] = "Ranged", -- Marksmanship
+		[255] = "Melee", -- Survival
+		-- Priest
+		[256] = "Ranged", -- Discipline
+		[257] = "Ranged", -- Holy
+		[258] = "Ranged", -- Shadow
+		-- Rogue
+		[259] = "Melee", -- Assassination
+		[260] = "Melee", -- Outlaw
+		[261] = "Melee", -- Subtlety
+		-- Shaman
+		[262] = "Ranged", -- Elemental
+		[263] = "Melee", -- Enhancement
+		[264] = "Ranged", -- Restoration
+		-- Warlock
+		[265] = "Ranged", -- Affliction
+		[266] = "Ranged", -- Demonology
+		[267] = "Ranged", -- Destruction
+		-- Monk
+		[268] = "Melee", -- Brewmaster
+		[270] = "Melee", -- Mistweaver
+		[269] = "Melee", -- Windwalker
+		-- Demon Hunter
+		[577] = "Melee", -- Havoc
+		[581] = "Melee", -- Vengeance
+		-- Evoker
+		[1467] = "Ranged", -- Devastation
+		[1468] = "Ranged", -- Preservation
+		[1473] = "Ranged" -- Augmentation
+	}
 
-    local ReplaceData = {}
-    local function replaceName(match)
-        local name = match:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|", "")
-        if ReplaceData[name] then
-            return ReplaceData[name]
-        else
-            return match
-        end
-    end
+	local ReplaceData = {}
+	local function replaceName(match)
+		local name = match:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|", "")
+		if ReplaceData[name] then
+			return ReplaceData[name]
+		else
+			return match
+		end
+	end
 
-    local function GetNoteLinesForTimers()
-        local lines = GetMRTNoteLines()
-        ReplaceData = {}
-        local betweenLines
-        for i=1,#lines do
-            local line = lines[i]
-            if line:match("kazestart") then
-                betweenLines = true
-            elseif line:match("kazeend") then
-                betweenLines = false
-            elseif betweenLines then
-                local cmd, arg1, arg2 = line:match("^#([^, ]+)[ ]+([^, ]+),+[ ]*([^,]+)")
-                if (cmd == "nr" or cmd == "namereplace") and arg1 and arg2 then
-                    arg1 = arg1:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|","")
-					arg2 = arg2:trim()
-                    ReplaceData[arg1] = arg2
-                end
-            elseif line:find("{time:[^}]+}") then
-                lines[i] = lines[i]:gsub("[^ \n,%(%)%[%]%}%{_%$#@!&]+", replaceName)
-            end
-        end
+	local function GSUB_RGAPIList(str)
+		if not AddonDB.RGAPI then
+			return
+		end
+		local listName, condition, RGOnly = strsplit(":", str)
+		local list = AddonDB.RGAPI:GetPlayersListCondition(listName, condition, RGOnly == "1")
+		AddonDB.RGAPI:ConvertGUIDsToNames(list)
+		return list[1] or "Unknown"
+	end
 
-        return lines
-    end
-    AddonDB.GetNoteLinesForTimers = GetNoteLinesForTimers
+	local function GetNoteLinesForTimers()
+		local lines = GetMRTNoteLines()
+		ReplaceData = {}
+		local betweenLines
+		for i=1,#lines do
+			local line = lines[i]
+			if line:match("kazestart") then
+				betweenLines = true
+			elseif line:match("kazeend") then
+				betweenLines = false
+			elseif betweenLines then
+				local cmd, arg1, arg2 = line:match("^#([^, ]+)[ ]+([^, ]+),+[ ]*([^,]+)")
+				if (cmd == "nr" or cmd == "namereplace") and arg1 and arg2 then
+					arg1 = arg1:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|","")
+					arg2 = arg2:gsub("#(.+)", GSUB_RGAPIList):trim()
+					ReplaceData[arg1] = arg2
+				end
+			elseif line:find("{time:[^}]+}") then
+				lines[i] = lines[i]:gsub("[^ \n,%(%)%[%]%}%{_%$#@!&]+", replaceName)
+			end
+		end
 
-    local keywordsString = "{name},class:{class},group:{mygroup},spec:{spec},role:{role},everyone,type:{type],personals"
-    local keywords = {}
-    keywords["%%caster"] = true
-    keywords["%%target"] = true
+		return lines
+	end
+	AddonDB.GetNoteLinesForTimers = GetNoteLinesForTimers
 
-    local replaceKeywordTable = {}
-    local function updateReplaceTable()
-        local specId, spec, _, _, role = GetSpecializationInfo(GetSpecialization())
+	local keywordsString = "class:{class},group:{mygroup},spec:{spec},role:{role},everyone,type:{type],personals" -- {name},
+	local keywords = {}
+	keywords["%%caster"] = true
+	keywords["%%target"] = true
 
-        replaceKeywordTable = {
-            ["{name}"] = UnitName("player"),
-            ["{mygroup}"] = MRT.F.GetOwnPartyNum(),
-            ["{class}"] = UnitClassBase("player"),
-            ["{spec}"] = spec,
-            ["{role}"] = role,
-            ["{type}"] = specToType[specId]
-        }
-    end
-    local function updateKeywords()
-        updateReplaceTable()
+	local replaceKeywordTable = {}
+	local function updateReplaceTable()
+		local specId, spec, _, _, role = GetSpecializationInfo(GetSpecialization())
 
-        for k in keywordsString:gmatch("([^,]+)") do
-            k = k:trim():lower():gsub("{.-}", replaceKeywordTable)
-            keywords[k] = true
-        end
-    end
+		replaceKeywordTable = {
+			-- ["{name}"] = UnitName("player"),
+			["{mygroup}"] = MRT.F.GetOwnPartyNum(),
+			["{class}"] = UnitClassBase("player"),
+			["{spec}"] = spec,
+			["{role}"] = role,
+			["{type}"] = specToType[specId]
+		}
+	end
+	local function updateKeywords()
+		updateReplaceTable()
 
-    local function shouldInputShow(line)
-        line = line:gsub("@(%S+)", ""):lower()
+		for k in keywordsString:gmatch("([^,]+)") do
+			k = k:trim():lower():gsub("{.-}", replaceKeywordTable)
+			keywords[k] = true
+		end
+	end
 
-        for k in next, keywords do
-            if line:match(k:lower()) then
-                return k
-            end
-        end
-        return false
-    end
+	local function shouldInputShow(line)
+		line = line:gsub("@(%S+)", ""):lower()
 
-    local allowedTextReplacers = {
-        ["spell"] = true
-    }
+		local clearedLine = line:gsub("{.-}", ""):gsub("||", "|"):gsub("|c........", ""):gsub("|r", ""):gsub("|",""):trim()
+		-- print(format("%q",clearedLine))
+		if UnitIsUnit(clearedLine,"player") then
+			-- print("Player found",clearedLine,line)
+			return MRT.SDB.charName
+		end
 
-    function module:ParseNoteTimers(phaseNum,doCLEU,globalPhaseNum,ignoreName)
-        updateKeywords()
+		for k in next, keywords do
+			if line:match(k:lower()) then
+				return k
+			end
+		end
+		return false
+	end
 
-        local playerName = MRT.SDB.charName
-        local playerClass = UnitClassBase('player'):lower()
-        local data = {}
+	local allowedTextReplacers = {
+		["spell"] = true
+	}
 
-        local lines = GetNoteLinesForTimers()
-        for i=1,#lines do
-            if lines[i]:find("{time:[^}]+}") then
-                local l = lines[i]
-                local fulltime,subOpts = l:match("{time:([0-9:%.]+)([^{}]*)}")
-                local phase
-                local difftime,difflen = 0
-                local isDisabled, isCLEU, isGlobalPhaseCounter
-                if subOpts then
-                    for w in string_gmatch(subOpts,"[^,]+") do
-                        local igp,pf = w:match("^p(g?)([%d%.]+)$")
-                        if pf then
-                            phase = tonumber(pf)
-                        end
-                        if igp then
-                            isGlobalPhaseCounter = true
-                        end
-                        local a,b,c = strsplit(":",w)
-                        if a == "diff" and b and (b == playerName or b:lower() == playerClass) and c then
-                            difftime = difftime + (tonumber(c) or 0)
-                        end
-                        if a == "difflen" and b and (b == playerName or b:lower() == playerClass) and c then
-                            difflen = tonumber(c)
-                        end
-                        if w == "off" then
-                            isDisabled = true
-                        elseif w:find("^S[CA][CSAR]:") then
-                            isCLEU = w
-                        end
-                    end
-                end
-                if not isDisabled and ((doCLEU and isCLEU) or (not doCLEU and not isCLEU)) then
-                    for str in string_gmatch(l .. "  ", "([^ \n-][^\n-]-)  +") do
-                        local keyword = shouldInputShow(str)
-                        if ignoreName or keyword then
-                            str = str:gsub("{(.-)}",function(s)
-                                local a,b = strsplit(":",s)
-                                if allowedTextReplacers[a] then
-                                    return "{" .. s .. "}"
-                                end
-                                return ""
-                            end)
-                            local targetName = (str:match("@(%S+)") or ""):gsub("||", "|"):gsub("|c........", ""):gsub("|r", "")
-                            str = str:gsub("@", "")
+	function module:ParseNoteTimers(phaseNum,doCLEU,globalPhaseNum,ignoreName)
+		updateKeywords()
 
-                            local suffix = keyword and str:gsub(keyword, ""):gsub("|c%x%x%x%x%x%x%x%x",""):gsub("|r",""):gsub("|",""):trim() or str
-                            if targetName ~= "" then
-                                suffix = (suffix .. " " .. targetName):trim()
-                            end
+		local playerName = MRT.SDB.charName
+		local playerClass = UnitClassBase('player'):lower()
+		local data = {}
 
-                            local spellName
-                            local spellID = tonumber(str:match("{spell:(%d+):?%d*}") or "?")
-                            if spellID then
-                                spellName = GetSpellName(spellID)
-                            else
-                                spellName = str
-                            end
+		local lines = GetNoteLinesForTimers()
+		for i=1,#lines do
+			if lines[i]:find("{time:[^}]+}") then
+				local l = lines[i]
+				local fulltime,subOpts = l:match("{time:([0-9:%.]+)([^{}]*)}")
+				local phase
+				local difftime,difflen = 0
+				local isDisabled, isCLEU, isGlobalPhaseCounter
+				if subOpts then
+					for w in string_gmatch(subOpts,"[^,]+") do
+						local igp,pf = w:match("^p(g?)([%d%.]+)$")
+						if pf then
+							phase = tonumber(pf)
+						end
+						if igp then
+							isGlobalPhaseCounter = true
+						end
+						local a,b,c = strsplit(":",w)
+						if a == "diff" and b and (b == playerName or b:lower() == playerClass) and c then
+							difftime = difftime + (tonumber(c) or 0)
+						end
+						if a == "difflen" and b and (b == playerName or b:lower() == playerClass) and c then
+							difflen = tonumber(c)
+						end
+						if w == "off" then
+							isDisabled = true
+						elseif w:find("^S[CA][CSAR]:") then
+							isCLEU = w
+						end
+					end
+				end
+				if not isDisabled and ((doCLEU and isCLEU) or (not doCLEU and not isCLEU)) then
+					for str in string_gmatch(l .. "  ", "([^ \n-][^\n-]-)  +") do
+						local keyword = shouldInputShow(str)
+						if ignoreName or keyword then
+							str = str:gsub("{(.-)}",function(s)
+								local a,b = strsplit(":",s)
+								if allowedTextReplacers[a] then
+									return "{" .. s .. "}"
+								end
+								return ""
+							end)
+							local targetName = (str:match("@(%S+)") or ""):gsub("||", "|"):gsub("|c........", ""):gsub("|r", "")
+							str = str:gsub("@", "")
 
-                            -- print(format("line: %q, keyword: %q, suffix: %q, spellName: %q", l, keyword, suffix, spellName))
-                            local phaseCheck = isGlobalPhaseCounter and globalPhaseNum or phaseNum
+							local suffix = keyword and str:gsub(keyword, ""):gsub("|c%x%x%x%x%x%x%x%x",""):gsub("|r",""):gsub("|",""):trim() or str
+							if targetName ~= "" then
+								suffix = (suffix .. " " .. targetName):trim()
+							end
 
-                            data[#data+1] = {
-                                time = fulltime,
-                                phaseMatch = phaseCheck == tostring(phase or 1),
-                                textRight = suffix,
-                                -- textLeft = prefix,
-                                spellName = spellName,
-                                fullLine = l,
-                                phase = phase,
-                                diffTime = difftime,
-                                diffLen = difflen or nil,
-                                cleu = isCLEU,
-                                targetName = targetName,
-                            }
-                        end
-                    end
-                end
-            end
-        end
+							local spellName
+							local spellID = tonumber(str:match("{spell:(%d+):?%d*}") or "?")
+							if spellID then
+								spellName = GetSpellName(spellID)
+							else
+								spellName = str
+							end
 
-        return data
-    end
+							-- print(format("line: %q, keyword: %q, suffix: %q, spellName: %q", l, keyword, suffix, spellName))
+							local phaseCheck = isGlobalPhaseCounter and globalPhaseNum or phaseNum
+
+							data[#data+1] = {
+								time = fulltime,
+								phaseMatch = phaseCheck == tostring(phase or 1),
+								textRight = suffix,
+								-- textLeft = prefix,
+								spellName = spellName,
+								fullLine = l,
+								phase = phase,
+								diffTime = difftime,
+								diffLen = difflen or nil,
+								cleu = isCLEU,
+								targetName = targetName,
+							}
+						end
+					end
+				end
+			end
+		end
+
+		return data
+	end
 end
 
 function module:TriggerBossPhase(phaseText, globalPhaseNum, phaseDelayTime)
-    if module.db.currentPhase == phaseText and GetTime() - (module.db.currentPhaseTime or 0) < 0.5 then
-        return
-    end
-    module.db.currentPhase = phaseText
-    module.db.currentPhaseTime = GetTime() - (phaseDelayTime or 0)
+	if module.db.currentPhase == phaseText and GetTime() - (module.db.currentPhaseTime or 0) < 0.5 then
+		return
+	end
+	module.db.currentPhase = phaseText
+	module.db.currentPhaseTime = GetTime() - (phaseDelayTime or 0)
 
 	local phaseNum = phaseText:match("%d+%.?%d*")
 
@@ -1565,7 +1688,7 @@ function module:TriggerBossPhase(phaseText, globalPhaseNum, phaseDelayTime)
 				local data = module:ParseNoteTimers(phaseNum,false,globalPhaseNum,event_name == "NOTE_TIMERS_ALL")
 				for i=1,#triggers do
 					local trigger = triggers[i]
-                    local triggerData = trigger._trigger
+					local triggerData = trigger._trigger
 					for j=1,#data do
 						local now = data[j]
 						trigger.DdelayTime = module:ConvertMinuteStrToNum(now.time)
@@ -1583,9 +1706,9 @@ function module:TriggerBossPhase(phaseText, globalPhaseNum, phaseDelayTime)
 								textNote = now.textRight,
 								textLeft = now.textLeft,
 								fullLine = now.fullLine,
-                                spellName = now.spellName,
+								spellName = now.spellName,
 								fullLineClear = (now.fullLine or ""):gsub("[{}]",""),
-                                targetName = now.targetName,
+								targetName = now.targetName,
 								uid = uid,
 							}
 							if now.diffLen then
@@ -1604,9 +1727,9 @@ function module:TriggerBossPhase(phaseText, globalPhaseNum, phaseDelayTime)
 			end
 		end
 	end
-    if IsHistoryEnabled then
-        module:AddHistoryEntry(2, phaseText)
-    end
+	if IsHistoryEnabled then
+		module:AddHistoryEntry(2, phaseText)
+	end
 end
 
 --/run GMRT.A.Reminder:TriggerBossPhase("1")
@@ -1675,36 +1798,36 @@ function module:TriggerBossPull(encounterID, difficultyID, pullDelayTime)
 								end})
 
 							local new = setmetatable({},{__index = function(_,a)
-                                if a == "_trigger" then
-                                    return newData
-                                elseif a == "DdelayTime" then
-                                    return DdelayTime
-                                elseif a == "status" then
-                                    return trigger.status
-                                elseif a == "count" then
-                                    return dataTable.count
-                                else
-                                    if type(triggerOverwrite[a]) == "boolean" then
-                                        return triggerOverwrite[a]
-                                    end
-                                    return triggerOverwrite[a] or trigger[a]
-                                end
-                            end, __newindex = function(_,a,v)
-                                if a == "status" then
-                                    trigger.status = v
-                                    if type(v) == "table" then
-                                        v.textNote = now.textRight
-                                        v.textLeft = now.textLeft
-                                        v.fullLine = now.fullLine
-                                        v.fullLineClear = (now.fullLine or ""):gsub("[{}]","")
-                                        v.spellName = now.spellName
-                                        v.targetName = now.targetName
-                                    end
-                                elseif a == "count" then
-                                    dataTable.count = v
-                                    trigger.count = v
-                                end
-                            end})
+								if a == "_trigger" then
+									return newData
+								elseif a == "DdelayTime" then
+									return DdelayTime
+								elseif a == "status" then
+									return trigger.status
+								elseif a == "count" then
+									return dataTable.count
+								else
+									if type(triggerOverwrite[a]) == "boolean" then
+										return triggerOverwrite[a]
+									end
+									return triggerOverwrite[a] or trigger[a]
+								end
+							end, __newindex = function(_,a,v)
+								if a == "status" then
+									trigger.status = v
+									if type(v) == "table" then
+										v.textNote = now.textRight
+										v.textLeft = now.textLeft
+										v.fullLine = now.fullLine
+										v.fullLineClear = (now.fullLine or ""):gsub("[{}]","")
+										v.spellName = now.spellName
+										v.targetName = now.targetName
+									end
+								elseif a == "count" then
+									dataTable.count = v
+									trigger.count = v
+								end
+							end})
 
 							local match = true
 							if triggerData.pattFind and ((triggerData.pattFind:find("^%-") and now.fullLine:find(triggerData.pattFind:sub(2),1,true)) or (not triggerData.pattFind:find("^%-") and not now.fullLine:find(triggerData.pattFind,1,true))) then
@@ -1721,9 +1844,9 @@ function module:TriggerBossPull(encounterID, difficultyID, pullDelayTime)
 			end
 		end
 	end
-    if IsHistoryEnabled then
-        module:AddHistoryEntry(3, encounterID, difficultyID)
-    end
+	if IsHistoryEnabled then
+		module:AddHistoryEntry(3, encounterID, difficultyID)
+	end
 end
 --/run GMRT.A.Reminder:TriggerBossPull()
 
@@ -1861,7 +1984,7 @@ function module:TriggerChat(text, sourceName, sourceGUID, targetName)
 	end
 
 	if IsHistoryEnabled then
-	    module:AddHistoryEntry(8, text, sourceName, sourceGUID, targetName)
+		module:AddHistoryEntry(8, text, sourceName, sourceGUID, targetName)
 	end
 end
 
@@ -1915,9 +2038,9 @@ function module:TriggerBossFrame(targetName, targetGUID, targetUnit)
 		end
 	end
 
-    if IsHistoryEnabled then
-        module:AddHistoryEntry(9,targetName,targetGUID,targetUnit)
-    end
+	if IsHistoryEnabled then
+		module:AddHistoryEntry(9,targetName,targetGUID,targetUnit)
+	end
 end
 
 local bossFramesblackList = {}
@@ -2016,7 +2139,7 @@ do
 	end
 	function module.main:RAID_TARGET_UPDATE()
 		if not scheduled then
-			scheduled = MRT.F.After(0.05,scheduleFunc)
+			scheduled = MRT.F.ScheduleTimer(scheduleFunc,0.05)
 		end
 	end
 end
@@ -2360,7 +2483,7 @@ local function NameplateFrame_UpdateGlow(frame)
 		frame.hpline:Show()
 	else
 		if not LCG then return end
-		local thick = customThick or VMRT.Reminder.NameplateThick
+		local thick = customThick or 2
 		thick = tonumber(thick or 2)
 		thick = floor(thick)
 		LCG.PixelGlow_Start(frame,color,customN,nil,nil,thick,1,1)
@@ -2532,7 +2655,7 @@ if not MRT.isClassic or C_UnitAuras_GetAuraDataByIndex then
 				end
 
 				if updateInfo and not updateInfo.isFullUpdate then
-                    if updateInfo.removedAuraInstanceIDs then
+					if updateInfo.removedAuraInstanceIDs then
 						for _, auraInstanceID in ipairs(updateInfo.removedAuraInstanceIDs) do
 							local aura = a[auraInstanceID]
 							if aura then
@@ -2645,7 +2768,7 @@ if not MRT.isClassic or C_UnitAuras_GetAuraDataByIndex then
 							if not triggerData.bwtimeleft or auraData.expirationTime - now < triggerData.bwtimeleft then
 								TriggerAura_DelayActive(trigger, triggerData, guid, vars)
 							else
-								local t = ScheduleTimer(TriggerAura_DelayActive, max(auraData.expirationTime - triggerData.bwtimeleft - now, 0.01), trigger, triggerData, guid, vars)
+								local t = MRT.F.ScheduleTimer(TriggerAura_DelayActive, max(auraData.expirationTime - triggerData.bwtimeleft - now, 0.01), trigger, triggerData, guid, vars)
 								module.db.timers[#module.db.timers+1] = t
 								trigger.delays2[#trigger.delays2+1] = t
 							end
@@ -2666,7 +2789,7 @@ if not MRT.isClassic or C_UnitAuras_GetAuraDataByIndex then
 								if not triggerData.bwtimeleft or auraData.expirationTime - now < triggerData.bwtimeleft then
 									TriggerAura_DelayActive(trigger, triggerData, guid, vars)
 								else
-									local t = ScheduleTimer(TriggerAura_DelayActive, max(auraData.expirationTime - triggerData.bwtimeleft - now, 0.01), trigger, triggerData, guid, vars)
+									local t = MRT.F.ScheduleTimer(TriggerAura_DelayActive, max(auraData.expirationTime - triggerData.bwtimeleft - now, 0.01), trigger, triggerData, guid, vars)
 									module.db.timers[#module.db.timers+1] = t
 									trigger.delays2[#trigger.delays2+1] = t
 								end
@@ -2808,7 +2931,7 @@ else
 							if not triggerData.bwtimeleft or auraData[4] - now < triggerData.bwtimeleft then
 								TriggerAura_DelayActive(trigger, triggerData, guid, vars)
 							else
-								local t = ScheduleTimer(TriggerAura_DelayActive, max(auraData[4] - triggerData.bwtimeleft - now, 0.01), trigger, triggerData, guid, vars)
+								local t = MRT.F.ScheduleTimer(TriggerAura_DelayActive, max(auraData[4] - triggerData.bwtimeleft - now, 0.01), trigger, triggerData, guid, vars)
 								module.db.timers[#module.db.timers+1] = t
 								trigger.delays2[#trigger.delays2+1] = t
 							end
@@ -2911,25 +3034,25 @@ function module:TriggerSpellCD(triggers)
 		local spell = triggerData.spellID or trigger.DspellName
 		if spell then
 			local startTime, duration, enabled, modRate = GetSpellCooldown(spell)
-            if type(spell) == "number" and duration == 0 and startTime == 0 then
+			if type(spell) == "number" and duration == 0 and startTime == 0 then
 				startTime, duration, enabled, modRate = GetSpellCooldown(GetSpellName(spell))
 			end
 			if duration then	--spell found
-                if not enabled then
+				if not enabled then
 					duration = 3600
 				end
 				local cdCheck = duration > gduration and duration > 0 and (not triggerData.bwtimeleft or (startTime + duration - GetTime()) < triggerData.bwtimeleft)
 
 				if not trigger.statuses[1] and cdCheck then
 					module:AddTriggerCounter(trigger)
-                    local name, _, _, _, _, _, spellID = GetSpellInfo(spell)
+					local name, _, _, _, _, _, spellID = GetSpellInfo(spell)
 					local vars = {
 						spellID = spellID,
 						spellName = name,
 						counter = trigger.count,
 						timeLeft = startTime + duration * (modRate or 1),
 					}
-                    --special case, check if spell have cd less then dur
+					--special case, check if spell have cd less then dur
 					if cdCheck and trigger._data.hideTextChanged and trigger._data.dur and tonumber(trigger._data.dur) > 0 then
 						vars.specialTriggerCheck = function(s) if vars.timeLeft < GetTime() + trigger._data.dur then return false else return s or true end end
 					end
@@ -2940,7 +3063,8 @@ function module:TriggerSpellCD(triggers)
 
 					--schedule recheck after cd expiration
 					--still can be wrong if cd duration will change afterwards
-					local t = ScheduleTimer(module.TriggerSpellCD, duration * (modRate or 1), self, triggers)
+					local t = MRT.F.ScheduleTimer(module.TriggerSpellCD, max(0.01,duration * (modRate or 1)), self, triggers)
+					module.db.timers[#module.db.timers+1] = t
 				elseif trigger.statuses[1] and not cdCheck then
 					trigger.statuses[1] = nil
 					module:DeactivateTrigger(trigger)
@@ -3094,7 +3218,7 @@ do
 		if widgetInfo.hasTimer then
 			timerWidgets[widgetInfo.widgetID] = widgetInfo
 			if not ticker then
-				ticker = MRT.F.After(1, WidgetTicker)
+				ticker = MRT.F.ScheduleTimer(WidgetTicker,-1)
 			end
 		end
 	end
@@ -3113,67 +3237,67 @@ function module:TriggerPartyUnitUpdate(triggers)
 		local trigger = triggers[i]
 		local triggerData = trigger._trigger
 
-        local list
+		local list
 		local isFirstArg
 
-        if triggerData.pattFind then
+		if triggerData.pattFind then
 			local pattList = module:FindPlayersListInNote(triggerData.pattFind)
 			if pattList then
 				list = {strsplit(" ",pattList)}
 			end
-        elseif triggerData.sourceUnit then
-            if type(triggerData.sourceUnit) == "number" then
-                if triggerData.sourceUnit >= 0 then
-                    list = {}
-                    local unitsList = module.datas.unitsList[triggerData.sourceUnit]
-                    for j=1,#unitsList do
-                        local name = UnitName(unitsList[j])
-                        if name then
-                            list[#list+1] = name
-                        end
-                    end
-                end
-            else
-                list = {UnitName(triggerData.sourceUnit)}
-            end
+		elseif triggerData.sourceUnit then
+			if type(triggerData.sourceUnit) == "number" then
+				if triggerData.sourceUnit >= 0 then
+					list = {}
+					local unitsList = module.datas.unitsList[triggerData.sourceUnit]
+					for j=1,#unitsList do
+						local name = UnitName(unitsList[j])
+						if name then
+							list[#list+1] = name
+						end
+					end
+				end
+			else
+				list = {UnitName(triggerData.sourceUnit)}
+			end
 		elseif trigger.DsourceName then
 			list = trigger.DsourceName
 			isFirstArg = true
 		end
 
-        if list then
+		if list then
 			for arg1,arg2 in next, list do
 				local name = isFirstArg and arg1 or arg2
 				local guid = allNames[name]
-                local group = allGroups[name]
+				local group = allGroups[name]
 
 				if
-                    guid and
-                    (not trigger.Dstacks or module:CheckNumber(trigger.Dstacks,group))
-                then
-                    -- if guid and not trigger.statuses[guid] then
-                        local vars = {
-                            sourceName = name,
-                            sourceGUID = guid,
-                            guid = guid,
-                            stacks = group,
-                            uid = guid,
-                            counter = 0,
-                        }
-                        trigger.statuses[guid] = vars
-                        trigger.units[guid] = name
+					guid and
+					(not trigger.Dstacks or module:CheckNumber(trigger.Dstacks,group))
+				then
+					-- if guid and not trigger.statuses[guid] then
+						local vars = {
+							sourceName = name,
+							sourceGUID = guid,
+							guid = guid,
+							stacks = group,
+							uid = guid,
+							counter = 0,
+						}
+						trigger.statuses[guid] = vars
+						trigger.units[guid] = name
 
-                        module:RunTrigger(trigger, vars)
-                    -- elseif guid and trigger.statuses[guid] and trigger._reminder.params then
-                        -- trigger._reminder.params.stacks = group
-                        -- trigger._reminder.params["stacks".. trigger._i] = group
-                    -- end
-                elseif trigger.statuses[guid] then
-                    trigger.statuses[guid] = nil
-                    trigger.units[guid] = nil
+						module:RunTrigger(trigger, vars)
+					-- elseif guid and trigger.statuses[guid] and trigger._reminder.params then
+						-- trigger._reminder.params.stacks = group
+						-- trigger._reminder.params["stacks".. trigger._i] = group
+					-- end
+				elseif trigger.statuses[guid] then
+					trigger.statuses[guid] = nil
+					trigger.units[guid] = nil
 
-                    module:DeactivateTrigger(trigger,guid)
-                end
+					module:DeactivateTrigger(trigger,guid)
+				end
 			end
 		end
 
@@ -3292,10 +3416,10 @@ function module.main:UNIT_CAST_CHECK(unit)
 end
 
 local CLEUIsHistoryEvent = {
-    ["SPELL_CAST_SUCCESS"] = true,
-    ["SPELL_CAST_START"] = true,
-    ["SPELL_AURA_APPLIED"] = true,
-    ["SPELL_AURA_REMOVED"] = true,
+	["SPELL_CAST_SUCCESS"] = true,
+	["SPELL_CAST_START"] = true,
+	["SPELL_AURA_APPLIED"] = true,
+	["SPELL_AURA_REMOVED"] = true,
 }
 
 function module.main.COMBAT_LOG_EVENT_UNFILTERED(timestamp,event,hideCaster,sourceGUID,sourceName,sourceFlags,sourceFlags2,destGUID,destName,destFlags,destFlags2,spellID,spellName,school,arg1,arg2)
@@ -3348,8 +3472,12 @@ function module.main.COMBAT_LOG_EVENT_UNFILTERED(timestamp,event,hideCaster,sour
 		end
 	end
 
-	if IsHistoryEnabled and CLEUIsHistoryEvent[event] and bit_band(sourceFlags,0x000003F0) == 0x00000240 then -- hostile and not controlled by players | bit_band(sourceFlags,0x000000F0) == 0x00000040 and bit_band(sourceFlags,0x00000300) ~= 0x00000100
-	    module:AddHistoryEntry(1,event,spellID,sourceGUID,sourceName,sourceFlags2,destGUID,destName,destFlags2)
+	-- https://warcraft.wiki.gg/wiki/UnitFlag
+	-- bitflag checks for hostile and controlled by npc
+	-- but MC'd players may be recognized as outsider pet controlled by npc
+	-- so we have to check if sourceGUID is player
+	if IsHistoryEnabled and CLEUIsHistoryEvent[event] and bit_band(sourceFlags, 0x000003F0) == 0x00000240 and not GUIDIsPlayer(sourceGUID) then
+		module:AddHistoryEntry(1,event,spellID,sourceGUID,sourceName,sourceFlags2,destGUID,destName,destFlags2)
 	end
 end
 
@@ -3359,9 +3487,9 @@ function module:TriggerBWMessage(key, text)
 		local trigger = triggers[i]
 		local triggerData = trigger._trigger
 		if
-            (triggerData.pattFind or triggerData.spellID) and
-            (not triggerData.pattFind or module:FindInString(text,triggerData.pattFind)) and
-            (not triggerData.spellID or key == triggerData.spellID)
+			(triggerData.pattFind or triggerData.spellID) and
+			(not triggerData.pattFind or module:FindInString(text,triggerData.pattFind)) and
+			(not triggerData.spellID or key == triggerData.spellID)
 		then
 			module:AddTriggerCounter(trigger)
 			if not trigger.Dcounter or module:CheckNumber(trigger.Dcounter,trigger.count) then
@@ -3403,8 +3531,8 @@ function module:TriggerBWTimer(key, text, duration)
 				(duration == 0 or duration >= tonumber(triggerData.bwtimeleft)) and
 				(
 					(triggerData.pattFind or triggerData.spellID) and
-                    (not triggerData.pattFind or module:FindInString(text,triggerData.pattFind)) and
-                    (not triggerData.spellID or key == triggerData.spellID)
+					(not triggerData.pattFind or module:FindInString(text,triggerData.pattFind)) and
+					(not triggerData.spellID or key == triggerData.spellID)
 				)
 			)
 		then
@@ -3414,7 +3542,7 @@ function module:TriggerBWTimer(key, text, duration)
 				end
 				wipe(trigger.delays2)
 			else
-				local t = ScheduleTimer(TriggerBWTimer_DelayActive, max(duration - triggerData.bwtimeleft, 0.01), trigger, triggerData, GetTime() + duration, key, text)
+				local t = MRT.F.ScheduleTimer(TriggerBWTimer_DelayActive, max(duration - triggerData.bwtimeleft, 0.01), trigger, triggerData, GetTime() + duration, key, text)
 				module.db.timers[#module.db.timers+1] = t
 				trigger.delays2[#trigger.delays2+1] = t
 			end
@@ -3425,11 +3553,11 @@ end
 do
 	local BigWigsTextToKeys = {}
 
-    local registeredBigWigsEvents = {}
+	local registeredBigWigsEvents = {}
 	local timers_on_pull = {}
 
 	local function BigWigsEventCallback(event, ...)
-        if not event or not registeredBigWigsEvents[event] then
+		if not event or not registeredBigWigsEvents[event] then
 			return
 		end
 		if (event == "BigWigs_Message") then
@@ -3453,7 +3581,7 @@ do
 				module:TriggerBWTimer(key, text, duration)
 			end
 
-            if not module.db.encounterID then
+			if not module.db.encounterID then
 				timers_on_pull[#timers_on_pull+1] = {event, ...}
 			end
 		elseif (event == "BigWigs_ResumeBar") then
@@ -3492,7 +3620,7 @@ do
 			if module.db.eventsToTriggers.BW_TIMER then
 				module:TriggerBWTimer(-1, nil, 0)
 			end
-        elseif event == "BigWigs_OnBossEngage" then
+		elseif event == "BigWigs_OnBossEngage" then
 			module:RegisterBigWigsCallback("BigWigs_StartBar")
 
 			wipe(timers_on_pull)
@@ -3502,7 +3630,7 @@ do
 		end
 	end
 
-    function module:BigWigsRecallEncounterStartEvents()
+	function module:BigWigsRecallEncounterStartEvents()
 		for i=1,#timers_on_pull do
 			BigWigsEventCallback(unpack(timers_on_pull[i]))
 		end
@@ -3510,20 +3638,20 @@ do
 	end
 
 	function module:RegisterBigWigsCallback(event)
-		if (registeredBigWigsEvents[event]) then
+		if registeredBigWigsEvents[event] then
 			return
 		end
-		if (BigWigsLoader) then
+		if BigWigsLoader then
 			BigWigsLoader.RegisterMessage(module, event, BigWigsEventCallback)
 			registeredBigWigsEvents[event] = true
 		end
 	end
 
 	function module:UnregisterBigWigsCallback(event)
-		if not (registeredBigWigsEvents[event]) then
+		if not registeredBigWigsEvents[event] then
 			return
 		end
-		if (BigWigsLoader) then
+		if BigWigsLoader then
 			BigWigsLoader.UnregisterMessage(module, event)
 			registeredBigWigsEvents[event] = nil
 		end
@@ -3540,7 +3668,7 @@ do
 		if BigWigsLoader then
 			return
 		end
-        if not event or not registeredDBMEvents[event] then
+		if not event or not registeredDBMEvents[event] then
 			return
 		end
 
@@ -3553,7 +3681,7 @@ do
 		elseif event == "DBM_TimerStart" then
 			local id, msg, duration, icon, timerType, spellId, dbmType = ...
 
-            if not id then return end
+			if not id then return end
 			if module.db.eventsToTriggers.BW_TIMER then
 				module:TriggerBWTimer(spellId, msg, duration)
 			end
@@ -3596,7 +3724,7 @@ do
 			if module.db.eventsToTriggers.BW_TIMER then
 				module:TriggerBWTimer(-1, nil, 0)
 			end
-        elseif event == "DBM_Pull" then
+		elseif event == "DBM_Pull" then
 			module:RegisterDBMCallback("DBM_TimerStart")
 
 			wipe(timers_on_pull)
@@ -3606,7 +3734,7 @@ do
 		end
 	end
 
-    function module:DBMRecallEncounterStartEvents()
+	function module:DBMRecallEncounterStartEvents()
 		for i=1,#timers_on_pull do
 			DBMEventCallback(unpack(timers_on_pull[i]))
 		end
@@ -3614,7 +3742,7 @@ do
 	end
 
 	function module:RegisterDBMCallback(event)
-		if (registeredDBMEvents[event]) then
+		if registeredDBMEvents[event] then
 			return
 		end
 		if type(DBM)=='table' and DBM.RegisterCallback then
@@ -3623,14 +3751,14 @@ do
 			if event == "DBM_kill" or event == "DBM_wipe" then
 				event = event:sub(5)
 			end
-            if not DBM:IsCallbackRegistered(event, DBMEventCallback) then
-			    DBM:RegisterCallback(event, DBMEventCallback)
-            end
+			if not DBM:IsCallbackRegistered(event, DBMEventCallback) then
+				DBM:RegisterCallback(event, DBMEventCallback)
+			end
 		end
 	end
 
 	function module:UnregisterDBMCallback(event)
-		if not (registeredDBMEvents[event]) then
+		if not registeredDBMEvents[event] then
 			return
 		end
 		if type(DBM)=='table' and DBM.UnregisterCallback then
@@ -3895,118 +4023,119 @@ do
 	end
 end
 
-local function CheckNoteCache(cacheKey,y,x)
-    -- pos = pos % #allpos
-    -- if pos == 0 then pos = #allpos end
-    if cacheKey:find("^block") then
-        if notePatsCache[cacheKey] then
-            local currCache = notePatsCache[cacheKey]
-            if y then
-                y = y % #currCache
-                if y == 0 then y = #currCache end
-                if x and currCache[y] then -- targeted spot
-                    x = x % #currCache[y]
-                    if x == 0 then x = #currCache[y] end
-                    if currCache[y][x] and currCache[y][x]:find(playerName) then
-                        return true, true
-                    end
-                else -- iterate whole line
-                    for i=1,#currCache[y] do
-                        if currCache[y][i] and currCache[y][i]:find(playerName) then
-                            return true, true
-                        end
-                    end
-                end
-            else -- iterate whole cache
-                for i=1,#currCache do
-                    for j=1,#currCache[i] do
-                        if currCache[i][j] and currCache[i][j]:find(playerName) then
-                            return true, true
-                        end
-                    end
-                end
-            end
+local function CheckNoteCache(cacheKey, y, x, customName)
+	local nameToFind = customName or playerName
+	-- pos = pos % #allpos
+	-- if pos == 0 then pos = #allpos end
+	if cacheKey:find("^block") then
+		if notePatsCache[cacheKey] then
+			local currCache = notePatsCache[cacheKey]
+			if y then
+				y = y % #currCache
+				if y == 0 then y = #currCache end
+				if x and currCache[y] then -- targeted spot
+					x = x % #currCache[y]
+					if x == 0 then x = #currCache[y] end
+					if currCache[y][x] and currCache[y][x]:find(nameToFind) then
+						return true, true
+					end
+				else -- iterate whole line
+					for i=1,#currCache[y] do
+						if currCache[y][i] and currCache[y][i]:find(nameToFind) then
+							return true, true
+						end
+					end
+				end
+			else -- iterate whole cache
+				for i=1,#currCache do
+					for j=1,#currCache[i] do
+						if currCache[i][j] and currCache[i][j]:find(nameToFind) then
+							return true, true
+						end
+					end
+				end
+			end
 
-            return true -- have cache but no player found
-        end
-    else -- patt is for lines
-        if notePatsCache[cacheKey] then
-            local currCache = notePatsCache[cacheKey]
-            if y then -- targeted spot
-                y = y % #currCache
-                if y == 0 then y = #currCache end
-                if currCache[y] and currCache[y]:find(playerName) then
-                    return true, true
-                end
-                return true -- have cache but no player found
-            else -- iterate whole line
-                for i,name in next, currCache do
-                    if name:find(playerName) then
-                        return true, true
-                    end
-                end
-            end
-        end
-    end
+			return true -- have cache but no player found
+		end
+	else -- patt is for lines
+		if notePatsCache[cacheKey] then
+			local currCache = notePatsCache[cacheKey]
+			if y then -- targeted spot
+				y = y % #currCache
+				if y == 0 then y = #currCache end
+				if currCache[y] and currCache[y]:find(nameToFind) then
+					return true, true
+				end
+				return true -- have cache but no player found
+			else -- iterate whole line
+				for i,name in next, currCache do
+					if name:find(nameToFind) then
+						return true, true
+					end
+				end
+			end
+		end
+	end
 
-    -- no cache
+	-- no cache
 end
 
-function module:ParseNote(data)
-    local notepat = data.notepat
-    local reverse, pat, storePosData, y, x = notepat:match("^(%-?)([^{]+){(pos):?(%d*):?(%d*)}")
-    pat = pat and pat:trim() -- trim is needed to securly catch patStart patEnd
-    reverse = reverse ~= "" -- if reverse is not found it returns an empty string, make sure it is not counts as "true"
-    if not storePosData then
-        return module:FindPlayerInNote(data.notepat,data.noteIsBlock)
-    end
+function module:ParseNote(data, nameToFind)
+	local notepat = data.notepat
+	local reverse, pat, storePosData, y, x = notepat:match("^(%-?)([^{]+){(pos):?(%d*):?(%d*)}")
+	pat = pat and pat:trim() -- trim is needed to securly catch patStart patEnd
+	reverse = reverse ~= "" -- if reverse is not found it returns an empty string, make sure it is not counts as "true"
+	if not storePosData then
+		return module:FindPlayerInNote(data.notepat,data.noteIsBlock)
+	end
 
-    x = tonumber(x) -- pos in line
-    y = tonumber(y) -- line num
+	x = tonumber(x) -- pos in line
+	y = tonumber(y) -- line num
 
 
-    local cacheKey = (data.noteIsBlock and "block" or "line") .. pat
-    local haveCache, playerFound = CheckNoteCache(cacheKey,y,x)
-    if playerFound then
-        return not reverse -- true
-    elseif haveCache then
-        return reverse --false
-    end
+	local cacheKey = (data.noteIsBlock and "block" or "line") .. pat
+	local haveCache, playerFound = CheckNoteCache(cacheKey, y, x, nameToFind)
+	if playerFound then
+		return not reverse -- true
+	elseif haveCache then
+		return reverse -- false
+	end
 
-    pat = "^"..pat:gsub("([%.%(%)%-%$])","%%%1"):gsub("%b{}","") -- double {} check
-    local noteData = {}
+	pat = "^"..pat:gsub("([%.%(%)%-%$])","%%%1"):gsub("%b{}","") -- double {} check
+	local noteData = {}
 
-    if data.noteIsBlock then
-        local lines = {strsplit("\n", VMRT.Note.Text1)}
-        local lineNum = 0
-        local betweenLines = false
-        for i=1,#lines do
-            if lines[i]:trim():find(pat.."Start$") then
-                betweenLines = true
-            elseif lines[i]:trim():find(pat.."End$") then
-                betweenLines = false
-                break
-            elseif betweenLines then
-                local line = lines[i]:gsub("|c........",""):gsub("|r",""):gsub("%b{}",""):gsub("|",""):gsub(" +"," "):trim()
-                lineNum = lineNum + 1
-                local u,uc = {},0
-                line = line:gsub("%b()",function(a)
-                    uc = uc + 1
-                    u[uc] = a:sub(2,-2):trim()
-                    return "##"..uc
-                end)
-                local allpos = {strsplit(" ", line)}
-                for i,name in ipairs(allpos) do
-                    if name:find("^##%d+$") then
-                        local c = name:match("^##(%d+)$")
-                        allpos[i] = u[tonumber(c)]
-                    end
-                end
-                noteData[lineNum] = allpos
-            end
-        end
-    else
-        local lines = {strsplit("\n", VMRT.Note.Text1)}
+	if data.noteIsBlock then
+		local lines = {strsplit("\n", VMRT.Note.Text1)}
+		local lineNum = 0
+		local betweenLines = false
+		for i=1,#lines do
+			if lines[i]:trim():find(pat.."Start$") then
+				betweenLines = true
+			elseif lines[i]:trim():find(pat.."End$") then
+				betweenLines = false
+				break
+			elseif betweenLines then
+				local line = lines[i]:gsub("|c........",""):gsub("|r",""):gsub("%b{}",""):gsub("|",""):gsub(" +"," "):trim()
+				lineNum = lineNum + 1
+				local u,uc = {},0
+				line = line:gsub("%b()",function(a)
+					uc = uc + 1
+					u[uc] = a:sub(2,-2):trim()
+					return "##"..uc
+				end)
+				local allpos = {strsplit(" ", line)}
+				for i,name in ipairs(allpos) do
+					if name:find("^##%d+$") then
+						local c = name:match("^##(%d+)$")
+						allpos[i] = u[tonumber(c)]
+					end
+				end
+				noteData[lineNum] = allpos
+			end
+		end
+	else
+		local lines = {strsplit("\n", VMRT.Note.Text1)}
 		for i=1,#lines do
 			if lines[i]:find(pat) then
 				-- pos = tonumber(pos)
@@ -4019,283 +4148,130 @@ function module:ParseNote(data)
 				end)
 				local allpos = {strsplit(" ", line)}
 
-                for i,name in ipairs(allpos) do
-                    if name:find("^##%d+$") then
-                        local c = name:match("^##(%d+)$")
-                        allpos[i] = u[tonumber(c)]
-                    end
-                end
+				for i,name in ipairs(allpos) do
+					if name:find("^##%d+$") then
+						local c = name:match("^##(%d+)$")
+						allpos[i] = u[tonumber(c)]
+					end
+				end
 
-                noteData = allpos
-                break
+				noteData = allpos
+				break
 			end
 		end
-    end
-    if #noteData == 0 then
-        noteData = nil
-    end
-    notePatsCache[cacheKey] = noteData
-    haveCache, playerFound = CheckNoteCache(cacheKey,y,x)
-    if playerFound then
-        return not reverse -- true
-    else
-        return reverse --false
-    end
+	end
+	if #noteData == 0 then
+		noteData = nil
+	end
+	notePatsCache[cacheKey] = noteData
+	haveCache, playerFound = CheckNoteCache(cacheKey, y, x, nameToFind)
+	if playerFound then
+		return not reverse -- true
+	else
+		return reverse --false
+	end
 end
 
 function module:FindPlayerInNote(pat,isNoteBlock)
-    local reverse, pat = pat:match("^(%-?)([^{]+)")
-    pat = pat and pat:trim()
-    reverse = reverse ~= "" -- if reverse is not found it returns an empty string, make sure it is not counts as "true"
+	local reverse, pat = pat:match("^(%-?)([^{]+)")
+	pat = pat and pat:trim()
+	reverse = reverse ~= "" -- if reverse is not found it returns an empty string, make sure it is not counts as "true"
 	-- local reverse = pat:find("^%-")
 	pat = "^"..pat:gsub("([%.%(%)%-%$])","%%%1"):gsub("%b{}","") -- double {} check
 	if not VMRT or not VMRT.Note or not VMRT.Note.Text1 then
 		return
 	end
-    if not isNoteBlock then
-        local lines = {strsplit("\n", VMRT.Note.Text1)}
-        for i=1,#lines do
-            if lines[i]:find(pat) then
-                local l = lines[i]:gsub(pat.." *",""):gsub("|c........",""):gsub("|r",""):gsub(" *$",""):gsub("|",""):gsub(" +"," ")
-                l = l:gsub("%b()",function(a)
+	if not isNoteBlock then
+		local lines = {strsplit("\n", VMRT.Note.Text1)}
+		for i=1,#lines do
+			if lines[i]:find(pat) then
+				local l = lines[i]:gsub(pat.." *",""):gsub("|c........",""):gsub("|r",""):gsub(" *$",""):gsub("|",""):gsub(" +"," ")
+				l = l:gsub("%b()",function(a)
 					return a:sub(2,-2):trim()
 				end)
-                local list = {strsplit(" ", l)}
-                for j=1,#list do
-                    if list[j] == playerName then
-                        if reverse then
-                            return false, lines[i]
-                        else
-                            return true, lines[i]
-                        end
-                    end
-                end
-            end
-        end
-    else
-        local lines = {strsplit("\n", VMRT.Note.Text1)}
-        local betweenLines = false
-        for i=1,#lines do
-            if lines[i]:find(pat.."Start$") then
-                betweenLines = true
-            elseif lines[i]:find(pat.."End$") then
-                betweenLines = false
-                break
-            elseif betweenLines then
-                local l = lines[i]:gsub("|c........",""):gsub("|r",""):gsub(" *$",""):gsub("|",""):gsub(" +"," ")
-                l = l:gsub("%b()",function(a)
+				local list = {strsplit(" ", l)}
+				for j=1,#list do
+					if list[j] == playerName then
+						if reverse then
+							return false, lines[i]
+						else
+							return true, lines[i]
+						end
+					end
+				end
+			end
+		end
+	else
+		local lines = {strsplit("\n", VMRT.Note.Text1)}
+		local betweenLines = false
+		for i=1,#lines do
+			if lines[i]:find(pat.."Start$") then
+				betweenLines = true
+			elseif lines[i]:find(pat.."End$") then
+				betweenLines = false
+				break
+			elseif betweenLines then
+				local l = lines[i]:gsub("|c........",""):gsub("|r",""):gsub(" *$",""):gsub("|",""):gsub(" +"," ")
+				l = l:gsub("%b()",function(a)
 					return a:sub(2,-2):trim()
 				end)
-                local list = {strsplit(" ", l)}
-                for j=1,#list do
-                    if list[j] == playerName then
-                        if reverse then
-                            return false, lines[i]
-                        else
-                            return true, lines[i]
-                        end
-                    end
-                end
-            end
-        end
-    end
-    if reverse then
-        return true
-    end
+				local list = {strsplit(" ", l)}
+				for j=1,#list do
+					if list[j] == playerName then
+						if reverse then
+							return false, lines[i]
+						else
+							return true, lines[i]
+						end
+					end
+				end
+			end
+		end
+	end
+	if reverse then
+		return true
+	end
 end
-
-function module:RGAPIGetList(id,RGOnly)
-    if not (AddonDB.RGAPI and AddonDB.RGAPI.GetPlayersListSafe) then return end
-
-    RGOnly = RGOnly or false
-    if module.db.encounterID then -- only look in cache if we are in encounter
-        if listsCache[id] and listsCache[id][RGOnly] then
-            return listsCache[id][RGOnly]
-        end
-    end
-
-    local list = AddonDB.RGAPI:GetPlayersListSafe(id,nil,RGOnly)
-    if list then
-        listsCache[id] = listsCache[id] or {}
-        listsCache[id][RGOnly] = list
-        return list
-    else
-        prettyPrint("Error while getting list: "..tostring(id),list)
-    end
-end
-
--- return true if player name is within the condition
-function module:RGAPICheckListCondition(id, conditions, RGOnly, customName)
-    local playerName = customName or playerName
-
-    local list
-    if type(id) == "table" then
-        list = id
-    elseif type(id) == "string" then
-        list = module:RGAPIGetList(id,RGOnly)
-    else
-        prettyPrint("invalid RGAPI condition")
-        return
-    end
-
-    if not list or #list == 0 then
-        return false
-    end
-
-    local isReverse = conditions and conditions:find("^%-") == 1
-    conditions = isReverse and conditions:sub(2) or conditions
-
-    local inList = tIndexOf(list, playerName)
-    if not inList then
-        return isReverse
-    end
-
-    if not conditions or conditions == "" then
-        return not isReverse
-    end
-
-    local listSize = #list
-    for cond in string.gmatch(conditions, "[^, ]+") do
-        local pass = false
-        local inverseCounter, value1, type, value2 = cond:match("([rR]?)(%d+)([%-%%/]?)(%d*)$")
-        value1, value2 = tonumber(value1), tonumber(value2)
-
-        local myPos = inList
-        if inverseCounter:upper() == "R" then
-            myPos = listSize - inList + 1
-        end
-
-        if type == "-" then
-            if not value1 or not value2 then prettyPrint("invalid RGAPI condition") return end
-            pass = myPos >= value1 and myPos <= value2
-        elseif type == "%" then
-            if not value1 or not value2 then prettyPrint("invalid RGAPI condition") return end
-            pass = (myPos - 1) % value2 == value1 - 1
-        elseif type == "/" then
-            if not value1 or not value2 then prettyPrint("invalid RGAPI condition") return end
-            local splitSize = math.floor(listSize / value2)
-            local extraNames = listSize % value2
-            local splitStart, splitEnd
-
-            if value1 <= extraNames then
-                -- Splits with an extra name
-                splitStart = (value1 - 1) * (splitSize + 1) + 1
-                splitEnd = value1 * (splitSize + 1)
-            else
-                -- Splits without an extra name
-                splitStart = extraNames * (splitSize + 1) + (value1 - extraNames - 1) * splitSize + 1
-                splitEnd = splitStart + splitSize - 1
-            end
-
-            pass = myPos >= splitStart and myPos <= splitEnd
-        elseif value1 then
-            pass = myPos == value1
-        else
-            prettyPrint("invalid RGAPI condition")
-        end
-
-        if pass ~= isReverse then
-            return true
-        end
-    end
-
-    return false
-end
-
-function module:RGAPIListPlayersMeetingCondition(id, conditions, RGOnly)
-    local list
-    if type(id) == "table" then
-        list = id
-    elseif type(id) == "string" then
-        list = module:RGAPIGetList(id, RGOnly)
-    else
-        prettyPrint("invalid RGAPI condition")
-        return {}
-    end
-
-    if not list or #list == 0 then
-        return {}
-    end
-
-    if not conditions or conditions == "" then
-        return list
-    end
-
-    local isReverse = conditions and conditions:find("^%-") == 1
-    conditions = isReverse and conditions:sub(2) or conditions
-
-    local matchingPlayers = {}
-    local listSize = #list
-    local conditionMetForPlayers = {}
-
-    for cond in string_gmatch(conditions, "[^, ]+") do
-        local inverseCounter, value1, type, value2 = cond:match("([rR]?)(%d+)([%-%%/]?)(%d*)$")
-        value1, value2 = tonumber(value1), tonumber(value2)
-
-        local iterator
-        if inverseCounter and inverseCounter:upper() == "R" then
-            iterator = ipairs_reverse
-        else
-            iterator = ipairs
-        end
-
-        for i, playerName in iterator(list) do
-            local myPos = inverseCounter and inverseCounter:upper() == "R" and listSize - i + 1 or i
-            if not conditionMetForPlayers[playerName] then -- Check if player has not already met a condition
-                local pass = false
-
-                if type == "-" then
-                    if not value1 or not value2 then prettyPrint("invalid RGAPI condition") return end
-                    pass = myPos >= value1 and myPos <= value2
-                elseif type == "%" then
-                    if not value1 or not value2 then prettyPrint("invalid RGAPI condition") return end
-                    pass = (myPos - 1) % value2 == value1 - 1
-                elseif type == "/" then
-                    if not value1 or not value2 then prettyPrint("invalid RGAPI condition") return end
-                    local splitSize = math.floor(listSize / value2)
-                    local extraNames = listSize % value2
-                    local splitStart, splitEnd
-
-                    if value1 <= extraNames then
-                        splitStart = (value1 - 1) * (splitSize + 1) + 1
-                        splitEnd = value1 * (splitSize + 1)
-                    else
-                        splitStart = extraNames * (splitSize + 1) + (value1 - extraNames - 1) * splitSize + 1
-                        splitEnd = splitStart + splitSize - 1
-                    end
-
-                    pass = myPos >= splitStart and myPos <= splitEnd
-                elseif value1 then
-                    pass = myPos == value1
-                else
-                    prettyPrint("invalid RGAPI condition")
-                end
-
-                if pass ~= isReverse then
-                    tinsert(matchingPlayers, playerName)
-                    conditionMetForPlayers[playerName] = true -- Mark player as having met a condition
-                end
-            end
-        end
-    end
-
-    return matchingPlayers
-end
-
----------------------------------------
--- Text Frame OnUpdate
----------------------------------------
-
-
 
 ---------------------------------------
 -- Functions That Used When Showing Reminders
 ---------------------------------------
 do
+	local function isMostlyRussian(text)
+		-- Remove everything except letters (both Latin and Cyrillic)
+		local letters = text:gsub("[^%aА-ЯЁа-яё]", "")
+		if letters == "" then
+		   return false
+		end
+		local russianCount = 0
+		for uchar in letters:gmatch(".") do
+		   if uchar:match("[А-ЯЁа-яё]") then
+			  russianCount = russianCount + 1
+		   end
+		end
+		return (russianCount / #letters) > 0.5
+	 end
+
+	 local function isMostlyKorean(text)
+		-- Get all alphabetical characters (English and Korean)
+		local letters = text:gsub("[^%a가-힣]", "")
+		if letters == "" then
+			return false
+		end
+
+		local koreanCount = 0
+		for uchar in letters:gmatch(".") do
+			if uchar:match("[가-힣]") then
+				koreanCount = koreanCount + 1
+			end
+		end
+		return (koreanCount / #letters) > 0.5
+	end
+
 	local missingTTSStrings = {}
 	local function exportMissingTTSStrings()
 		local t = {}
-		for k in pairs(missingTTSStrings) do
+		for k in next, missingTTSStrings do
 			tinsert(t,k)
 		end
 		table.sort(t)
@@ -4309,15 +4285,29 @@ do
 		"Interface\\AddOns\\".. GlobalAddonName.. "\\Media\\Private\\TTS\\",
 		"Interface\\AddOns\\".. GlobalAddonName.. "\\Media\\Sounds\\TTS\\",
 	}
+	local markToText = {
+		["{rt1}"] = "Star",
+		["{rt2}"] = "Orange",
+		["{rt3}"] = "Purple",
+		["{rt4}"] = "Green",
+		["{rt5}"] = "Moon",
+		["{rt6}"] = "Blue",
+		["{rt7}"] = "Cross",
+		["{rt8}"] = "Skull",
+	}
 
-    local LibTranslit = LibStub("LibTranslit-1.0")
-    function module:PlayTTS(msg,params)
-        local message = module:FormatMsg(msg or "",params)
 
-        local willPlay
+	local LibTranslit = LibStub("LibTranslit-1.0")
+	function module:PlayTTS(msg,params,forceUseTTSFiles)
+		msg = msg:gsub("{rt%d}", markToText)
 
-        if not VMRT.Reminder.ttsIgnoreFiles then
-            local sound = tostring(message):trim()
+		local message = module:FormatMsg(msg or "", params)
+
+
+		local willPlay
+
+		if not VMRT.Reminder.VisualSettings.TTS_IgnoreFiles or forceUseTTSFiles then
+			local sound = tostring(message):trim()
 
 			for i=1,#soundPaths do
 				local soundFile = format("%s%s.mp3", soundPaths[i], sound)
@@ -4328,21 +4318,30 @@ do
 				willPlay = PlaySoundFile(soundFile, "Master")
 				if willPlay then break end
 			end
-        end
+		end
 
-        if not willPlay then
-			if AddonDB.VersionHash == "DEV" then
+		if not willPlay then
+			if AddonDB.IsDev then
 				missingTTSStrings[message] = true
 			end
-            C_VoiceChat_SpeakText(
-                VMRT.Reminder.ttsVoice or TextToSpeech_GetSelectedVoice(Enum.TtsVoiceType.Standard).voiceID,
-                module.db.isTtsTranslateNeeded and LibTranslit:Transliterate(message) or message,
-                Enum.VoiceTtsDestination.QueuedLocalPlayback,
-                VMRT.Reminder.ttsVoiceRate or 0,
-                VMRT.Reminder.ttsVoiceVolume or 100
-            )
-        end
-    end
+			local ttsVoice = VMRT.Reminder.VisualSettings.TTS_Voice or TextToSpeech_GetSelectedVoice(Enum.TtsVoiceType.Standard).voiceID
+			if MRT.locale ~= "koKR" and VMRT.Reminder.VisualSettings.TTS_VoiceAlt and isMostlyRussian(message) then
+				ttsVoice = VMRT.Reminder.VisualSettings.TTS_VoiceAlt
+			elseif MRT.locale == "koKR" and VMRT.Reminder.VisualSettings.TTS_VoiceAlt and isMostlyKorean(message) then
+				ttsVoice = VMRT.Reminder.VisualSettings.TTS_VoiceAlt
+			elseif module.db.isTtsTranslateNeeded then
+				message = LibTranslit:Transliterate(message)
+			end
+
+			C_VoiceChat_SpeakText(
+				ttsVoice,
+				message,
+				Enum.VoiceTtsDestination.QueuedLocalPlayback,
+				VMRT.Reminder.VisualSettings.TTS_VoiceRate or 0,
+				VMRT.Reminder.VisualSettings.TTS_VoiceVolume or 75
+			)
+		end
+	end
 end
 
 function module:SendWeakAurasCustomEvent(msg,params)
@@ -4361,67 +4360,67 @@ function module:SendWeakAurasCustomEvent(msg,params)
 end
 
 local function stopFrameGlow(unitData)
-    local glow_frame = unitData.frame and unitData.frame.__ReminderGlowFrame
-    local id = unitData.key
-    if glow_frame then
-        if unitData.cancelFunc then
-            unitData.cancelFunc(glow_frame,id)
-        end
+	local glow_frame = unitData.frame and unitData.frame.__ReminderGlowFrame
+	local id = unitData.key
+	if glow_frame then
+		if unitData.cancelFunc then
+			unitData.cancelFunc(glow_frame,id)
+		end
 
-        -- if glow_frame.text then
-        --     glow_frame.text:Hide()
-        --     glow_frame.textUpate:Hide()
-        -- end
-    end
+		-- if glow_frame.text then
+		--     glow_frame.text:Hide()
+		--     glow_frame.textUpate:Hide()
+		-- end
+	end
 end
 
 local function startFrameGlow(unitData)
-    local unitFrame = unitData.frame
-    if not unitFrame then return end
+	local unitFrame = unitData.frame
+	if not unitFrame then return end
 
-    if not unitFrame.__ReminderGlowFrame then
-        unitFrame.__ReminderGlowFrame = CreateFrame("Frame", nil, unitFrame)
-        unitFrame.__ReminderGlowFrame:SetAllPoints(unitFrame)
-        unitFrame.__ReminderGlowFrame:SetSize(unitFrame:GetSize())
-        unitFrame.__ReminderGlowFrame:SetFrameLevel(unitFrame:GetFrameLevel() + 15)
-    end
+	if not unitFrame.__ReminderGlowFrame then
+		unitFrame.__ReminderGlowFrame = CreateFrame("Frame", nil, unitFrame)
+		unitFrame.__ReminderGlowFrame:SetAllPoints(unitFrame)
+		unitFrame.__ReminderGlowFrame:SetSize(unitFrame:GetSize())
+		unitFrame.__ReminderGlowFrame:SetFrameLevel(unitFrame:GetFrameLevel() + 15)
+	end
 
-    local glow_frame = unitFrame.__ReminderGlowFrame
-    if glow_frame:GetWidth() < 1 or glow_frame:GetHeight() < 1 then
-        stopFrameGlow(unitData)
-        return
-    end
+	local glow_frame = unitFrame.__ReminderGlowFrame
+	if glow_frame:GetWidth() < 1 or glow_frame:GetHeight() < 1 then
+		stopFrameGlow(unitData)
+		return
+	end
 
-    local data = unitData.data
-    -- local frameText = data.frameText or "%tsize:30{spell:642}"
+	local data = unitData.data
+	-- local frameText = data.frameText or "%tsize:30{spell:642}"
 
-    -- if frameText then
+	-- if frameText then
 
-    --     if not glow_frame.text then
-    --         glow_frame.text = glow_frame:CreateFontString(nil,"OVERLAY","GameFontWhite")
-    --         glow_frame.text:SetFont(MRT.F.defFont, 12, "OUTLINE")
-    --         glow_frame.text.size = 12
-    --         glow_frame.text:SetAllPoints()
+	--     if not glow_frame.text then
+	--         glow_frame.text = glow_frame:CreateFontString(nil,"OVERLAY","GameFontWhite")
+	--         glow_frame.text:SetFont(MRT.F.defFont, 12, "OUTLINE")
+	--         glow_frame.text.size = 12
+	--         glow_frame.text:SetAllPoints()
 
-    --         glow_frame.textUpate = CreateFrame("Frame",nil,glow_frame)
-    --         glow_frame.textUpate:SetPoint("CENTER")
-    --         glow_frame.textUpate:SetSize(1,1)
-    --         glow_frame.textUpate:Hide()
-    --         glow_frame.textUpate.tmr = 0
-    --         glow_frame.textUpate.text = glow_frame.text
-    --         glow_frame.textUpate:SetScript("OnUpdate",NameplateFrame_TextUpdate)
-    --     end
+	--         glow_frame.textUpate = CreateFrame("Frame",nil,glow_frame)
+	--         glow_frame.textUpate:SetPoint("CENTER")
+	--         glow_frame.textUpate:SetSize(1,1)
+	--         glow_frame.textUpate:Hide()
+	--         glow_frame.textUpate.tmr = 0
+	--         glow_frame.textUpate.text = glow_frame.text
+	--         glow_frame.textUpate:SetScript("OnUpdate",NameplateFrame_TextUpdate)
+	--     end
 
-    --     local text = frameText
-    --     local t = unitData
+	--     local text = frameText
+	--     local t = unitData
 
 
 	-- 	if text:find("%%tsize:%d+") then
 	-- 		local tsize = text:match("%%tsize:(%d+)")
 	-- 		t.textSize = tonumber(tsize)
 	-- 		text = text:gsub("%%tsize:%d+","")
-    --     else
-    --         t.textSize = 12
+	--     else
+	--         t.textSize = 12
 	-- 	end
 
 	-- 	if text:find("%%tpos:..") then
@@ -4441,152 +4440,158 @@ local function startFrameGlow(unitData)
 	-- 		glow_frame.textUpate.func = function()
 	-- 			return module:FormatMsg(textPreFormat,t.params)
 	-- 		end
-    --         glow_frame.textUpate:Show()
+	--         glow_frame.textUpate:Show()
 	-- 	else
 	-- 		t.textUpdateReq = nil
 	-- 	end
-    --     if t.textSize ~= glow_frame.text.size then
-    --         glow_frame.text:SetFont(glow_frame.text:GetFont(),t.textSize,"OUTLINE")
-    --         glow_frame.text.size = t.textSize
-    --     end
-    --     glow_frame.text:ClearAllPoints()
-    --     if t.justifyH == "LEFT" then glow_frame.text:SetPoint("LEFT")
-    --         elseif t.justifyH == "RIGHT" then glow_frame.text:SetPoint("RIGHT")
-    --         else glow_frame.text:SetPoint("CENTER") end
-    --     if t.justifyV == "TOP" then glow_frame.text:SetPoint("TOP")
-    --         elseif data.justifyV == "BOTTOM" then glow_frame.text:SetPoint("BOTTOM")
-    --         else glow_frame.text:SetPoint("CENTER") end
-    --     glow_frame.text:SetText(t.text or "")
+	--     if t.textSize ~= glow_frame.text.size then
+	--         glow_frame.text:SetFont(glow_frame.text:GetFont(),t.textSize,"OUTLINE")
+	--         glow_frame.text.size = t.textSize
+	--     end
+	--     glow_frame.text:ClearAllPoints()
+	--     if t.justifyH == "LEFT" then glow_frame.text:SetPoint("LEFT")
+	--         elseif t.justifyH == "RIGHT" then glow_frame.text:SetPoint("RIGHT")
+	--         else glow_frame.text:SetPoint("CENTER") end
+	--     if t.justifyV == "TOP" then glow_frame.text:SetPoint("TOP")
+	--         elseif data.justifyV == "BOTTOM" then glow_frame.text:SetPoint("BOTTOM")
+	--         else glow_frame.text:SetPoint("CENTER") end
+	--     glow_frame.text:SetText(t.text or "")
 
-    --     glow_frame.text:Show()
-    -- else
-    --     if glow_frame.text then
-    --         glow_frame.text:Hide()
-    --         glow_frame.textUpate:Hide()
-    --     end
-    -- end
+	--     glow_frame.text:Show()
+	-- else
+	--     if glow_frame.text then
+	--         glow_frame.text:Hide()
+	--         glow_frame.textUpate:Hide()
+	--     end
+	-- end
 
-    local id = unitData.key
+	local id = unitData.key
 
-    local duration = data.duration and data.duration ~= 0 and data.duration or 2
-    local untimed = (data.duration and data.duration == 0) and true or false
-    if data.glow then
-        local GlowSettings = VMRT.Reminder.Glow
+	local duration = data.duration and data.duration ~= 0 and data.duration or 2
+	local untimed = (data.duration and data.duration == 0) and true or false
+	if data.glow then
+		local GlowSettings = VMRT.Reminder.VisualSettings.Glow
 
-        local colorPalette = data.glowFrameColor or GlowSettings.Color
-        local a, r, g, b = tonumber('0x'..strsub(colorPalette, 1, 2))/255,tonumber('0x'..strsub(colorPalette, 3, 4))/255, tonumber('0x'..strsub(colorPalette, 5, 6))/255, tonumber('0x'..strsub(colorPalette, 7, 8))/255
-        local color = {r,g,b,a}
+		local colorPalette = data.glowFrameColor or GlowSettings.Color
+		local a, r, g, b = tonumber('0x'..strsub(colorPalette, 1, 2))/255,tonumber('0x'..strsub(colorPalette, 3, 4))/255, tonumber('0x'..strsub(colorPalette, 5, 6))/255, tonumber('0x'..strsub(colorPalette, 7, 8))/255
+		local color = {r,g,b,a}
 
-        local GlowType = GlowSettings.type
-        if GlowType == "Pixel Glow" then
-            local PixelGlow = GlowSettings.PixelGlow
-            LCG.PixelGlow_Start(
-                glow_frame,
-                color,
-                PixelGlow.count,
-                PixelGlow.frequency,
-                PixelGlow.length,
-                PixelGlow.thickness,
-                PixelGlow.xOffset,
-                PixelGlow.yOffset,
-                PixelGlow.border,
-                id
-            )
+		local GlowType = GlowSettings.type
+		if GlowType == "Pixel Glow" then
+			local PixelGlow = GlowSettings.PixelGlow
+			LCG.PixelGlow_Start(
+				glow_frame,
+				color,
+				PixelGlow.count,
+				PixelGlow.frequency,
+				PixelGlow.length,
+				PixelGlow.thickness,
+				PixelGlow.xOffset,
+				PixelGlow.yOffset,
+				PixelGlow.border,
+				id
+			)
 
-            unitData.cancelFunc = LCG.PixelGlow_Stop
-        elseif GlowType == "Autocast Shine" then
-            local AutoCastGlow = GlowSettings.AutoCastGlow
-            LCG.AutoCastGlow_Start(
-                glow_frame,
-                color,
-                AutoCastGlow.count,
-                AutoCastGlow.frequency,
-                AutoCastGlow.scale,
-                AutoCastGlow.xOffset,
-                AutoCastGlow.yOffset,
-                id
-            )
+			unitData.cancelFunc = LCG.PixelGlow_Stop
+		elseif GlowType == "Autocast Shine" then
+			local AutoCastGlow = GlowSettings.AutoCastGlow
+			LCG.AutoCastGlow_Start(
+				glow_frame,
+				color,
+				AutoCastGlow.count,
+				AutoCastGlow.frequency,
+				AutoCastGlow.scale,
+				AutoCastGlow.xOffset,
+				AutoCastGlow.yOffset,
+				id
+			)
 
-            unitData.cancelFunc = LCG.AutoCastGlow_Stop
-        elseif GlowType == "Proc Glow" then
-            local ProcGlow = GlowSettings.ProcGlow
-            LCG.ProcGlow_Start(
-                glow_frame,
-                {
-                    color = color,
-                    duration = ProcGlow.duration,
-                    startAnim = ProcGlow.startAnim,
-                    xOffset = ProcGlow.xOffset,
-                    yOffset = ProcGlow.yOffset,
-                    key = id,
-                }
-            )
+			unitData.cancelFunc = LCG.AutoCastGlow_Stop
+		elseif GlowType == "Proc Glow" then
+			local ProcGlow = GlowSettings.ProcGlow
+			LCG.ProcGlow_Start(
+				glow_frame,
+				{
+					color = color,
+					duration = ProcGlow.duration,
+					startAnim = ProcGlow.startAnim,
+					xOffset = ProcGlow.xOffset,
+					yOffset = ProcGlow.yOffset,
+					key = id,
+				}
+			)
 
-            unitData.cancelFunc = LCG.ProcGlow_Stop
-        else
-            LCG.ButtonGlow_Start(
-                glow_frame,
-                color,
-                GlowSettings.ActionButtonGlow.frequency
-            )
+			unitData.cancelFunc = LCG.ProcGlow_Stop
+		else
+			LCG.ButtonGlow_Start(
+				glow_frame,
+				color,
+				GlowSettings.ActionButtonGlow.frequency
+			)
 
-            unitData.cancelFunc = LCG.ButtonGlow_Stop
-        end
-    end
+			unitData.cancelFunc = LCG.ButtonGlow_Stop
+		end
+	end
 
-    if not unitData.timer then
-        if not untimed and duration then
-            local timer = MRT.F.After(duration, function()
-                stopFrameGlow(unitData)
-                unitData:stopFrameMonitoring()
-            end)
-            unitData.timer = timer
-            module.db.timers[#module.db.timers+1] = timer
-        end
-    end
+	if not unitData.timer then
+		if not untimed and duration then
+			local timer = MRT.F.ScheduleTimer(function()
+				stopFrameGlow(unitData)
+				unitData:stopFrameMonitoring()
+			end, duration)
+			unitData.timer = timer
+			module.db.timers[#module.db.timers+1] = timer
+		end
+	end
 end
 
 do
-    local function frame_monitor_callback(event, frame, unit, previousUnit)
-        local new_frame
-        local FRAME_UNIT_UPDATE = event == "FRAME_UNIT_UPDATE"
-        local FRAME_UNIT_ADDED = event == "FRAME_UNIT_ADDED"
-        local FRAME_UNIT_REMOVED = event == "FRAME_UNIT_REMOVED"
-        local GUID = UnitGUID(unit)
+	local function frame_monitor_callback(event, frame, unit, previousUnit)
+		local new_frame
+		local FRAME_UNIT_UPDATE = event == "FRAME_UNIT_UPDATE"
+		local FRAME_UNIT_ADDED = event == "FRAME_UNIT_ADDED"
+		local FRAME_UNIT_REMOVED = event == "FRAME_UNIT_REMOVED"
+		local GUID = UnitGUID(unit)
 
-        if type(glow_frame_monitor) == "table" then
-            for reminder, units in next, glow_frame_monitor do
-                local unitData = units[GUID]
-                if unitData and
-                (
-                  ((FRAME_UNIT_ADDED or FRAME_UNIT_UPDATE) and (unitData.frame ~= frame)) or
-                  (FRAME_UNIT_REMOVED and unitData.frame == frame)
-                )
-                then
-                    if not new_frame then
-                        new_frame = LGF.GetFrame(unit,LGFNullOpt)
-                    end
-                    if new_frame ~= unitData.frame then
-                        -- remove previous glow
-                        stopFrameGlow(unitData)
-                        if new_frame then
-                            -- apply the glow to new_frame
-                            unitData.frame = new_frame
-                            startFrameGlow(unitData)
-                        end
-                    end
-                end
-            end
-        end
-    end
+		if type(glow_frame_monitor) == "table" then
+			for reminder, units in next, glow_frame_monitor do
+				local unitData = units[GUID]
+				if unitData and
+				(
+				  ((FRAME_UNIT_ADDED or FRAME_UNIT_UPDATE) and (unitData.frame ~= frame)) or
+				  (FRAME_UNIT_REMOVED and unitData.frame == frame)
+				)
+				then
+					if not new_frame then
+						new_frame = LGF.GetFrame(unit,LGFNullOpt)
+					end
+					if new_frame ~= unitData.frame then
+						-- remove previous glow
+						stopFrameGlow(unitData)
+						if new_frame then
+							-- apply the glow to new_frame
+							unitData.frame = new_frame
+							startFrameGlow(unitData)
+						end
+					end
+				end
+			end
+		end
+	end
 
-    LGF.RegisterCallback("Reminder", "FRAME_UNIT_UPDATE", frame_monitor_callback)
-    LGF.RegisterCallback("Reminder", "FRAME_UNIT_ADDED", frame_monitor_callback)
-    LGF.RegisterCallback("Reminder", "FRAME_UNIT_REMOVED", frame_monitor_callback)
+	LGF.RegisterCallback("Reminder", "FRAME_UNIT_UPDATE", frame_monitor_callback)
+	LGF.RegisterCallback("Reminder", "FRAME_UNIT_ADDED", frame_monitor_callback)
+	LGF.RegisterCallback("Reminder", "FRAME_UNIT_REMOVED", frame_monitor_callback)
 end
 
 local function stopFrameMonitoring(self)
-    glow_frame_monitor[self.reminder][self.GUID] = nil
+	if type(glow_frame_monitor) == "table" then
+		glow_frame_monitor[self.reminder][self.GUID] = nil
+	end
+	if self.timer then
+		self.timer:Cancel()
+		self.timer = nil
+	end
 end
 
 function module:ParseGlow(data,params)
@@ -4596,73 +4601,77 @@ function module:ParseGlow(data,params)
 			glowTarget = params.targetName
 		end
 		local unit = glowTarget and ((IsInRaid() and UnitInRaid(glowTarget) and "raid" .. UnitInRaid(glowTarget)) or
-        (IsInGroup() and UnitInParty(glowTarget) and UnitTokenFromGUID(UnitGUID(glowTarget))) or
-        (UnitIsUnit("player", glowTarget) and "player"))
-        -- print(unit)
-		if not unit then return end
+		(IsInGroup() and UnitInParty(glowTarget) and UnitTokenFromGUID(UnitGUID(glowTarget))) or
+		(UnitIsUnit("player", glowTarget) and "player"))
+		-- print(unit)
+		if unit then
+			local unitFrame = LGF.GetFrame(unit,LGFNullOpt)
 
-		local unitFrame = LGF.GetFrame(unit,LGFNullOpt)
+			local reminder = params._reminder
 
-        local reminder = params._reminder
+			glow_frame_monitor = glow_frame_monitor or {}
+			glow_frame_monitor[reminder] = glow_frame_monitor[reminder] or {}
 
-        local GUID = UnitGUID(glowTarget)
-        local unitData = {
-            GUID = GUID,
-            data = data,
-            params = params,
-            reminder = reminder,
-            frame = unitFrame,
-            key = data.token,
-            stopFrameMonitoring = stopFrameMonitoring,
-        }
+			local GUID = UnitGUID(glowTarget)
 
-        glow_frame_monitor = glow_frame_monitor or {}
-        glow_frame_monitor[reminder] = glow_frame_monitor[reminder] or {}
-        glow_frame_monitor[reminder][GUID] = unitData
+			if GUID and not glow_frame_monitor[reminder][GUID] then
+				local unitData = {
+					GUID = GUID,
+					data = data,
+					params = params,
+					reminder = reminder,
+					frame = unitFrame,
+					key = data.token,
+					stopFrameMonitoring = stopFrameMonitoring,
+				}
 
-        if unitFrame then
-			startFrameGlow(unitData)
-        end
-        -- DevTool:AddData(glow_frame_monitor)
+				glow_frame_monitor[reminder][GUID] = unitData
+
+				if unitFrame then
+					startFrameGlow(unitData)
+				end
+				-- DevTool:AddData(glow_frame_monitor)
+			end
+		end
 	end
 end
 
 function module:ResetAllGlows()
-    if type(glow_frame_monitor) == "table" then
-        for reminder, units in next, glow_frame_monitor do
-            for GUID, unitData in next, units do
-                stopFrameGlow(unitData)
-                unitData:stopFrameMonitoring()
-            end
-        end
-    end
-    glow_frame_monitor = nil
+	if type(glow_frame_monitor) == "table" then
+		for reminder, units in next, glow_frame_monitor do
+			for GUID, unitData in next, units do
+				stopFrameGlow(unitData)
+				unitData:stopFrameMonitoring()
+			end
+		end
+	end
+	glow_frame_monitor = nil
 end
 
 function module:HideGlowByUID(reminder, uid)
-    if type(glow_frame_monitor) == "table" then
-        local units = glow_frame_monitor[reminder]
-        if units then
-            for GUID, unitData in next, units do
-                if unitData.params.guid == uid or unitData.params.uid == uid then
-                    stopFrameGlow(unitData)
-                    unitData:stopFrameMonitoring()
-                end
-            end
-        end
-    end
+	if type(glow_frame_monitor) == "table" then
+		local units = glow_frame_monitor[reminder]
+		if units then
+			for GUID, unitData in next, units do
+				if unitData.params.guid == uid or unitData.params.uid == uid then
+					stopFrameGlow(unitData)
+					unitData:stopFrameMonitoring()
+				end
+			end
+		end
+	end
 end
 
 function module:HideGlowByData(reminder)
-    if type(glow_frame_monitor) == "table" then
-        local units = glow_frame_monitor[reminder]
-        if units then
-            for GUID, unitData in next, units do
-                stopFrameGlow(unitData)
-                unitData:stopFrameMonitoring()
-            end
-        end
-    end
+	if type(glow_frame_monitor) == "table" then
+		local units = glow_frame_monitor[reminder]
+		if units then
+			for GUID, unitData in next, units do
+				stopFrameGlow(unitData)
+				unitData:stopFrameMonitoring()
+			end
+		end
+	end
 end
 
 function module:SayChatSpam(data, params)
@@ -4671,8 +4680,8 @@ function module:SayChatSpam(data, params)
 	local channelName = data.spamChannel == 1 and "SAY" or data.spamChannel == 3 and IsInGroup() and "PARTY" or data.spamChannel == 4 and (IsInRaid() and "RAID" or "PARTY") or "YELL" -- 2 = YELL
 	local untimed = (data.duration and data.duration == 0) and true or false
 	local duration = data.duration or 3
-    local msg, msgUpdateReq = module:FormatMsg(data.spamMsg or "",params,true)
-    msg = module:FormatMsgForChat(msg)
+	local msg, msgUpdateReq = module:FormatMsg(data.spamMsg or "",params,true)
+	msg = module:FormatMsgForChat(msg)
 
 
 	for i=1,#ChatSpamTimers do
@@ -4683,8 +4692,8 @@ function module:SayChatSpam(data, params)
 	local _SendChatMessage = SendChatMessage
 	if (channelName == "SAY" or channelName == "YELL") and select(2,GetInstanceInfo()) == "none" then
 		_SendChatMessage = MRT.NULLfunc
-    end
-    if data.spamChannel == 5 then
+	end
+	if data.spamChannel == 5 then
 		_SendChatMessage = prettyPrint
 	end
 
@@ -4693,14 +4702,14 @@ function module:SayChatSpam(data, params)
 			local function printf()
 				local newmsg = msgUpdateReq and module:FormatMsgForChat(module:FormatMsg(str or "", params, true)) or msg
 				_SendChatMessage(newmsg, channelName)
-				ChatSpamTimers[#ChatSpamTimers+1] = ScheduleTimer(printf,1.5)
+				ChatSpamTimers[#ChatSpamTimers+1] = MRT.F.ScheduleTimer(printf,1.5)
 				ChatSpamUntimed = {
 					timer = ChatSpamTimers[#ChatSpamTimers],
 					data = data,
 				}
 			end
 
-			ChatSpamTimers[1] = ScheduleTimer(printf,0.01)
+			ChatSpamTimers[1] = MRT.F.ScheduleTimer(printf,0.01)
 			ChatSpamUntimed = {
 				timer = ChatSpamTimers[1],
 				data = data,
@@ -4720,7 +4729,7 @@ function module:SayChatSpam(data, params)
 				_SendChatMessage(newmsg.." "..c, channelName)
 			end
 			for i=1,duration+1 do
-				ChatSpamTimers[i] = ScheduleTimer(printf,max(i-1,0.01),floor(duration-(i-1)))
+				ChatSpamTimers[i] = MRT.F.ScheduleTimer(printf,max(i-1,0.01),floor(duration-(i-1)))
 			end
 		elseif sType == 2 then
 			local function printf()
@@ -4728,7 +4737,7 @@ function module:SayChatSpam(data, params)
 				_SendChatMessage(newmsg, channelName)
 			end
 			for i=1,duration+1 do
-				ChatSpamTimers[i] = ScheduleTimer(printf,max(i-1,0.01))
+				ChatSpamTimers[i] = MRT.F.ScheduleTimer(printf,max(i-1,0.01))
 			end
 		elseif sType == 3 then
 			local function printf()
@@ -4746,7 +4755,7 @@ end
 function module:CheckAllTriggers(trigger, printLog)
 	local data, reminder = trigger._data, trigger._reminder
 
-    for i,t in ipairs(reminder.triggers) do
+	for i,t in ipairs(reminder.triggers) do
 		if t.status and t.status.specialTriggerCheck and not t.status.specialTriggerCheck() then
 			module:DeactivateTrigger(t)
 			--module:RunAndRemoveTimer(module.DeactivateTrigger,nil,t,t.status.uid or t.status.guid or 1,true)
@@ -4773,16 +4782,16 @@ function module:CheckAllTriggers(trigger, printLog)
 				t.count = 0
 			end
 		end
-        if printLog then
+		if printLog then
 			prettyPrint("Activation: all triggers check |cffff0000not passed|r")
 		end
 	end
 
 	if check then
-        if printLog then
+		if printLog then
 			prettyPrint("Activation: all triggers check passed")
 		end
-        if data.sametargets then
+		if data.sametargets then
 			local guid = type(trigger.status) == "table" and trigger.status.guid
 			if guid then
 				local allguidsaresame = true
@@ -4808,38 +4817,58 @@ function module:CheckAllTriggers(trigger, printLog)
 					module:ShowReminder(trigger, printLog)
 				end
 			end
-        else
-		    module:ShowReminder(trigger, printLog)
-        end
+		else
+			module:ShowReminder(trigger, printLog)
+		end
 	end
 
 	--hide all copies for reminders without duration
 	if (data.duration == 0 or data.hideTextChanged) and not check then
-        if data.msg then
-            for j=#module.db.showedReminders,1,-1 do
-                local showed = module.db.showedReminders[j]
-                if showed.data == data then
-                    -- if showed.voice then
-                    --     showed.voice:Cancel()
-                    -- end
-                    tremove(module.db.showedReminders,j)
-                end
-            end
-        end
+		if data.msg then
+			for j=#module.db.showedReminders,1,-1 do
+				local showed = module.db.showedReminders[j]
+				if showed.data == data then
+					-- if showed.voice then
+					--     showed.voice:Cancel()
+					-- end
+					tremove(module.db.showedReminders,j)
+				end
+			end
+		end
 
-        if data.soundOnHide then
-            for j=#module.db.onHideSounds,1,-1 do
-                local sound = module.db.onHideSounds[j]
-                if sound.data == data then
-                    pcall(PlaySoundFile, sound.sound, "Master")
-                    tremove(module.db.onHideSounds,j)
-                end
-            end
-        end
+		if data.soundOnHide then
+			for j=#module.db.onHideSounds,1,-1 do
+				local sound = module.db.onHideSounds[j]
+				if sound.data == data then
+					if sound.delay then
+						local tmr = MRT.F.ScheduleTimer(PlaySoundFile, max(sound.delay,0.01), sound.sound, "Master")
+						module.db.timers[#module.db.timers+1] = tmr
+					else
+						pcall(PlaySoundFile, sound.sound, "Master")
+					end
+					tremove(module.db.onHideSounds,j)
+				end
+			end
+		end
 
-        if data.glow then
-            module:HideGlowByData(trigger._reminder)
-        end
+		if data.ttsOnHide then
+			for j=#module.db.onHideTTS,1,-1 do
+				local tts = module.db.onHideTTS[j]
+				if tts.data == data then
+					if tts.delay then
+						local tmr = MRT.F.ScheduleTimer(module.PlayTTS, max(tts.delay,0.01), module, tts.tts,tts.params)
+						module.db.timers[#module.db.timers+1] = tmr
+					else
+						module:PlayTTS(tts.tts,tts.params)
+					end
+					tremove(module.db.onHideTTS,j)
+				end
+			end
+		end
+
+		if data.glow then
+			module:HideGlowByData(trigger._reminder)
+		end
 		if ChatSpamUntimed and ChatSpamUntimed.data == data then
 			ChatSpamUntimed.timer:Cancel()
 		end
@@ -4856,14 +4885,14 @@ function module:CheckAllTriggers(trigger, printLog)
 				end
 			end
 		end
-        if data.voiceCountdown then
-            for i=1,#voiceCountdowns do
-                if voiceCountdowns[i].data == data then
-                    voiceCountdowns[i].voice:Cancel()
-                    tremove(voiceCountdowns,i)
-                end
-            end
-        end
+		if data.voiceCountdown then
+			for i=1,#voiceCountdowns do
+				if voiceCountdowns[i].data == data then
+					voiceCountdowns[i].voice:Cancel()
+					tremove(voiceCountdowns,i)
+				end
+			end
+		end
 	end
 end
 
@@ -4906,6 +4935,9 @@ function module:UnloadAll()
 	wipe(module.db.showedReminders)
 	wipe(reminders)
 
+	wipe(module.db.onHideSounds)
+	wipe(module.db.onHideTTS)
+
 	for _,f in next, module.db.nameplateFrames do
 		f:Hide()
 	end
@@ -4917,7 +4949,7 @@ function module:UnloadAll()
 
 	nameplateUsed = false
 
-    module:ResetAllGlows()
+	module:ResetAllGlows()
 
 	for i=1,#ChatSpamTimers do
 		ChatSpamTimers[i]:Cancel()
@@ -4926,10 +4958,10 @@ function module:UnloadAll()
 	wipe(ChatSpamUntimed)
 
 	wipe(unitAuras)
-    wipe(unitAurasInstances)
+	wipe(unitAurasInstances)
 	wipe(bossFramesblackList)
 
-    wipe(voiceCountdowns)
+	wipe(voiceCountdowns)
 
 	tCOMBAT_LOG_EVENT_UNFILTERED = nil
 	tUNIT_HEALTH = nil
@@ -4940,16 +4972,19 @@ function module:UnloadAll()
 	tUNIT_SPELLCAST_SUCCEEDED = nil
 	tUNIT_CAST = nil
 
-    wipe(module.db.notePatsCache)
-    wipe(module.db.RGListsCache)
+	wipe(module.db.notePatsCache)
+	if MRT.A.RG_Assignments then
+		wipe(MRT.A.RG_Assignments.db.listsCache)
+	end
 
 	if C_VoiceChat and C_VoiceChat.StopSpeakingText then
 		C_VoiceChat.StopSpeakingText()
 	end
 
-    frameBars:StopAllBars()
+	frameBars:StopAllBars()
 
-    module.db.simrun = nil
+	module.db.simrun = nil
+	module.db.simrun_mute = nil
 end
 
 local function CancelSoundTimers(self)
@@ -4981,21 +5016,21 @@ end
 
 function module:FilterFuncReminders(data,encounterID,difficultyID,zoneID,myName,myClass,myRole1,myRole2,alias,checkIsLoaded)
 	if
-        not data.disabled and
-            data.triggers and #data.triggers > 0 and
-            (not checkIsLoaded or not module:FindReminderByData(data)) and
-            (
-                data.defDisabled and VMRT.Reminder.defEnabled[data.token] or
-                not data.defDisabled and not VMRT.Reminder.disabled[data.token]
-            ) and
+		not data.disabled and
+			data.triggers and #data.triggers > 0 and
+			(not checkIsLoaded or not module:FindReminderByData(data)) and
+			(
+				data.defDisabled and module:GetDataOption(data.token, "DEF_ENABLED") or
+				not data.defDisabled and not module:GetDataOption(data.token, "DISABLED")
+			) and
 			(not data.doNotLoadOnBosses or not encounterID) and
 			(
 				(not data.boss or data.boss == encounterID) and
-                (not data.diff or data.diff == difficultyID) and
+				(not data.diff or data.diff == difficultyID) and
 				(not data.zoneID or zoneID and module:FindNumberInString(zoneID,data.zoneID))
 			) and
 			(not myName or module:CheckPlayerCondition(data,myName,myClass,myRole1,myRole2,alias)) or
-            module.db.forceLoadUIDs[data.token]
+			module.db.forceLoadUIDs[data.token]
 	then
 		return true
 	else
@@ -5032,8 +5067,20 @@ function module:UnloadUnusedReminders()
 	if module.db.debug then print("Unloaded Reminders",count) end
 end
 
-function module:CreateFunctions(encounterID,difficultyID,zoneID)
-    if module.db.stayLoaded then
+function module:UpdateTTSTransliterateStatus()
+	module.db.isTtsTranslateNeeded = false
+	for k,v in next, ttsVoices do
+		if v.voiceID == VMRT.Reminder.VisualSettings.TTS_Voice then
+			if v.name:match("English") then
+				module.db.isTtsTranslateNeeded = true
+			end
+			break
+		end
+	end
+end
+
+function module:CreateFunctions(encounterID,difficultyID,zoneID,isSimrun)
+	if module.db.stayLoaded then
 		module:UnloadUnusedReminders()
 	else
 		module:UnloadAll()
@@ -5043,115 +5090,113 @@ function module:CreateFunctions(encounterID,difficultyID,zoneID)
 		return
 	end
 
+	if isSimrun then
+		ScheduleTimer = module.ScheduleSimrunTimer
+	else
+		ScheduleTimer = MRT.F.ScheduleTimer
+	end
+
 	local myName = MRT.SDB.charName
 	local myClass = UnitClassBase('player')
 	local myRole1, myRole2 = module:GetPlayerRole()
-    local alias = AddonDB.RGAPI and AddonDB.RGAPI:GetNick("player")
+	local alias = AddonDB.RGAPI and AddonDB.RGAPI:GetNick("player")
 
-	module.db.isTtsTranslateNeeded = false
-	for k,v in next, ttsVoices do
-		if v.voiceID == VMRT.Reminder.ttsVoice then
-			if v.name:match("English") then
-				module.db.isTtsTranslateNeeded = true
-			end
-			break
-		end
-	end
+	module:UpdateTTSTransliterateStatus()
 
 	for token,data in next, VMRT.Reminder.data do
-        if module:FilterFuncReminders(data,encounterID,difficultyID,zoneID,myName,myClass,myRole1,myRole2,alias,true) then
+		if module:FilterFuncReminders(data,encounterID,difficultyID,zoneID,myName,myClass,myRole1,myRole2,alias,true) then
 			local reminder = {
-                triggers = {},
-                data = data,
-            }
-            reminders[#reminders+1] = reminder
-            for i=1,#data.triggers do
-                local trigger = data.triggers[i]
-                local triggerData = module:CopyTriggerEventForReminder(trigger)
+				triggers = {},
+				data = data,
+			}
+			reminders[#reminders+1] = reminder
+			for i=1,#data.triggers do
+				local trigger = data.triggers[i]
+				local triggerData = module:CopyTriggerEventForReminder(trigger)
 
-                local triggerNow = {
-                    _i = i,
-                    _trigger = triggerData,
-                    _reminder = reminder,
-                    _data = data,
+				local triggerNow = {
+					_i = i,
+					_trigger = triggerData,
+					_reminder = reminder,
+					_data = data,
 
-                    status = false,
-                    count = 0,
-                    countsS = {},
-                    countsD = {},
-                    active = {},
-                    statuses = {},
+					status = false,
+					count = 0,
+					countsS = {},
+					countsD = {},
+					active = {},
+					statuses = {},
 
-                    Dcounter = module:CreateNumberConditions(triggerData.counter),
-                    DnumberPercent = module:CreateNumberConditions(triggerData.numberPercent),
-                    Dstacks = module:CreateNumberConditions(triggerData.stacks),
+					Dcounter = module:CreateNumberConditions(triggerData.counter),
+					DnumberPercent = module:CreateNumberConditions(triggerData.numberPercent),
+					Dstacks = module:CreateNumberConditions(triggerData.stacks),
 
-                    DdelayTime = module:ConvertMinuteStrToNum(triggerData.delayTime,data.notepat),
-                    DsourceName = module:CreateStringConditions(triggerData.sourceName),
-                    DtargetName = module:CreateStringConditions(triggerData.targetName),
-                    DsourceID = module:CreateMobIDConditions(triggerData.sourceID),
-                    DtargetID = module:CreateMobIDConditions(triggerData.targetID),
+					DdelayTime = module:ConvertMinuteStrToNum(triggerData.delayTime,data.notepat),
+					DsourceName = module:CreateStringConditions(triggerData.sourceName),
+					DtargetName = module:CreateStringConditions(triggerData.targetName),
+					DsourceID = module:CreateMobIDConditions(triggerData.sourceID),
+					DtargetID = module:CreateMobIDConditions(triggerData.targetID),
 
 					DspellName = triggerData.spellName and tonumber(triggerData.spellName) and GetSpellName(tonumber(triggerData.spellName)) or triggerData.spellName,
-                }
-                reminder.triggers[i] = triggerNow
+				}
+				reminder.triggers[i] = triggerNow
 
-                if trigger.event and module.C[trigger.event] then
-                    local eventDB = module.C[trigger.event]
+				if trigger.event and module.C[trigger.event] then
+					local eventDB = module.C[trigger.event]
 
-                    eventsUsed[trigger.event] = true
+					eventsUsed[trigger.event] = true
 
-                    local eventTable = module.db.eventsToTriggers[eventDB.name]
-                    if not eventTable then
-                        eventTable = {}
-                        module.db.eventsToTriggers[eventDB.name] = eventTable
-                    end
+					local eventTable = module.db.eventsToTriggers[eventDB.name]
+					if not eventTable then
+						eventTable = {}
+						module.db.eventsToTriggers[eventDB.name] = eventTable
+					end
 
-                    if eventDB.isUntimed and not trigger.activeTime then
-                        triggerNow.untimed = true
-                        triggerNow.delays = {}
-                    end
-                    if eventDB.extraDelayTable then
-                        triggerNow.delays2 = {}
-                    end
-                    if eventDB.isUntimed and trigger.activeTime then
-                        triggerNow.ignoreManualOff = true
-                    end
+					if eventDB.isUntimed and not trigger.activeTime then
+						triggerNow.untimed = true
+						triggerNow.delays = {}
+					end
+					if eventDB.extraDelayTable then
+						triggerNow.delays2 = {}
+					end
+					if eventDB.isUntimed and trigger.activeTime then
+						triggerNow.ignoreManualOff = true
+					end
 
-                    if eventDB.subEventField then
-                        local subEventDB = module.C[ trigger[eventDB.subEventField] ]
-                        if subEventDB then
-                            for _,subRegEvent in module.IterateTable(subEventDB.events) do
-                                local subEventTable = eventTable[subRegEvent]
-                                if not subEventTable then
-                                    subEventTable = {}
-                                    eventTable[subRegEvent] = subEventTable
-                                end
+					if eventDB.subEventField then
+						local subEventDB = module.C[ trigger[eventDB.subEventField] ]
+						if subEventDB then
+							for _,subRegEvent in module.IterateTable(subEventDB.events) do
+								local subEventTable = eventTable[subRegEvent]
+								if not subEventTable then
+									subEventTable = {}
+									eventTable[subRegEvent] = subEventTable
+								end
 
-                                subEventTable[#subEventTable+1] = triggerNow
-                            end
-                        end
-                    elseif eventDB.isUnits then
-                        triggerNow.units = {}
+								subEventTable[#subEventTable+1] = triggerNow
+							end
+						end
+					elseif eventDB.isUnits then
+						triggerNow.units = {}
 
-                        local units = trigger[eventDB.unitField]
+						local units = trigger[eventDB.unitField]
 
-                        unitsUsed[units or 0] = true
+						unitsUsed[units or 0] = true
 
-                        if type(units) == "number" then
-                            if units < 0 then
-                                units = module.datas.unitsList.ALL
-                                for j=1,#module.datas.unitsList do
-                                    unitsUsed[j] = true
-                                end
-                            else
-                                units = module.datas.unitsList[units]
-                            end
-                        end
+						if type(units) == "number" then
+							if units < 0 then
+								units = module.datas.unitsList.ALL
+								for j=1,#module.datas.unitsList do
+									unitsUsed[j] = true
+								end
+							else
+								units = module.datas.unitsList[units]
+							end
+						end
 
-                        if units then
-                            for _,unit in module.IterateTable(units) do
-                                local funit = unitreplace_rev[unit] or unit
+						if units then
+							for _,unit in module.IterateTable(units) do
+								local funit = unitreplace_rev[unit] or unit
 
 								local unitTable = eventTable[funit]
 								if not unitTable then
@@ -5159,50 +5204,50 @@ function module:CreateFunctions(encounterID,difficultyID,zoneID)
 									eventTable[funit] = unitTable
 								end
 
-                                unitTable[#unitTable+1] = triggerNow
-                            end
-                        else
-                            eventTable[#eventTable+1] = triggerNow
-                        end
-                    else
-                        eventTable[#eventTable+1] = triggerNow
-                    end
-                end
-            end
-            local triggersStr = ""
-            local opened = false
-            for i=#data.triggers,2,-1 do
-                local trigger = data.triggers[i]
-                if not trigger.andor or trigger.andor == 1 then
-                    triggersStr = "and "..(opened and "(" or "")..(trigger.invert and "not " or "").."t["..i.."].status " .. triggersStr
-                    opened = false
-                elseif trigger.andor == 2 then
-                    triggersStr = "or "..(opened and "(" or "")..(trigger.invert and "not " or "").."t["..i.."].status " .. triggersStr
-                    opened = false
-                elseif trigger.andor == 3 then
-                    triggersStr = "or "..(trigger.invert and "not " or "").."t["..i.."].status"..(not opened and ")" or "").." " .. triggersStr
-                    opened = true
-                end
-            end
-            triggersStr = (opened and "(" or "")..(data.triggers[1].invert and "not " or "").."t[1].status "..triggersStr
-            -- is reminder active
-            reminder.activeFunc = loadstring("return function(t) return "..triggersStr.." end")()
-            -- would reminder be active if trigger n would be active
-            reminder.activeFunc2 = loadstring("return function(t,n) local s=t[n].status t[n].status=not t[n]._trigger.invert local r="..triggersStr.." t[n].status=s return r end")()
+								unitTable[#unitTable+1] = triggerNow
+							end
+						else
+							eventTable[#eventTable+1] = triggerNow
+						end
+					else
+						eventTable[#eventTable+1] = triggerNow
+					end
+				end
+			end
+			local triggersStr = ""
+			local opened = false
+			for i=#data.triggers,2,-1 do
+				local trigger = data.triggers[i]
+				if not trigger.andor or trigger.andor == 1 then
+					triggersStr = "and "..(opened and "(" or "")..(trigger.invert and "not " or "").."t["..i.."].status " .. triggersStr
+					opened = false
+				elseif trigger.andor == 2 then
+					triggersStr = "or "..(opened and "(" or "")..(trigger.invert and "not " or "").."t["..i.."].status " .. triggersStr
+					opened = false
+				elseif trigger.andor == 3 then
+					triggersStr = "or "..(trigger.invert and "not " or "").."t["..i.."].status"..(not opened and ")" or "").." " .. triggersStr
+					opened = true
+				end
+			end
+			triggersStr = (opened and "(" or "")..(data.triggers[1].invert and "not " or "").."t[1].status "..triggersStr
+			-- is reminder active
+			reminder.activeFunc = loadstring("return function(t) return "..triggersStr.." end")()
+			-- would reminder be active if trigger n would be active
+			reminder.activeFunc2 = loadstring("return function(t,n) local s=t[n].status t[n].status=not t[n]._trigger.invert local r="..triggersStr.." t[n].status=s return r end")()
 
-            reminder.delayedActivation = module:ConvertMinuteStrToNum(data.delay)
+			reminder.delayedActivation = module:ConvertMinuteStrToNum(data.delay)
 
-            if data.nameplateGlow then
-                nameplateUsed = true
-            end
+			if data.nameplateGlow then
+				nameplateUsed = true
+			end
 
-            if #data.triggers > 0 then
-            	module:CheckAllTriggers(reminder.triggers[1])
-            end
+			if #data.triggers > 0 then
+				module:CheckAllTriggers(reminder.triggers[1])
+			end
 		end
-    end
+	end
 
-    -- Register Events
+	-- Register Events
 	for id in next, eventsUsed do
 		local eventDB = module.C[id]
 		if eventDB and eventDB.events then
@@ -5211,24 +5256,24 @@ function module:CreateFunctions(encounterID,difficultyID,zoneID)
 					module:RegisterBigWigsCallback(event)
 				elseif event:find("^DBM_") then
 					module:RegisterDBMCallback(event)
-                elseif eventDB.isUnits then
-                    local eventTable = module.db.eventsToTriggers[eventDB.name]
-                    local units = {}
-                    local i = 0
-                    for unit in next, eventTable do
-                        i = i + 1
-                        if i > 4 then
-                            i = nil
-                            break
-                        end
-                        tinsert(units,unit)
-                    end
-                    if i then
-                        module:RegisterUnitEvent(event,unpack(units))
-                    else
-                        module:RegisterEvents(event)
-                    end
-                else
+				elseif eventDB.isUnits then
+					local eventTable = module.db.eventsToTriggers[eventDB.name]
+					local units = {}
+					local i = 0
+					for unit in next, eventTable do
+						i = i + 1
+						if i > 4 then
+							i = nil
+							break
+						end
+						tinsert(units,unit)
+					end
+					if i then
+						module:RegisterUnitEvent(event,unpack(units))
+					else
+						module:RegisterEvents(event)
+					end
+				else
 					module:RegisterEvents(event)
 				end
 			end
@@ -5264,7 +5309,7 @@ function module:CreateFunctions(encounterID,difficultyID,zoneID)
 		module:RegisterEvents("NAME_PLATE_UNIT_ADDED","NAME_PLATE_UNIT_REMOVED")
 	end
 
-    if encounterID then
+	if encounterID then
 		module:PrepeareForHistoryRecording()
 	end
 
@@ -5289,396 +5334,8 @@ function module:CreateFunctions(encounterID,difficultyID,zoneID)
 		module.main:RAID_TARGET_UPDATE()
 	end
 
-    wipe(module.db.forceLoadUIDs)
+	wipe(module.db.forceLoadUIDs)
 
-end
-
-function module:Modernize()
-    --refactoring bin table
-   if not VMRT.Reminder.v29 then
-		VMRT.Reminder.v29 = true
-		for i,token in ipairs(VMRT.Reminder.removed) do
-			VMRT.Reminder.removed[i] = nil
-			VMRT.Reminder.removed[token] = true
-		end
-    end
-
-    -- /run VMRT.Reminder.data=VMRT.Reminder.pre_v43;VMRT.Reminder.Version = 0;ReloadUI();
-
-    if VMRT.Reminder.Version < 43 then
-        VMRT.Reminder.pre_v43 = VMRT.Reminder.pre_v43 or CopyTable(VMRT.Reminder.data) -- this gets corrupted by the next login after error happened. probably not a big deal?
-
-        local function ParseConditions(data, isTarget)
-            local condition = data.condition
-            if not condition then
-                return
-            end
-            condition = tostring(condition)
-            local unit = isTarget and "target" or "source"
-            if condition == "target" or condition == "focus" or condition == "mouseover" or condition:find("^boss") then
-                data.triggers[1][unit .. "Unit"] = condition
-            elseif tonumber(condition) then
-                data.triggers[1][unit .. "Mark"] = tonumber(condition)
-            end
-        end
-
-        local function ParseCast(data)
-            local cast = data.cast -- cast may be either number or string
-            if not cast then
-                return
-            end
-
-            if cast == -2.1 then
-                data.triggers[1].counter = "1%2"
-            elseif cast == -2.0 then
-                data.triggers[1].counter = "2%2"
-            elseif cast == -3.1 then
-                data.triggers[1].counter = "1%3"
-            elseif cast == -3.2 then
-                data.triggers[1].counter = "2%3"
-            elseif cast == -3.0 then
-                data.triggers[1].counter = "3%3"
-            elseif cast == -4.11 then
-                data.triggers[1].counter = "1%4"
-            elseif cast == -4.2 then
-                data.triggers[1].counter = "2%4"
-            elseif cast == -4.31 then
-                data.triggers[1].counter = "3%4"
-            elseif cast == -4.0 then
-                data.triggers[1].counter = "4%4"
-            else
-                data.triggers[1].counter = tostring(cast)
-            end
-        end
-
-        -- dont directly set activeTime, use duration so countdown works properly
-        for token,data in next, VMRT.Reminder.data do
-            if data.event == "BOSS_START" then
-                data.triggers = {
-                    {
-                        event = 3,
-                        delayTime = data.delay,
-                    }
-                }
-            elseif data.event == "BOSS_PHASE" then
-                data.triggers = {
-                    {
-                        event = 2,
-                        delayTime = data.delay,
-                        pattFind = tostring(data.spellID),
-                    }
-                }
-            elseif data.event == "SPELL_CAST_SUCCESS" then
-                data.triggers = {
-                    {
-                        event = 1,
-                        eventCLEU = "SPELL_CAST_SUCCESS",
-                        spellID = data.spellID,
-                        delayTime = data.delay,
-                    }
-                }
-                ParseConditions(data)
-                ParseCast(data)
-                if not data.globalCounter then
-                    data.triggers[1].cbehavior = 1
-                end
-            elseif data.event == "SPELL_CAST_START" then
-                data.triggers = {
-                    {
-                        event = 1,
-                        eventCLEU = "SPELL_CAST_START",
-                        spellID = data.spellID,
-                        delayTime = data.delay,
-                    }
-                }
-                ParseConditions(data)
-                ParseCast(data)
-                if not data.globalCounter then
-                    data.triggers[1].cbehavior = 1
-                end
-
-            elseif data.event == "SPELL_AURA_APPLIED" or data.event == "SPELL_AURA_APPLIED_SELF" then
-                data.triggers = {
-                    {
-                        event = 1,
-                        eventCLEU = "SPELL_AURA_APPLIED",
-                        spellID = data.spellID,
-                        targetUnit = data.event == "SPELL_AURA_APPLIED_SELF" and "player" or nil,
-                        delayTime = data.delay,
-                    }
-                }
-                ParseConditions(data)
-                ParseCast(data)
-                if not data.globalCounter then
-                    data.triggers[1].cbehavior = 1
-                end
-            elseif data.event == "SPELL_AURA_REMOVED" or data.event == "SPELL_AURA_REMOVED_SELF" then
-                data.triggers = {
-                    {
-                        event = 1,
-                        eventCLEU = "SPELL_AURA_REMOVED",
-                        spellID = data.spellID,
-                        targetUnit = data.event == "SPELL_AURA_REMOVED_SELF" and "player" or nil,
-                        delayTime = data.delay,
-                    }
-                }
-                ParseConditions(data)
-                ParseCast(data)
-                if not data.globalCounter then
-                    data.triggers[1].cbehavior = 1
-                end
-            elseif data.event == "BOSS_HP" then
-                data.triggers = {
-                    {
-                        event = 4,
-                        targetUnit = 1, --any boss
-                        numberPercent = "<" .. (data.spellID or 100),
-                        delayTime = data.delay,
-                        counter = "1",
-                        cbehavior = 2,
-                    }
-                }
-                ParseConditions(data,true)
-            elseif data.event == "BOSS_MANA" then
-                data.triggers = {
-                    {
-                        event = 5,
-                        targetUnit = 1, --any boss
-                        numberPercent = ">" .. (data.spellID or 0),
-                        delayTime = data.delay,
-                        cbehavior = 2,
-                    }
-                }
-                    ParseConditions(data,true)
-                    ParseCast(data)
-            elseif data.event == "BW_MSG" then
-                data.triggers = {
-                    {
-                        event = 6,
-                        spellID = data.spellID,
-                        delayTime = data.delay,
-                    }
-                }
-                ParseCast(data)
-            elseif data.event == "BW_TIMER" or data.event == "BW_TIMER_TEXT" then
-                data.triggers = {
-                    {
-                        event = 7,
-                        bwtimeleft = tonumber(tostring(data.delay):match("^[^, ]+") or "",10),
-                    }
-                }
-                local key = data.event == "BW_TIMER" and "spellID" or "pattFind"
-                data.triggers[1][key] = data.spellID
-                ParseCast(data)
-            end
-
-            --clear old vars
-            data.delay = nil -- set in triggers
-            data.event = nil
-            data.spellID = nil
-            data.cast = nil
-            data.globalCounter = nil
-            data.condition = nil
-
-            -- clear empty strings that could happen due to the bug is sender
-            if data.tts == "" then
-                data.tts = nil
-            end
-            if data.glow == "" then
-                data.glow = nil
-            end
-            if data.sendEvent then
-                data.WAmsg = data.msg
-                data.msg = nil
-                data.sendEvent = nil
-                if not data.duration then
-                    data.duration = 2
-                end
-            end
-        end
-        if VMRT.Reminder.Glow and VMRT.Reminder.Glow.ColorA then
-            local a,r,g,b = VMRT.Reminder.Glow.ColorA,VMRT.Reminder.Glow.ColorR,VMRT.Reminder.Glow.ColorG,VMRT.Reminder.Glow.ColorB
-            local color = format("%02x%02x%02x%02x",a*255,r*255,g*255,b*255)
-            VMRT.Reminder.Glow.Color = color
-            VMRT.Reminder.Glow.ColorA = nil
-            VMRT.Reminder.Glow.ColorR = nil
-            VMRT.Reminder.Glow.ColorG = nil
-            VMRT.Reminder.Glow.ColorB = nil
-        end
-        if VMRT.Reminder.forceRUlocale then
-            VMRT.Reminder.ForceLocale = "ru"
-        end
-    end
-
-    if VMRT.Reminder.Version < 44 then
-        for token,data in next, VMRT.Reminder.removed do
-            if type(data) == "table" then
-                -- VMRT.Reminder.removed[ token ] = {
-                --     time = time(),
-                --     boss = data.boss,
-                --     name = data.name,
-                --     type = type,
-                --     token = token,
-                -- }
-                data.old = true
-            elseif type(data) == "boolean" then
-                VMRT.Reminder.removed[token] = {old=true,token=token}
-            end
-
-        end
-    end
-
-    if VMRT.Reminder.Version < 46.3 then
-        VMRT.Reminder.BarFont = nil
-    end
-
-    if VMRT.Reminder.Version < 47.1 then
-        for token,data in next, VMRT.Reminder.data do
-            if not data.triggers then
-                module:DeleteReminder(data,true,true)
-            end
-        end
-    end
-
-    if VMRT.Reminder.Version < 48 then
-        VMRT.Reminder.OptSavedTabNum = nil
-    end
-
-    if VMRT.Reminder.Version < 48.3 then
-        if ReminderLog and ReminderLog.history then
-            local mPlusEntries = {}
-            for encID,encTable in next, ReminderLog.history do
-                if type(encID) == "number" and encID < 0 then
-                    local maxDiff
-                    for diffKey,diffTable in next, encTable do
-                        if type(diffKey) == "number" then
-                            if not maxDiff or diffKey > maxDiff then
-                                maxDiff = diffKey
-                            end
-                        end
-                    end
-                    for i=1,#encTable[maxDiff] do
-                        if encTable[maxDiff][i] then
-                            mPlusEntries[encID] = mPlusEntries[encID] or {encounterID="m+",difficultyID=encID}
-                            tinsert(mPlusEntries[encID],encTable[maxDiff][i])
-                        end
-                    end
-                    ReminderLog.history[encID] = nil
-                end
-            end
-            if next(mPlusEntries) then
-                ReminderLog.history["m+"] = mPlusEntries
-            end
-        end
-    end
-
-    if VMRT.Reminder.Version < 48.4 then
-        if ReminderLog and ReminderLog.history then
-            for _, encTbl in next, ReminderLog.history do
-                for _, diffTbl in next, encTbl do
-                    for i=1,#diffTbl do
-                        local entry = diffTbl[i]
-                        if type(entry) == "table" and type(entry.log) == "string" then
-                            if entry.pinned and not AddonDB.GetHistoryPinnedState(entry.log) then
-                                AddonDB.SetHistoryPinnedState(entry.log,true)
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-
-	if VMRT.Reminder.Version < 48.5 then
-		VMRT.Reminder.TimelineFilter = {}
-	end
-
-	if VMRT.Reminder.Version < 49.7 then
-		--[[ data in may got to this state if reminders where deleted using data comms with just token sent
-		{
-			[token] = {
-				archived_data = {
-					token = token,
-					lastSync = lastSync,
-				}
-			}
-		}
-		]]
-		local function IsDataCorrupted(data)
-			for k in next, data do
-				if k ~= "token" and k ~= "lastSync" then
-					return false
-				end
-			end
-			return true
-		end
-
-		for token,data,source in module:IterateAllData() do
-			if type(data) ~= "table" or (type(data.triggers) ~= "table" and IsDataCorrupted(data)) then
-				source[token] = nil
-			end
-		end
-	end
-
-	-- for token,data,source in module:IterateAllData() do
-
-	-- end
-
-    -- for future versions consider modernizing VMRT.Reminder.removed[token].archived_data
-
-
-    VMRT.Reminder.Version = max(VMRT.Reminder.Version or 0, AddonDB.Version)
-end
-
-do
-	local function iterate()
-		for token,data in next, VMRT.Reminder.data do
-			coroutine.yield(token,data,VMRT.Reminder.data)
-		end
-		for token,data in next, VMRT.Reminder.removed do
-			if data.archived_data then
-				coroutine.yield(token,data.archived_data,VMRT.Reminder.removed)
-			end
-		end
-		for profileKey,profileData in next, VMRT.Reminder.DataProfiles do
-			if profileData.data then
-				for token,data in next, profileData.data do
-					coroutine.yield(token,data,profileData.data)
-				end
-			end
-			if profileData.removed then
-				for token,data in next, profileData.removed do
-					if data.archived_data then
-						coroutine.yield(token,data.archived_data,profileData.removed)
-					end
-				end
-			end
-		end
-	end
-
-	-- iterates all data that may need modernization
-	function module:IterateAllData()
-		return coroutine.wrap(iterate)
-	end
-end
-
-do
-	local function iterateRemoved()
-		for token,data in next, VMRT.Reminder.removed do
-			coroutine.yield(token,data,VMRT.Reminder.removed)
-		end
-		for profileKey,profileData in next, VMRT.Reminder.DataProfiles do
-			if profileData.removed then
-				for token,data in next, (profileData.removed) do
-					coroutine.yield(token,data,profileData.removed)
-				end
-			end
-		end
-	end
-	-- iterates all removed data that may need to be removed due to being old
-	function module:IterateRemovedData()
-		return coroutine.wrap(iterateRemoved)
-	end
 end
 
 ---------------------------------------
@@ -5688,21 +5345,28 @@ end
 function module:SetDataProfile(profileName)
 	VMRT.Reminder.DataProfile = VMRT.Reminder.DataProfile or "Default"
 	if VMRT.Reminder.DataProfile == profileName then
+		module:ReloadAll()
+		if module.options.Update then
+			module.options:Update()
+		end
 		return
 	end
 	-- save current profile
 	VMRT.Reminder.DataProfiles[VMRT.Reminder.DataProfile] = {
 		data = VMRT.Reminder.data,
-		removed = VMRT.Reminder.removed
+		removed = VMRT.Reminder.removed,
+		options = VMRT.Reminder.options,
 	}
 	-- apply new profile
 	VMRT.Reminder.DataProfile = profileName
 	if VMRT.Reminder.DataProfiles[profileName] then
 		VMRT.Reminder.data = VMRT.Reminder.DataProfiles[profileName].data or {}
 		VMRT.Reminder.removed = VMRT.Reminder.DataProfiles[profileName].removed or {}
+		VMRT.Reminder.options = VMRT.Reminder.DataProfiles[profileName].options or {}
 	else
 		VMRT.Reminder.data = {}
 		VMRT.Reminder.removed = {}
+		VMRT.Reminder.options = {}
 	end
 	VMRT.Reminder.DataProfiles[profileName] = {}
 
@@ -5711,11 +5375,11 @@ function module:SetDataProfile(profileName)
 		module.options:Update()
 	end
 
-	StaticPopup_Hide("EXRT_REMINDER_COPY_PROFILE")
-	StaticPopup_Hide("EXRT_REMINDER_DELETE_PROFILE")
+	MLib:DialogPopupHide("EXRT_REMINDER_COPY_PROFILE")
+	MLib:DialogPopupHide("EXRT_REMINDER_DELETE_PROFILE")
 end
 
-function module:LoadProfile()
+function module:LoadDataProfile()
 	if VMRT.Reminder.ForcedDataProfile then
 		module:SetDataProfile(VMRT.Reminder.ForcedDataProfile)
 	elseif VMRT.Reminder.DataProfileKeys[ MRT.SDB.charKey ] then
@@ -5725,138 +5389,108 @@ function module:LoadProfile()
 	end
 end
 
-
-local function GetDefaultTTSVoiceID()
-	if C_VoiceChat then
-		local TTSVOICES = C_VoiceChat.GetTtsVoices()
-		local voiceID = 0
-		for k, v in next, TTSVOICES do
-			if v.name:match("English") then
-				voiceID = v.voiceID
-				break
-			end
-		end
-		return voiceID
+function module:SetVisualProfile(profileName)
+	VMRT.Reminder.VisualProfile = VMRT.Reminder.VisualProfile or "Default"
+	if VMRT.Reminder.VisualProfile == profileName then
+		module:UpdateVisual()
+		return
+	end
+	-- save current profile
+	VMRT.Reminder.VisualProfiles[VMRT.Reminder.VisualProfile] = {
+		VisualSettings = VMRT.Reminder.VisualSettings,
+	}
+	-- apply new profile
+	VMRT.Reminder.VisualProfile = profileName
+	if VMRT.Reminder.VisualProfiles[profileName] then
+		VMRT.Reminder.VisualSettings = VMRT.Reminder.VisualProfiles[profileName].VisualSettings or CopyTable(module.DefaultReminderDB.VisualSettings)
 	else
-		return 0
+		VMRT.Reminder.VisualSettings = CopyTable(module.DefaultReminderDB.VisualSettings)
+	end
+	VMRT.Reminder.VisualProfiles[profileName] = {}
+
+	module:UpdateVisual()
+	module:ReloadAll()
+	if module.options.Update then
+		module.options:Update()
+	end
+	AddonDB:FireCallback("Reminder_VisualProfileChanged")
+
+	MLib:DialogPopupHide("EXRT_REMINDER_COPY_VISUAL_PROFILE")
+	MLib:DialogPopupHide("EXRT_REMINDER_DELETE_VISUAL_PROFILE")
+end
+
+function module:LoadVisualProfile()
+	if VMRT.Reminder.ForcedVisualProfile then
+		module:SetVisualProfile(VMRT.Reminder.ForcedVisualProfile)
+	elseif VMRT.Reminder.VisualProfileKeys[ MRT.SDB.charKey ] then
+		module:SetVisualProfile(VMRT.Reminder.VisualProfileKeys[ MRT.SDB.charKey ])
+	else
+		module:SetVisualProfile("Default")
 	end
 end
 
-
 function module:CleanRemovedData(days)
-    local cutoffTime = time() - days*24*60*60
-    for token,data in module:IterateRemovedData() do
-        if not data.time or data.time < cutoffTime then
-            VMRT.Reminder.removed[token] = nil
-        end
-    end
+	local cutoffTime = time() - days*24*60*60
+	for token,data in module:IterateRemovedData() do
+		if not data.time or data.time < cutoffTime then
+			VMRT.Reminder.removed[token] = nil
+		end
+	end
+end
+
+local function ensureDefaults(default, db)
+	for k, v in next, default do
+		if type(v) == "table" then
+			if type(db[k]) ~= "table" then
+				db[k] = {}
+			end
+			ensureDefaults(v, db[k])
+		elseif db[k] == nil then
+			db[k] = v
+			-- print("Defaulting", k, v)
+		end
+	end
 end
 
 function module.main:ADDON_LOADED()
 	_G.ReminderLog = _G.ReminderLog or {}
-    ReminderLog = _G.ReminderLog
+	ReminderLog = _G.ReminderLog
 
-	VMRT.Reminder = VMRT.Reminder or {enabled=true,HistoryEnabled=true,v29=true,v32=true}
-    ---@type table<number,ReminderData>
-	VMRT.Reminder.data = VMRT.Reminder.data or {}
-	VMRT.Reminder.disabled = VMRT.Reminder.disabled or {}
-    VMRT.Reminder.defEnabled = VMRT.Reminder.defEnabled or {}
-	VMRT.Reminder.locked = VMRT.Reminder.locked or {}
-	VMRT.Reminder.OutlineType = VMRT.Reminder.OutlineType or "OUTLINE"
-	VMRT.Reminder.removed = VMRT.Reminder.removed or {}
-	VMRT.Reminder.disableSounds = VMRT.Reminder.disableSounds or {}
-    VMRT.Reminder.lockedSounds = VMRT.Reminder.lockedSounds or {}
-    VMRT.Reminder.snippets = VMRT.Reminder.snippets or {}
-    VMRT.Reminder.HistoryBlacklist = VMRT.Reminder.HistoryBlacklist or {}
-    VMRT.Reminder.SyncPlayers = VMRT.Reminder.SyncPlayers or {}
-    VMRT.Reminder.TimelineFilter = VMRT.Reminder.TimelineFilter or {}
-    VMRT.Reminder.zoneNames = nil -- deprecated
+	VMRT.Reminder = VMRT.Reminder or CopyTable(module.DefaultReminderDB)
 
-	VMRT.Reminder.DataProfile = VMRT.Reminder.DataProfile or "Default" -- currently loaded profile
-	VMRT.Reminder.DataProfiles = VMRT.Reminder.DataProfiles or {[VMRT.Reminder.DataProfile]={}} -- profileKey to {data={},removed={}} or {} if profile is loaded
-	VMRT.Reminder.DataProfileKeys = VMRT.Reminder.DataProfileKeys or {} -- charKey to profileKey
-	if VMRT.Reminder.ForcedDataProfile == nil then -- nil is first load, when disabled it is false, when enabled it is profileKey
-		VMRT.Reminder.ForcedDataProfile = VMRT.Reminder.DataProfile
+	-- for fresh SV Version is set in DefaultReminderDB
+	-- so this is only for old SV
+	VMRT.Reminder.Version = VMRT.Reminder.Version or 0
+	if VMRT.Reminder.Version < AddonDB.Version or AddonDB.IsDev then -- upgrading db
+		module:Modernize()
+
+		-- ensure default settings are applied
+		ensureDefaults(module.DefaultReminderDB, VMRT.Reminder)
+		for visualSettings, profileName, isActive in module:IterateVisualSettings() do
+			if not isActive then
+				ensureDefaults(module.DefaultReminderDB.VisualSettings, visualSettings)
+			end
+		end
 	end
-	module:LoadProfile()
 
+	module:LoadDataProfile()
+	module:LoadVisualProfile()
 
-    VMRT.Reminder.Version = VMRT.Reminder.Version or 0
-    module:Modernize()
-    module:CleanRemovedData(180)
+	module:CleanRemovedData(180)
 
-    if VMRT.Reminder.SaveHistory then
-        module.db.history = ReminderLog.history or {}
-        ReminderLog.history = module.db.history
-    end
-
-	VMRT.Reminder.HistoryMaxPulls = VMRT.Reminder.HistoryMaxPulls or 2
-
-    VMRT.Reminder.FontSize = VMRT.Reminder.FontSize or 50
-    VMRT.Reminder.FontSizeBig = VMRT.Reminder.FontSizeBig or VMRT.Reminder.FontSize * 1.5
-    VMRT.Reminder.FontSizeSmall = VMRT.Reminder.FontSizeSmall or VMRT.Reminder.FontSize/2
-
-	---Clear old data
-	VMRT.Reminder.TrueHistory = nil
-	VMRT.Reminder.TrueHistoryEnabled = nil
-	VMRT.Reminder.TrueHistoryDungeon = nil
-	VMRT.Reminder.TrueHistoryDungeonEnabled = nil
-
-    ReminderLog.TrueHistory = nil
-	ReminderLog.TrueHistoryEnabled = nil
-	ReminderLog.TrueHistoryDungeon = nil
-	ReminderLog.TrueHistoryDungeonEnabled = nil
+	if VMRT.Reminder.SaveHistory then
+		module.db.history = ReminderLog.history or {}
+		ReminderLog.history = module.db.history
+	end
 
 	if VMRT.Reminder.HistoryMaxPulls > 16 then
 		VMRT.Reminder.HistoryMaxPulls = 16
 	end
 
-	VMRT.Reminder.FrameStrata = VMRT.Reminder.FrameStrata or "HIGH"
-
-	VMRT.Reminder.ttsVoice = VMRT.Reminder.ttsVoice or GetDefaultTTSVoiceID()
-	VMRT.Reminder.ttsVoiceVolume = VMRT.Reminder.ttsVoiceVolume or 75
-	VMRT.Reminder.ttsVoiceRate = VMRT.Reminder.ttsVoiceRate or 0
-
-	VMRT.Reminder.Glow = VMRT.Reminder.Glow or {}
-	local Glow = VMRT.Reminder.Glow
-	Glow.type = Glow.type or "Action Button Glow"
-
-	Glow.PixelGlow = Glow.PixelGlow or {
-		count = 8,
-		frequency = 0.25,
-		length = 20,
-		thickness = 3,
-		xOffset = 0,
-		yOffset = 0,
-		border = true,
-	}
-
-	Glow.AutoCastGlow = Glow.AutoCastGlow or {
-		count = 10,
-		frequency = 0.25,
-		scale = 1.5,
-		xOffset = 0,
-		yOffset = 0,
-	}
-
-	Glow.ProcGlow = Glow.ProcGlow or {
-		xOffset = 0,
-		yOffset = 0,
-		startAnim = true,
-		duration = 1,
-	}
-
-	Glow.ActionButtonGlow = Glow.ActionButtonGlow or {
-		frequency = 0.125,
-	}
-
-    Glow.Color = Glow.Color or "ffff0000"
-
-	module:UpdateVisual()
 	module:RegisterAddonMessage()
 	module:RegisterSlash()
 
-    module:RegisterEvents("PLAYER_ENTERING_WORLD")
+	module:RegisterEvents("PLAYER_ENTERING_WORLD")
 end
 
 function module:slash(arg)
@@ -5867,9 +5501,9 @@ function module:slash(arg)
 	elseif arg:find("^ra$") then
 		MRT.Options:Open()
 		MRT.Options:OpenByModuleName("RaidAnalyzer")
-    elseif arg:find("^was$") then
-        MRT.Options:Open()
-        MRT.Options:OpenByModuleName("WAChecker")
+	elseif arg:find("^was$") then
+		MRT.Options:Open()
+		MRT.Options:OpenByModuleName("WAChecker")
 	end
 end
 
@@ -5888,9 +5522,9 @@ do
 		local zoneName, _, difficultyID, _, _, _, _, zoneID = GetInstanceInfo()
 		if zoneID ~= prevZoneID then
 			prevZoneID = zoneID
-            if module.db.debug then print("Load Zone ID",zoneID,zoneName) end
+			if module.db.debug then print("Load Zone ID",zoneID,zoneName) end
 
-            if difficultyID ~= 8 then
+			if difficultyID ~= 8 then
 				if module.db.InChallengeMode then
 					module:StoreHistory(0)
 					IsHistoryEnabled = false
@@ -5900,13 +5534,13 @@ do
 			end
 
 			module.db.currentZoneID = zoneID
-            module.db.encounterDiff = difficultyID
+			module.db.encounterDiff = difficultyID
 			module:CreateFunctions(nil,difficultyID,zoneID)
 		end
 	end
 	function module.main:ZONE_CHANGED_NEW_AREA()
 		if not scheduledUpdate then
-			scheduledUpdate = ScheduleTimer(module.LoadForCurrentZone,1)
+			scheduledUpdate = MRT.F.ScheduleTimer(module.LoadForCurrentZone,1)
 		end
 	end
 	function module:ResetPrevZone()
@@ -5918,111 +5552,123 @@ function module.main:ENCOUNTER_START(encounterID, encounterName, difficultyID, g
 	module:StopLiveForce()
 
 	module.db.encounterID = encounterID
-    module.db.encounterDiff = difficultyID
+	module.db.encounterDiff = difficultyID
 	VMRT.Reminder.lastEncounterID = encounterID
 	module.db.encounterPullTime = GetTime() - (module.db.nextPullIsDelayed or 0)
+
+	module.db.currentPhase = nil
+	module.db.currentPhaseTime = nil
 
 	local _, _, _, _, _, _, _, zoneID = GetInstanceInfo()
 	module:CreateFunctions(encounterID, difficultyID, zoneID)
 
-    module:StartHistoryRecord()
+	module:StartHistoryRecord()
 
 	if (module.db.eventsToTriggers.BOSS_START or module.db.eventsToTriggers.NOTE_TIMERS or module.db.eventsToTriggers.NOTE_TIMERS_ALL) then
 		module:TriggerBossPull(encounterID, difficultyID, module.db.nextPullIsDelayed)
 	end
+
 	if module.db.eventsToTriggers.BOSS_PHASE then
-		module:TriggerBossPhase(module.db.currentDelayedPhase or "1", nil, module.db.currentDelayedPhaseTime)
+		local t = MRT.F.ScheduleTimer(function()
+			if not module.db.currentPhase then
+				module:TriggerBossPhase(module.db.currentDelayedPhase or "1", nil, module.db.currentDelayedPhaseTime)
+			end
+		end, 0.5)
+		module.db.timers[#module.db.timers+1] = t
 	end
 	if module.db.eventsToTriggers.RAID_GROUP_NUMBER then
 		module.main:GROUP_ROSTER_UPDATE()
 	end
 
-    module:BigWigsRecallEncounterStartEvents()
+	module:BigWigsRecallEncounterStartEvents()
 	module:DBMRecallEncounterStartEvents()
 
 	module.db.nextPullIsDelayed = nil
-    module.db.currentDelayedPhase = nil
-    module.db.currentDelayedPhaseTime = nil
+	module.db.currentDelayedPhase = nil
+	module.db.currentDelayedPhaseTime = nil
 end
 
 function module.main:ENCOUNTER_END(encounterID, encounterName, difficultyID, groupSize, kill)
-    module.db.encounterID = nil
-    module.db.currentPhase = nil
-    module.db.currentPhaseTime = nil
+	module.db.encounterID = nil
+	module.db.currentPhase = nil
+	module.db.currentPhaseTime = nil
 
 	module:ReloadAll()
 
 	if IsHistoryEnabled then
-        if not module.db.InChallengeMode then
-            module:StoreHistory(kill)
-            IsHistoryEnabled = false
-        else
-            module:AddHistoryEntry(0)
-        end
-    end
+		if not module.db.InChallengeMode then
+			module:StoreHistory(kill)
+			IsHistoryEnabled = false
+		else
+			module:AddHistoryEntry(0)
+		end
+	end
 end
 
 function module.main:PLAYER_ENTERING_WORLD(isInitialLogin, isReloadingUi)
-    if isInitialLogin or isReloadingUi then
-        if VMRT.Reminder.enabled then
-            module:Enable()
-        end
-        module:UnregisterEvents("PLAYER_ENTERING_WORLD")
-    end
-    if BigWigsLoader then
-        module.ActiveBossMod = "BW"
-    elseif DBM then
-        module.ActiveBossMod = "DBM"
-    end
-    module.main:GROUP_FORMED()
-    module:RegisterEvents("GROUP_FORMED","GROUP_JOINED")
+	if isInitialLogin or isReloadingUi then
+		if BigWigsLoader then
+			module.ActiveBossMod = "BW"
+		elseif DBM then
+			module.ActiveBossMod = "DBM"
+		end
+
+		if VMRT.Reminder.enabled then
+			module:Enable()
+		end
+
+		module.main:GROUP_FORMED()
+		module:RegisterEvents("GROUP_FORMED", "GROUP_JOINED")
+		module:UnregisterEvents("PLAYER_ENTERING_WORLD")
+	end
 end
 
 do
-    local timer
-    local function sendVer()
-        timer = nil
-        module:SendVersion()
-    end
-    function module.main:GROUP_FORMED()
-        if not timer then
-            timer = MRT.F.After(10,sendVer)
-        end
-    end
-    module.main.GROUP_JOINED = module.main.GROUP_FORMED
+	local function requestVer2(v2Check)
+		module.requestVer2timer = nil
+		module:RequestVersion2(v2Check)
+	end
+	function module.main:GROUP_FORMED()
+		if not module.requestVer2timer then -- canceled when we recieve request ver comms
+			module.requestVer2timer = MRT.F.ScheduleTimer(requestVer2, 5)
+		end
+	end
+	module.main.GROUP_JOINED = module.main.GROUP_FORMED
 end
 
 function module:Enable()
-    local RequiredMRT = tonumber(C_AddOns.GetAddOnMetadata(GlobalAddonName, "X-RequiredMRT") or "0")
-    if RequiredMRT and MRT.V < RequiredMRT then
-        StaticPopupDialogs["REMINDER_MRT_VERSION_OUTDATED"] = {
-            text = LR.MRTOUTDATED:format(GlobalAddonName, RequiredMRT),
-            button1 = OKAY,
-            timeout = 0,
-            whileDead = true,
-            hideOnEscape = true,
-            preferredIndex = 3,
-            showAlert = true,
-        }
-        StaticPopup_Show("REMINDER_MRT_VERSION_OUTDATED")
-        return
-    end
+	local RequiredMRT = tonumber(C_AddOns.GetAddOnMetadata(GlobalAddonName, "X-RequiredMRT") or "0")
+	if RequiredMRT and MRT.V < RequiredMRT then
+		MLib:DialogPopup({
+			id = "REMINDER_MRT_VERSION_OUTDATED",
+			title = LR["MRT Version Outdated"],
+			text = LR.MRTOUTDATED:format(GlobalAddonName, RequiredMRT),
+			buttons = {
+				{
+					text = OKAY,
+				},
+			},
+			alert = true,
+			minWidth = 420,
+		})
+		return
+	end
 
 	module.IsEnabled = true
 
 	module:RegisterEvents('ENCOUNTER_START','ENCOUNTER_END','ZONE_CHANGED_NEW_AREA','CHALLENGE_MODE_START','CHALLENGE_MODE_COMPLETED','CHALLENGE_MODE_RESET')
 
-    module:RegisterBigWigsCallback("BigWigs_OnBossEngage")
+	module:RegisterBigWigsCallback("BigWigs_OnBossEngage")
 	module:RegisterDBMCallback("DBM_Pull")
 
 	module:ReloadAll()
 
-    MRT.F.After(3,function()
-        if (IsEncounterInProgress() or UnitExists("boss1")) and not module.db.encounterID then
-            module.db.requestEncounterID = GetTime()
-            local zoneID = select(8,GetInstanceInfo())
-            MRT.F.SendExMsg("reminder", MRT.F.CreateAddonMsg("S","E","R",zoneID))
-        end
+	MRT.F.After(3,function()
+		if (IsEncounterInProgress() or UnitExists("boss1")) and not module.db.encounterID then
+			module.db.requestEncounterID = GetTime()
+			local zoneID = select(8,GetInstanceInfo())
+			AddonDB:SendComm("REMINDER_ENCOUNTER_SYNC_REQUEST",zoneID)
+		end
 	end)
 end
 
@@ -6030,7 +5676,7 @@ function module:Disable()
 	module.IsEnabled = false
 
 	module:UnregisterEvents('ENCOUNTER_START','ENCOUNTER_END','ZONE_CHANGED_NEW_AREA','CHALLENGE_MODE_START','CHALLENGE_MODE_COMPLETED','CHALLENGE_MODE_RESET')
-    module:UnregisterBigWigsCallback("BigWigs_OnBossEngage")
+	module:UnregisterBigWigsCallback("BigWigs_OnBossEngage")
 	module:UnregisterDBMCallback("DBM_Pull")
 
 	module:UnloadAll()
@@ -6044,7 +5690,7 @@ function module.main:CHALLENGE_MODE_START(...)
 
 	module:PrepeareForHistoryRecording()
 
-	local t = ScheduleTimer(function()
+	local t = MRT.F.ScheduleTimer(function()
 		module:StartHistoryRecord(2)
 		if IsHistoryEnabled then
 			local zoneName, _, _, _, _, _, _, zoneID = GetInstanceInfo()
@@ -6074,7 +5720,7 @@ function module.main:CHALLENGE_MODE_COMPLETED(...)
 
 	module:ResetPrevZone()
 	module:LoadForCurrentZone()
-    local success = select(4,C_ChallengeMode.GetCompletionInfo())
+	local success = select(4,C_ChallengeMode.GetCompletionInfo())
 	module:StoreHistory(success and 1 or 0)
 	IsHistoryEnabled = false
 end
@@ -6117,13 +5763,13 @@ function module:StartHistoryRecord()
 end
 
 do
-    local savedbossID, savedzoneID
+	local savedbossID, savedzoneID
 	function module:StartLive(bossID,zoneID)
-		MRT.F.SendExMsg("reminder","C\tLIVE_SESSION\t"..(bossID and next(bossID) or "").."\t"..(zoneID and next(zoneID) or ""))
+		AddonDB:SendComm("REMINDER_LIVE_START",(bossID and next(bossID) or "").."\t"..(zoneID and next(zoneID) or ""))
 		module.db.isLiveSession = true
-        module.db.liveSessionInitiated = true
+		module.db.liveSessionInitiated = true
 		savedbossID, savedzoneID = bossID, zoneID
-        VMRT.Reminder.liveChanges = {changed={},added={},time=time()}
+		VMRT.Reminder.liveChanges = {changed={},added={},time=time()}
 		module:Sync(false,bossID,zoneID,nil,nil,true)
 		if module.options.assignLive then
 			module.options.assignLive:UpdateStatus()
@@ -6132,8 +5778,8 @@ do
 
 	function module:StopLive()
 		module.db.isLiveSession = false
-        module.db.liveSessionInitiated = false
-		MRT.F.SendExMsg("reminder","C\tLIVE_SESSION_STOP")
+		module.db.liveSessionInitiated = false
+		AddonDB:SendComm("REMINDER_LIVE_STOP")
 		--module:Sync(false,savedbossID,savedzoneID)
 		if module.options.assignLive then
 			module.options.assignLive:UpdateStatus()
@@ -6149,7 +5795,7 @@ do
 			end
 			return
 		end
-        VMRT.Reminder.liveChanges = {changed={},added={},time=time()}
+		VMRT.Reminder.liveChanges = {changed={},added={},time=time()}
 		module.db.isLiveSession = true
 		for i=1,#module.db.preLiveSession do
 			module:ProcessTextToData(unpack(module.db.preLiveSession[i]))
@@ -6158,7 +5804,7 @@ do
 		if not module.options:IsVisible() then
 			if module.options.tab then
 				module.options.tab:SetTo(1)
-                module.options.main_tab:SetTo(3)
+				module.options.main_tab:SetTo(3)
 			else
 				VMRT.Reminder.OptSavedTabNum = 3
 			end
@@ -6175,14 +5821,9 @@ do
 	function module:StopLiveUser()
 		module.db.isLiveSession = false
 		module.db.preLiveSession = nil
-		-- if module.db.liveSessionMainProfileUser or module.db.liveSessionMainProfile then
-		-- 	module:SetProfile(module.db.liveSessionMainProfileUser or module.db.liveSessionMainProfile,0)
-		-- end
-		-- module.db.liveSessionMainProfileUser = nil
+
 		if module.options.assignLive then
 			module.options.assignLive:UpdateStatus()
-			-- module.options.profileDropDown:Enable()
-			-- module.options.sharedProfileDropDown:Enable()
 		end
 	end
 

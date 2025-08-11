@@ -26,17 +26,17 @@ local prototype = {
   id = "ReadOnly",
   version = 1,
   Create = function(self, data)
-    Archivist:Assert(data ~= nil, "A ReadOnly store cannot be created with initial value of nil.")
-    return data, data
+	Archivist:Assert(data ~= nil, "A ReadOnly store cannot be created with initial value of nil.")
+	return data, data
   end,
   Open = function(self, data)
-    return data
+	return data
   end,
   Commit = function(self)
-    return nil
+	return nil
   end,
   Close = function(self)
-    return nil
+	return nil
   end,
 }
 

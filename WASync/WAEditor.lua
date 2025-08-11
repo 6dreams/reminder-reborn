@@ -24,56 +24,7 @@ local prettyPrint = module.prettyPrint
 local WASYNC_ERROR = module.WASYNC_ERROR
 
 
-local orderedPairs
-do
-	local function __genOrderedIndex(t)
-		local orderedIndex = {}
-		for key in pairs(t) do
-			if key ~= "__orderedIndex" then
-				table.insert(orderedIndex, key)
-			end
-		end
-		table.sort(orderedIndex, function(a, b)
-			local typeA, typeB = type(a), type(b)
-			if typeA ~= typeB then
-				return typeA < typeB
-			else
-				return a < b
-			end
-		end)
-		return orderedIndex
-	end
-
-	local function orderedNext(t, state)
-		-- Equivalent of the next function, but returns the keys in the alphabetic
-		-- order. We use a temporary ordered key table that is stored in the
-		-- table being iterated.
-		local key = nil
-		if state == nil then
-			-- the first time, generate the index
-			t.__orderedIndex = __genOrderedIndex(t)
-			key = t.__orderedIndex[1]
-		else
-			-- fetch the next value
-			for i = 1, table.getn(t.__orderedIndex) do
-				if t.__orderedIndex[i] == state then
-					key = t.__orderedIndex[i + 1]
-				end
-			end
-		end
-
-		if key then
-			return key, t[key]
-		end
-
-		-- no more value to return, cleanup
-		t.__orderedIndex = nil
-	end
-
-	function orderedPairs(t)
-		return orderedNext, t, nil
-	end
-end
+local orderedPairs = AddonDB.orderedPairs
 
 local function recurseStringify(data, level, lines, sorted)
 	local pairsFn = sorted and orderedPairs or pairs
@@ -89,8 +40,12 @@ local function recurseStringify(data, level, lines, sorted)
 			form1 = "%s"
 		end
 		if vType == "string" then
-			form2 = "%q"
-			v = v:gsub("\\", "\\\\"):gsub("\n", "\\n"):gsub("\"", "\\\"")
+			if v:find("\n") then
+				form2 = "[==[%s]==]"
+			else
+				v = v:gsub("\\", "\\\\"):gsub("\"", "\\\"")
+				form2 = "%q"
+			end
 		elseif vType == "boolean" then
 			v = tostring(v)
 			form2 = "%s"
@@ -118,9 +73,9 @@ local function DisplayToTableString(data)
 end
 
 local function FixStrings(data)
-	for k, v in pairs(data) do
+	for k, v in next, data do
 		if type(v) == 'string' then
-			data[k] = v:gsub("\\\"", "\""):gsub("\\n", "\n"):gsub("\\\\", "\\")
+			data[k] = v:gsub("\\\"", "\""):gsub("\\\\", "\\")
 		elseif type(v) == 'table' then
 			FixStrings(v)
 		end
@@ -141,11 +96,14 @@ local function TableStringToTable(dataStr)
 	end
 	return isSuccessful, data
 end
+module.TableStringToTable = TableStringToTable
+module.DisplayToTableString = DisplayToTableString
 
 
 local function CreateWAEditor()
 	local WAEditorFrame = ELib:Popup("WASync WA Editor"):Size(800, 600)
 	module.WAEditorFrame = WAEditorFrame
+	WAEditorFrame:SetFrameStrata("FULLSCREEN")
 
 
 	WAEditorFrame.Editor = ELib:MultiEdit(WAEditorFrame):Size(780, 500):Point("TOP", 0, -30):AddPosText():OnChange(function(self)
@@ -273,6 +231,7 @@ local function CreateWAEditor()
 
 	WAEditorFrame.RevertToLastValid = MLib:Button(WAEditorFrame, "Revert to last valid"):Size(180, 20):Point("LEFT", WAEditorFrame.SendButton, "RIGHT", 10, 0):OnClick(function()
 		WAEditorFrame.Editor:SetText(DisplayToTableString(WAEditorFrame.data))
+		WAEditorFrame.Editor.EditBox:SetCursorPosition(0)
 	end)
 
 	function WAEditorFrame:StartEditing(data, source)
@@ -280,6 +239,8 @@ local function CreateWAEditor()
 		self.source = source
 		local stringData = DisplayToTableString(data)
 		self.Editor:SetText(stringData)
+		self.Editor.EditBox:SetCursorPosition(0)
+
 		self:Show()
 	end
 end
@@ -296,7 +257,7 @@ end
 
 -- ask for a display table
 function module:RequestDisplayTable(id, source)
-	AddonDB:SendComm("WAS_EDIT_REQUEST", id, nil, "WHISPER", source)
+	AddonDB:SendComm("WAS_EDIT_REQUEST", id, "WHISPER", source)
 end
 
 AddonDB:RegisterComm("WAS_EDIT_REQUEST", function(prefix, sender, id)
@@ -307,29 +268,30 @@ AddonDB:RegisterComm("WAS_EDIT_REQUEST", function(prefix, sender, id)
 	local data = WeakAuras.GetData(id)
 	if data then
 		local str = AddonDB:CompressTable(data, true)
-		AddonDB:SendComm("WAS_EDIT_RESPONSE", str, nil, "WHISPER", sender)
+		AddonDB:SendComm("WAS_EDIT_RESP2", str, "WHISPER", sender)
 	else
 		module:ErrorComms(sender, 5, id)
 	end
 end)
 
-AddonDB:RegisterComm("WAS_EDIT_RESPONSE", function(prefix, sender, str, channel)
+AddonDB:RegisterComm("WAS_EDIT_RESP2", function(prefix, sender, str, channel)
 	if channel ~= "WHISPER" then
 		return
 	end
 
-	local data = AddonDB:DecompressTable(str, true)
-	if type(data) == "table" then
-		module:EditWA(data, sender)
-	else
-		prettyPrint(WASYNC_ERROR, data)
+	local data, error = AddonDB:DecompressTable(str, true)
+	if not data then
+		prettyPrint(WASYNC_ERROR, error)
+		return
 	end
+
+	module:EditWA(data, sender)
 end)
 
 -- send back edited display table that should be imported
 function module:SendDisplayTable(data, source)
 	local str = AddonDB:CompressTable(data, true)
-	AddonDB:SendComm("WAS_EDIT_IMPORT", str, nil, "WHISPER", source)
+	AddonDB:SendComm("WAS_EDIT_IMPORT", str, "WHISPER", source)
 end
 
 AddonDB:RegisterComm("WAS_EDIT_IMPORT", function(prefix, sender, str, channel)
@@ -340,11 +302,14 @@ AddonDB:RegisterComm("WAS_EDIT_IMPORT", function(prefix, sender, str, channel)
 		return
 	end
 
-	local data = AddonDB:DecompressTable(str, true)
+	local data, error = AddonDB:DecompressTable(str, true)
+	if not data then
+		prettyPrint(WASYNC_ERROR, error)
+		return
+	end
+
 	if type(data) == "table" and data.id and data.uid then
 		prettyPrint(format("Importing WA %q from %s", data.id, sender))
 		module:QuickImportWA(data)
-	else
-		prettyPrint(WASYNC_ERROR, data)
 	end
 end)

@@ -2797,7 +2797,7 @@ do
 		_fix_block_literal_huffman_bitlen[sym] = 9
 	end
 	for sym=256, 279 do
-	    _fix_block_literal_huffman_bitlen[sym] = 7
+		_fix_block_literal_huffman_bitlen[sym] = 7
 	end
 	for sym=280, 287 do
 		_fix_block_literal_huffman_bitlen[sym] = 8
