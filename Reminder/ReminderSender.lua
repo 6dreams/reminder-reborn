@@ -561,10 +561,13 @@ encoded per reminder: 42.836734693878
 decoded per reminder 146.3221574344
 ]]
 
-function module:ProcessTextToData(text,isImport,sender,liveSession,ignoreOutdated)
+function module:ProcessTextToData(text, isImport, sender, liveSession, ignoreOutdated)
 	-- NaN in strings from excel workaround
 	local importTime
-	local text, replaces = text:gsub("%^(NaN)",function() prettyPrint("Found 'NaN' in import string, import data may be incomplete.")return "^" end)
+	local text, replaces = text:gsub("%^(NaN)", function()
+		prettyPrint("Found 'NaN' in import string, import data may be incomplete.")
+		return "^"
+	end)
 	if replaces > 0 then
 		MLib:DialogPopup({
 			id = "EXRT_REMINDER_CORRUPTED_DATA_ALERT",

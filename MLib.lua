@@ -232,12 +232,12 @@ local function MultilineEditBoxOnTextChanged(self,...)
 	local parent = self.Parent
 	local height = self:GetHeight()
 
-	local prevMin,prevMax = parent.ScrollBar:GetMinMaxValues()
+	local prevMin, prevMax = parent.ScrollBar:GetMinMaxValues()
 	local changeToMax = parent.ScrollBar:GetValue() >= prevMax
 
-	parent:SetNewHeight( max( height,parent:GetHeight() ) )
+	parent:SetNewHeight(max(height, parent:GetHeight()))
 	if changeToMax then
-		local min,max = parent.ScrollBar:GetMinMaxValues()
+		local min, max = parent.ScrollBar:GetMinMaxValues()
 		parent.ScrollBar:SetValue(max)
 	end
 
@@ -249,7 +249,7 @@ local function MultilineEditBoxOnTextChanged(self,...)
 	end
 
 	if parent.OnTextChanged then
-		parent.OnTextChanged(self,...)
+		parent.OnTextChanged(self, ...)
 	elseif self.OnTextChanged then
 		self:OnTextChanged(...)
 	end
@@ -270,13 +270,22 @@ end
 ---@param self ELibMultiEdit
 ---@param fontSize number
 ---@return ELibMultiEdit
-local function MultiEditFontSize(self,fontSize)
-	local font,_,fontStyle = self.EditBox:GetFont()
-	self.EditBox:SetFont(font,fontSize,fontStyle)
+local function MultiEditFontSize(self, fontSize)
+	local font, _, fontStyle = self.EditBox:GetFont()
+	self.EditBox:SetFont(font, fontSize, fontStyle)
 	return self
 end
 
-function MLib:MultiEdit(parent,minSize,maxSize)
+
+---@param self ELibMultiEdit
+---@return ELibMultiEdit
+local function Widget_ToTop(self)
+		self.EditBox:SetCursorPosition(1) -- this thing may be buggy but if we do this it works every time :)
+		self.EditBox:SetCursorPosition(0)
+		return self
+	end
+
+function MLib:MultiEdit(parent, minSize, maxSize)
 	local newMultiEdit = ELib:MultiEdit(parent)
 	newMultiEdit.EditBox:OnChange(MultilineEditBoxOnTextChanged)
 	newMultiEdit.Tooltip = MultiEdit_Tooltip
@@ -286,17 +295,19 @@ function MLib:MultiEdit(parent,minSize,maxSize)
 	if minSize and maxSize then
 		newMultiEdit.minSize = minSize
 		newMultiEdit.maxSize = maxSize
-		newMultiEdit.ScrollBar:Size(12,0)
-		newMultiEdit.ScrollBar.thumb:SetHeight(20)
 	end
+	newMultiEdit.ScrollBar:Size(12, 0)
+	newMultiEdit.ScrollBar.thumb:SetHeight(20)
 	newMultiEdit:EnableMouseWheel(false)
 
-	newMultiEdit.Background = newMultiEdit:CreateTexture(nil,"BACKGROUND")
-	newMultiEdit.Background:SetColorTexture(0,0,0,.3)
+	newMultiEdit.Background = newMultiEdit:CreateTexture(nil, "BACKGROUND")
+	newMultiEdit.Background:SetColorTexture(0, 0, 0, .3)
 	newMultiEdit.Background:SetPoint("TOPLEFT")
 	newMultiEdit.Background:SetPoint("BOTTOMRIGHT")
 
-	ELib:Border(newMultiEdit,1,.24,.25,.30,1)
+	newMultiEdit.ToTop = Widget_ToTop
+
+	MLib:Border(newMultiEdit, 1, .24, .25, .30, 1)
 	return newMultiEdit
 end
 
@@ -490,13 +501,61 @@ do
 	end
 end
 
-function MLib:Popup(...)
-	local popup = ELib:Popup(...)
-	popup.Close.NormalTexture:SetVertexColor(1,0,0,1)
-	popup.border:Hide()
-	MLib:Border(popup,1,.24,.25,.30,1,nil,3)
+do
+	local function CreateTitleBackground(self, height)
+		local titleHeight = type(height) == "number" and height or 20
+		self.titleBackground = ELib:DecorationLine(self, true, "BACKGROUND", 4):Point("TOPLEFT", self, "TOPLEFT", 0, 0):Point("BOTTOMRIGHT", self, "TOPRIGHT", 0, -titleHeight)
+		self.titleBackground:SetVertexColor(0.13, 0.13, 0.13, 0.3)
+		self.titleBackgroundBorder = ELib:DecorationLine(self, true, "BACKGROUND", 5):Point("TOPLEFT", self, "TOPLEFT", 0, -titleHeight):Point("TOPRIGHT", self, "TOPRIGHT", 0, -titleHeight)
 
-	return popup
+		return self
+	end
+
+	function MLib:Popup(title, template)
+		local popup = ELib:Popup(title, template)
+		popup.Close.NormalTexture:SetVertexColor(1, 0, 0, 1)
+		popup.border:Hide()
+		MLib:Border(popup, 1, .24, .25, .30, 1, nil, 3)
+		popup.CreateTitleBackground = CreateTitleBackground
+
+		return popup
+	end
+end
+
+do
+	local function Spinner_Stop(self)
+		self:Hide()
+		self.Anim:Stop()
+		if self.hideTimer then
+			self.hideTimer:Cancel()
+			self.hideTimer = nil
+		end
+		return self
+	end
+
+	local function Spinner_Start(self, timeout)
+		self:Show()
+		self.Anim:Play()
+		if self.hideTimer then
+			self.hideTimer:Cancel()
+			self.hideTimer = nil
+		end
+		if timeout then
+			self.hideTimer = MRT.F.ScheduleTimer(self.Stop, max(0.01, timeout), self)
+		end
+		return self
+	end
+
+	function MLib:LoadingSpinner(parent)
+		local initSpinner = ELib:Frame(parent, "LoadingSpinnerTemplate")
+		initSpinner.BackgroundFrame.Background:SetVertexColor(0, 1, 0, 1)
+		initSpinner.AnimFrame.Circle:SetVertexColor(0, 1, 0, 1)
+		initSpinner.Start = Spinner_Start
+		initSpinner.Stop = Spinner_Stop
+		initSpinner:Hide()
+
+		return initSpinner
+	end
 end
 
 --- Popup dialogs system(thanks to taint)
@@ -545,6 +604,7 @@ do
 					button:Hide()
 				end
 				button:SetParent(nil)
+				button:Enable()
 				tinsert(self.unused, button)
 				tDeleteItem(self.used, button)
 				self.func = nil

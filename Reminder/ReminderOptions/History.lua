@@ -19,7 +19,7 @@ local LR = AddonDB.LR
 -- upvalues
 local prettyPrint, GetTime, tinsert, type, next, C_Timer, tonumber, tostring, wipe, strsplit, bit = module.prettyPrint, GetTime, tinsert, type, next, C_Timer, tonumber, tostring, wipe, strsplit, bit
 local strsub, GameTooltip_Hide, GameTooltip, next, ipairs, floor, format, IsControlKeyDown, IsShiftKeyDown = strsub, GameTooltip_Hide, GameTooltip, next, ipairs, floor, format, IsControlKeyDown, IsShiftKeyDown
-local sort, UnitClass, UnitClassBase, GetPlayerInfoByGUID, RAID_CLASS_COLORS, max, ceil = sort, UnitClass, UnitClassBase, GetPlayerInfoByGUID, RAID_CLASS_COLORS, max, ceil
+local sort, UnitClassBase, GetPlayerInfoByGUID, RAID_CLASS_COLORS, max, ceil = sort, UnitClassBase, GetPlayerInfoByGUID, RAID_CLASS_COLORS, max, ceil
 local tconcat, date, GetInstanceInfo, select, CreateColor, tDeleteItem = table.concat, date, GetInstanceInfo, select, CreateColor, tDeleteItem
 
 local GetSpellInfo = AddonDB.GetSpellInfo
@@ -46,20 +46,21 @@ local VMRT = VMRT
 ---@field [3] any Additional event data
 
 local LibDeflateAsync = LibStub("LibDeflateAsync-reminder")
-local defaultHandlerConfig = {
-	type = "everyFrame",
+local historyAsyncConfig = {
 	maxTime = 2,
 	maxTimeCombat = 2,
-	-- errorHandler = geterrorhandler(),
 	errorHandler = function(msg, stackTrace, name)
 		geterrorhandler()(msg)
 		if module.options and module.options.SetupFrame and module.options.SetupFrame.QuickList then
-			module.options.SetupFrame.QuickList:HideSpinner()
+			module.options.SetupFrame.QuickList.initSpinner:Stop()
 		end
 	end,
 }
-local AsyncHandler = LibStub("LibAsync"):GetHandler(defaultHandlerConfig)
-module.HistoryAsyncHandler = AsyncHandler
+
+local function Async(...)
+	return AddonDB:Async(historyAsyncConfig, ...)
+end
+
 ---@type historyRecord[]
 module.db.historyNow = {}
 ---@type historyEntry[]
@@ -99,7 +100,7 @@ local function getEntryForEncounter(encounterID,difficultyID)
 	return module.db.history[encounterID][difficultyID]
 end
 
-local function storeHistory(kill)
+ module.StoreHistory = AddonDB:WrapAsync(historyAsyncConfig, function(self, kill)
 	module:AddHistoryEntry(0)
 
 	local historyNow = module.db.historyNow
@@ -145,9 +146,9 @@ local function storeHistory(kill)
 		isMPlus = HISTORY_TYPE == 20, -- m+ start event
 	}
 
-	local archive_entry
+	local archiveEntry
 	if VMRT.Reminder.SaveHistory then
-		archive_entry = AddonDB.SetHistory(uid, historyNow)
+		archiveEntry = AddonDB.SetHistory(uid, historyNow)
 	end
 
 	local CurrentEncounterTable
@@ -168,33 +169,22 @@ local function storeHistory(kill)
 	end
 
 	if VMRT.Reminder.HistoryTransmission then
-		C_Timer.After(DELAY_BEFORE_SENDING, function()
-			AsyncHandler:Async(function()
-				module:SendHistory(historyEntry, archive_entry)
-			end, "HistoryExport")
-		end)
+		MRT.F.ScheduleTimer(module.SendHistory, DELAY_BEFORE_SENDING, module, historyEntry, archiveEntry)
 	end
-end
+ end)
 
-function module:StoreHistory(kill)
-	AsyncHandler:Async(function()
-		storeHistory(kill)
-	end, "History")
-end
 
-local commsOptions = {maxPer5Sec = 50}
-function module:SendHistory(historyEntry, archive_entry)
+local commsOptions = { maxPer5Sec = 50 }
+module.SendHistory = AddonDB:WrapAsync(historyAsyncConfig, function(self, historyEntry, archiveEntry)
 	if not module.db.sendHistoryByMe then
 		return
 	end
 	module.db.sendHistoryByMe = false
 
-	local start = debugprofilestop()
-
 	-- check if we already have this log entry in compressed format to save time compressing it, reencode is way faster(untill we fully adopt C_EncodingUtil)
 	local encoded
-	if archive_entry then
-		encoded = ReminderArchive.ReadOnly[archive_entry.id].data
+	if archiveEntry then
+		encoded = ReminderArchive.ReadOnly[archiveEntry.id].data
 		if encoded then
 			encoded = LibDeflateAsync:DecodeForPrint(encoded)
 			encoded = LibDeflateAsync:EncodeForWoWAddonChannel(encoded)
@@ -208,10 +198,10 @@ function module:SendHistory(historyEntry, archive_entry)
 		return
 	end
 
-	local parts = AddonDB:SendComm("REM_HIST",str,nil,nil,nil,nil,commsOptions)
+	local parts = AddonDB:SendComm("REM_HIST", str, nil, nil, nil, nil, commsOptions)
 
-	prettyPrint("History data sent", format("%.2f",debugprofilestop() - start), "ms in", parts, "parts")
-end
+	prettyPrint("History data sent", format("%d", AddonDB.AsyncEnvironment.TOTAL_TIME), "ms in", parts, "parts")
+end)
 
 local function onComm(prefix, sender, str)
 	if sender == MRT.SDB.charKey or sender == MRT.SDB.charName then
@@ -222,10 +212,8 @@ local function onComm(prefix, sender, str)
 	end
 
 	if prefix == "REM_HIST" then
-		if select(4,UnitPosition'player') ~= select(4,UnitPosition(Ambiguate(sender,"none"))) then
-			AsyncHandler:Async(function()
-				module:ProcessHistoryTextToData(sender, str, true)
-			end, "HistoryImport", true)
+		if select(4, UnitPosition'player') ~= select(4, UnitPosition(Ambiguate(sender, "none"))) then
+			Async(module.ProcessHistoryTextToData, module, sender, str, true)
 		end
 	elseif prefix == "REM_HIST_V" then
 		local senderVer = tonumber(str or "?") or 0
@@ -511,29 +499,7 @@ function module.options:InitHistory()
 		QuickList:SetFrameStrata("DIALOG")
 	end
 
-	function QuickList:ShowSpinner(timeout)
-		QuickList.initSpinner:Show()
-		QuickList.initSpinner.Anim:Play()
-		if timeout then
-			C_Timer.After(timeout, function()
-				QuickList:HideSpinner()
-			end)
-		end
-	end
-
-	function QuickList:HideSpinner()
-		QuickList.initSpinner:Hide()
-		QuickList.initSpinner.Anim:Stop()
-	end
-
-	local initSpinner = CreateFrame("Button", nil, QuickList, "LoadingSpinnerTemplate")
-	initSpinner.BackgroundFrame.Background:SetVertexColor(0, 1, 0, 1)
-	initSpinner.AnimFrame.Circle:SetVertexColor(0, 1, 0, 1)
-	initSpinner:SetPoint("CENTER", QuickList, "CENTER", 0, 0)
-	initSpinner:SetSize(60, 60)
-	initSpinner:Hide()
-	initSpinner.Anim:Stop()
-	QuickList.initSpinner = initSpinner
+	QuickList.initSpinner = MLib:LoadingSpinner(QuickList):Point("CENTER", QuickList, "CENTER", 0, 0):Size(60, 60)
 
 	local function parseGUID(guid, dataID)
 		local unitType,_,serverID,instanceID,zoneUID,mobID,spawnID = strsplit("-", guid or "")
@@ -1132,80 +1098,35 @@ function module.options:InitHistory()
 			}
 		end
 
-		local imp,exp = MRT.F.CreateImportExportWindows()
-		imp:SetFrameStrata("FULLSCREEN_DIALOG")
-		exp:SetFrameStrata("FULLSCREEN_DIALOG")
-
-		imp._Hide = imp.Hide
-		imp.Hide = MRT.NULLfunc
-		imp.Close:SetScript("OnClick",function(self)
-			imp:_Hide()
+		local ImportHistory = AddonDB:WrapAsync(function(str)
+			module:ProcessHistoryTextToData("Import", str)
 		end)
-
-		local spinner = CreateFrame("Button", nil, imp, "LoadingSpinnerTemplate")
-		spinner.BackgroundFrame.Background:SetVertexColor(0, 1, 0, 1)
-		spinner.AnimFrame.Circle:SetVertexColor(0, 1, 0, 1)
-		spinner:SetSize(40, 40)
-		spinner:Hide()
-		spinner.Anim:Stop()
-
-		local function showSpinner(timeout,frame)
-			spinner:SetParent(frame)
-			spinner:SetPoint("CENTER", frame, "CENTER", 0, 0)
-			spinner:Show()
-			spinner.Anim:Play()
-			if timeout then
-				C_Timer.After(timeout, function()
-					QuickList:HideSpinner()
-				end)
-			end
-		end
-
-		local function hideSpinner()
-			spinner:Hide()
-			spinner.Anim:Stop()
-		end
-
-		function imp:ImportFunc(str)
-			AsyncHandler:Async(function()
-				self.Edit.EditBox:ClearFocus()
-				showSpinner(10,imp)
-				module:ProcessHistoryTextToData("Import",str)
-				hideSpinner()
-				self:_Hide()
-			end)
-		end
+		local ExportHistory = AddonDB:WrapAsync(function(historyEntry)
+			return module:GetHistoryExportString(historyEntry)
+		end)
 
 
 		list[#settings+2] = {
 			text = LR.Import,
 			func = function()
 				ELib:DropDownClose()
-				imp:Show()
+				AddonDB:QuickPaste(LR["Import History"], ImportHistory)
 			end,
 		}
 
 		list[#settings+3] = {
 			text = LR.Export,
 			func = function()
-				AsyncHandler:Async(function()
-					ELib:DropDownClose()
+				ELib:DropDownClose()
 
-					local historyEntry = QuickList.selected
+				local historyEntry = QuickList.selected
 
-					if not historyEntry then
-						prettyPrint("No history entry selected")
-						return
-					end
+				if not historyEntry then
+					prettyPrint("No history entry selected")
+					return
+				end
 
-					exp:Show()
-					showSpinner(10,exp)
-
-					local str = module:GetHistoryExportString(historyEntry)
-
-					exp.Edit:SetText(str)
-					hideSpinner()
-				end)
+				AddonDB:QuickCopy(ExportHistory(historyEntry), LR["Export History"])
 			end,
 		}
 
@@ -1605,7 +1526,7 @@ function module.options:InitHistory()
 	end
 
 
-	local function SetHistory(_,newHistory)
+	local function SetHistory(_, newHistory)
 		ELib:DropDownClose()
 		if not newHistory then
 			return
@@ -1672,7 +1593,7 @@ function module.options:InitHistory()
 			local aIsNum = type(a.encounterID) == "number"
 			local bIsNum = type(b.encounterID) == "number"
 			if aIsNum and bIsNum then
-				return AddonDB:GetEncounterSortIndex(a.encounterID,100000-a.encounterID) < AddonDB:GetEncounterSortIndex(b.encounterID,100000-b.encounterID)
+				return AddonDB:GetEncounterSortIndex(a.encounterID) < AddonDB:GetEncounterSortIndex(b.encounterID)
 			elseif aIsNum then
 				return true
 			elseif bIsNum then
@@ -1743,7 +1664,7 @@ function module.options:InitHistory()
 	local lastLog
 
 
-	local function updateHistory(fromTrigger)
+	SetupFrame.UpdateHistory = AddonDB:WrapAsyncSingleton(function(self, fromTrigger)
 		QuickList:UpdateSelectPullButtons()
 
 		if fromTrigger and SetupFrame.QuickList.AllEventsChk:GetChecked() then
@@ -1767,7 +1688,7 @@ function module.options:InitHistory()
 
 		if not lastLog or lastLog ~= QuickList.selected.log then
 			lastLog = QuickList.selected.log
-			QuickList:ShowSpinner(10)
+			QuickList.initSpinner:Start(10)
 			QuickList.L = {}
 			QuickList:Update()
 		end
@@ -2112,14 +2033,9 @@ function module.options:InitHistory()
 
 		AdjustTableSizes()
 
-		QuickList:HideSpinner()
-	end
+		QuickList.initSpinner:Stop()
+	end)
 
-	function SetupFrame:UpdateHistory(fromTrigger)
-		AsyncHandler:Async(function()
-			updateHistory(fromTrigger)
-		end, "UpdateHistory",true)
-	end
 	QuickList:Attach()
 end
 

@@ -25,27 +25,20 @@ local options = module.options
 local GUIDIsPlayer = C_PlayerInfo.GUIDIsPlayer
 local GetNumSpecializationsForClassID = C_SpecializationInfo and C_SpecializationInfo.GetNumSpecializationsForClassID or GetNumSpecializationsForClassID
 
-local defaultHandlerConfig = {
-	type = "everyFrame",
-	maxTime = 2,
+local defaultAsyncConfig = {
+	maxTime = 4,
 	maxTimeCombat = 2,
-	-- errorHandler = geterrorhandler(),
-	errorHandler = function(msg, stackTrace, name)
+
+	errorHandler = function(msg, stackTrace)
 		geterrorhandler()(msg)
 		if options.timeLine and options.timeLine.frame then
-			options.timeLine.frame:HideSpinner()
+			options.timeLine.frame.initSpinner:Stop()
 		end
 		if options.assign and options.assign.frame then
-			options.assign.frame:HideSpinner()
+			options.assign.frame.initSpinner:Stop()
 		end
 	end,
 }
-local AsyncHandler = LibStub("LibAsync"):GetHandler(defaultHandlerConfig)
-module.TimelineAsyncHandler = AsyncHandler
-
-local function GetMapNameByID(mapID)
-	return (C_Map.GetMapInfo(mapID or 0) or {}).name or ("Map ID "..mapID)
-end
 
 local diffSortPrio = {
 	[16] = 1,
@@ -220,7 +213,7 @@ function options:TimelineInitialize()
 
 		FILTER_AURA = true,
 
-		spell_status = {},
+		spell_status = type(VMRT.Reminder.OptTLSpellDisabled) == "table" and VMRT.Reminder.OptTLSpellDisabled or {},
 		spell_dur = {},
 		custom_phase = {},
 		reminder_hide = {},
@@ -231,7 +224,10 @@ function options:TimelineInitialize()
 		FILTER_REM_ONLYMY = VMRT.Reminder.OptAssigOnlyMy,
 		FILTER_NOTE = VMRT.Reminder.OptAssigFNote,
 	}
-	for k,v in next, VMRT.Reminder.TimelineFilter do
+
+	VMRT.Reminder.OptTLSpellDisabled = options.timeLine.spell_status
+
+	for k, v in next, VMRT.Reminder.TimelineFilter do
 		options.timeLine[k] = v
 	end
 
@@ -1175,72 +1171,24 @@ function options:TimelineInitialize()
 		self:SetText(str)
 	end
 
-	self.timeLineBoss.SetValue = function(data)
-		AsyncHandler.Async(AsyncHandler,function()
-			if TLbossMenu then
-				TLbossMenu:Close()
-			end
-			ELib:DropDownClose()
-			data = data.data or data
 
-			options.timeLine.frame.bigBossButtons:Hide()
+	self.timeLineBoss.SetValue = AddonDB:WrapAsyncSingleton(defaultAsyncConfig, function(data)
+		if TLbossMenu then
+			TLbossMenu:Close()
+		end
+		ELib:DropDownClose()
+		data = data.data or data
 
-			if IsShiftKeyDown() and IsAltKeyDown() then
-				local cmp
-				if data.tl then
-					cmp = data.tl
-					if cmp.m then
-						cmp = cmp[1]
-					end
-				elseif data.fightData then
-					local tempHistory
-					if type(data.fightData.log) == "string" then
-						tempHistory = AddonDB.RestoreFromHistory(data.fightData.log)
-					elseif type(data.fightData.log) == "table" then
-						tempHistory = data.fightData.log
-					end
+		options.timeLine.frame.bigBossButtons:Hide()
 
-					cmp = options.timeLine:CreateCustomTimelineFromHistory(tempHistory, data.fightData)
-					options.timeLine.frame:HideSpinner()
-				end
-				if cmp then
-					options.timeLine.CUSTOM_TIMELINE_CMP = cmp
-					prettyPrint('Comparing timelines')
-					options.timeLine:Update()
-				end
-				self.timeLineBoss:UpdateText()
-				return
-			end
-
-			module.db.simrun = nil
-			wipe(options.timeLine.custom_phase)
-			wipe(options.timeLine.reminder_hide)
-
-			options.timeLine:ResetAdjust()
-
-			options.timeLine.BOSS_ID = nil
-			options.timeLine.ZONE_ID = nil
-			options.timeLine.DIFF_ID = nil
-			options.timeLine.CUSTOM_TIMELINE = nil
-			options.timeLine.CUSTOM_TIMELINE_CMP = nil
-			VMRT.Reminder.TLBoss = nil
-			options.timeLine.FILTER_SPELL = nil
-
-			if data.bossID > 0 then
-				options.timeLine.BOSS_ID = data.bossID
-			else -- M+ timeline
-				options.timeLine.ZONE_ID = -data.bossID
-			end
-			VMRT.Reminder.TLBoss = {bossID = data.bossID}
-
-			local selectedTimeline = self.timeLine:GetTimeLineData()
+		if IsShiftKeyDown() and IsAltKeyDown() then
+			local cmp
 			if data.tl then
-				selectedTimeline = data.tl
-				if selectedTimeline.m then
-					selectedTimeline = selectedTimeline[1]
+				cmp = data.tl
+				if cmp.m then
+					cmp = cmp[1]
 				end
 			elseif data.fightData then
-				options.timeLine.frame:ShowSpinner(10)
 				local tempHistory
 				if type(data.fightData.log) == "string" then
 					tempHistory = AddonDB.RestoreFromHistory(data.fightData.log)
@@ -1248,35 +1196,82 @@ function options:TimelineInitialize()
 					tempHistory = data.fightData.log
 				end
 
-				-- ddt(tempHistory)
-				selectedTimeline = options.timeLine:CreateCustomTimelineFromHistory(tempHistory, data.fightData)
-				options.timeLine.frame:HideSpinner()
+				cmp = options.timeLine:CreateCustomTimelineFromHistory(tempHistory, data.fightData)
+				options.timeLine.frame.initSpinner:Stop()
+			end
+			if cmp then
+				options.timeLine.CUSTOM_TIMELINE_CMP = cmp
+				prettyPrint('Comparing timelines')
+				options.timeLine:Update()
+			end
+			self.timeLineBoss:UpdateText()
+			return
+		end
+
+		module.db.simrun = nil
+		wipe(options.timeLine.custom_phase)
+		wipe(options.timeLine.reminder_hide)
+
+		options.timeLine:ResetAdjust()
+
+		options.timeLine.BOSS_ID = nil
+		options.timeLine.ZONE_ID = nil
+		options.timeLine.DIFF_ID = nil
+		options.timeLine.CUSTOM_TIMELINE = nil
+		options.timeLine.CUSTOM_TIMELINE_CMP = nil
+		VMRT.Reminder.TLBoss = nil
+		options.timeLine.FILTER_SPELL = nil
+
+		if data.bossID > 0 then
+			options.timeLine.BOSS_ID = data.bossID
+		else -- M+ timeline
+			options.timeLine.ZONE_ID = -data.bossID
+		end
+		VMRT.Reminder.TLBoss = {bossID = data.bossID}
+
+		local selectedTimeline = self.timeLine:GetTimeLineData()
+		if data.tl then
+			selectedTimeline = data.tl
+			if selectedTimeline.m then
+				selectedTimeline = selectedTimeline[1]
+			end
+		elseif data.fightData then
+			options.timeLine.frame.initSpinner:Start(10)
+			local tempHistory
+			if type(data.fightData.log) == "string" then
+				tempHistory = AddonDB.RestoreFromHistory(data.fightData.log)
+			elseif type(data.fightData.log) == "table" then
+				tempHistory = data.fightData.log
 			end
 
-			if selectedTimeline then
-				options.timeLine.DIFF_ID = selectedTimeline.d and selectedTimeline.d[1]
-				options.timeLine.CUSTOM_TIMELINE = selectedTimeline
-			end
+			-- ddt(tempHistory)
+			selectedTimeline = options.timeLine:CreateCustomTimelineFromHistory(tempHistory, data.fightData)
+			options.timeLine.frame.initSpinner:Stop()
+		end
 
-			local bossData = options.timeLine.Data[data.bossID]
-			if bossData and bossData.m then
-				for i=1,#bossData do
-					if bossData[i] == selectedTimeline then
-						VMRT.Reminder.TLBoss.dataIndex = i
-						break
-					end
+		if selectedTimeline then
+			options.timeLine.DIFF_ID = selectedTimeline.d and selectedTimeline.d[1]
+			options.timeLine.CUSTOM_TIMELINE = selectedTimeline
+		end
+
+		local bossData = options.timeLine.Data[data.bossID]
+		if bossData and bossData.m then
+			for i=1,#bossData do
+				if bossData[i] == selectedTimeline then
+					VMRT.Reminder.TLBoss.dataIndex = i
+					break
 				end
 			end
+		end
 
-			self.timeLineBoss:UpdateText()
-			if not data.ignoreReload then
-				options.timeLine:Update()
-				data.tl = selectedTimeline
-				data.ignoreReload = true
-				options.assignBoss.SetValue(data)
-			end
-		end)
-	end
+		self.timeLineBoss:UpdateText()
+		if not data.ignoreReload then
+			options.timeLine:Update()
+			data.tl = selectedTimeline
+			data.ignoreReload = true
+			options.assignBoss.SetValue(data)
+		end
+	end)
 
 	local extent = 20
 	local maxCharacters = 12
@@ -1300,7 +1295,7 @@ function options:TimelineInitialize()
 
 	---@param dropdown any
 	---@param elementDescription RootMenuDescriptionProxy|ElementMenuDescriptionProxy
-	local function MenuProcessor(dropdown,elementDescription,data)
+	local function MenuProcessor(dropdown, elementDescription, data)
 		data.dropdown = dropdown
 
 		if data.isHidden then
@@ -1323,11 +1318,11 @@ function options:TimelineInitialize()
 			button:SetScrollMode(maxScrollExtent)
 			button:HookOnEnter(CheckSubMenu)
 
-			for i,subData in ipairs(data.subMenu) do
-				MenuProcessor(dropdown,button,subData)
+			for i, subData in ipairs(data.subMenu) do
+				MenuProcessor(dropdown, button, subData)
 			end
 		elseif data.func then
-			local button = elementDescription:CreateButton(data.text,data.func,data)
+			local button = elementDescription:CreateButton(data.text, data.func, data)
 			if data.isDisabled then
 				button:SetEnabled(false)
 			end
@@ -1343,8 +1338,8 @@ function options:TimelineInitialize()
 				text = "|T"..data.icon..":"..extent..":"..(extent*1.5).."|t "..text
 			end
 
-			local button = elementDescription:CreateButton(text,dropdown.SetValue,data)
-			button:SetTooltip(function(tooltip,elementDescription)
+			local button = elementDescription:CreateButton(text, function(...) dropdown.SetValue(...) end, data)
+			button:SetTooltip(function(tooltip, elementDescription)
 				tooltip:AddLine(MenuUtil.GetElementText(elementDescription))
 				local fightData = elementDescription.data.fightData
 				if fightData then
@@ -1390,13 +1385,229 @@ function options:TimelineInitialize()
 		end
 	end
 
-	local imp, exp
+	local ImportHistory = AddonDB:WrapAsync(function(str)
+		if not str or #str < 200 then
+			prettyPrint("Invalid import string")
+		end
+		local historyEntry = module:ProcessHistoryTextToData("Import", str)
+		if not historyEntry then
+			prettyPrint("Invalid import string")
+			return
+		end
+		local encounterID = historyEntry.encounterID
+
+		local d = {
+			bossID = encounterID,
+			fightData = historyEntry,
+		}
+		if options.assign.frame:IsVisible() then
+			options.assignBoss.SetValue(d)
+		else
+			self.timeLineBoss.SetValue(d)
+		end
+	end)
+
+	local ExportHistory = AddonDB:WrapAsync(function(fightData)
+		return module:GetHistoryExportString(fightData)
+	end)
+
+	local function importDropDownFunc()
+		AddonDB:QuickPaste(LR["Import History"], ImportHistory)
+	end
+
+	local function exportDropDownFunc()
+		local fightData = self.timeLineBoss.mainframe.CUSTOM_TIMELINE and self.timeLineBoss.mainframe.CUSTOM_TIMELINE.fightData
+		if fightData then
+			AddonDB:QuickCopy(ExportHistory(fightData), LR["Export History"])
+		end
+	end
+
+	local function subMenuSortFunc(a, b)
+		if a.zoneID and b.zoneID then
+			return (a.prio or 0) < (b.prio or 0)
+		elseif a.zoneID then
+			return true
+		elseif b.zoneID then
+			return false
+		elseif a.bossID and b.bossID then
+			return (a.prio or 0) < (b.prio or 0)
+		elseif a.bossID then
+			return true
+		elseif b.bossID then
+			return false
+		end
+	end
+
+	local function PrepareSubmenu(subMenu, parent) -- merge submenu with parent if there is only one option
+		for k, v in next, subMenu do
+			if v.subMenu and #v.subMenu > 0 then
+				PrepareSubmenu(v.subMenu, v)
+			end
+		end
+		sort(subMenu, subMenuSortFunc)
+	end
+
 	function self.timeLineBoss:PreUpdate()
 		local List = self.List
 		wipe(List)
 
-		local subMenu = {}
 		local res
+		local listDung = {}
+		local listMPlus = {}
+
+		local function Add(tableToAdd, bossID, bossData, category)
+			local diff = bossData.d[1]
+			local diffName = LR.diff_name[diff]
+			local keyLevel = bossData.d.k
+			local hasEventsData = bossData.events
+			local isPtr = bossData.PTR
+
+			if category == "raid" or category == "dung" then -- boss
+				local encounterName = LR.boss_name[bossID]
+				local bossImg = AddonDB:GetBossPortrait(bossID)
+
+				local bossMenu = MRT.F.table_find3(tableToAdd.subMenu, bossID, "bossID")
+				if not bossMenu then
+					bossMenu = {
+						text = encounterName,
+						subMenu = {},
+						bossID = bossID,
+						icon = bossImg,
+						prio = AddonDB:GetEncounterSortIndex(bossID),
+					}
+					tableToAdd.subMenu[#tableToAdd.subMenu+1] = bossMenu
+				end
+
+				local text = (diffName or "") .. (keyLevel and " +"..keyLevel or "") .. " "..
+					"(" .. module:FormatTime(bossData.d[2]) .. ")" ..
+					(hasEventsData and " |cff00ff00*|r" or "") ..
+					(isPtr and " |cffff0000PTR|r" or "")
+
+				text = text:trim()
+
+				bossMenu.subMenu[#bossMenu.subMenu+1] = {
+					text = text,
+					bossID = bossID,
+					tl = bossData,
+					icon = bossImg,
+					iconsize = 32,
+				}
+			else -- m+ run
+				local zoneID = -bossID
+				local foregroundImage, backgroundImage, instanceName = AddonDB:GetInstanceImage(zoneID)
+				local customName = bossData.n
+				local text = (customName or "") .." ".. (keyLevel and "+"..keyLevel or "") .. " "..
+					"(" .. module:FormatTime(bossData.d[2]) .. ")" ..
+					(hasEventsData and " |cff00ff00*|r" or "") ..
+					(isPtr and " |cffff0000PTR|r" or "")
+
+				text = text:trim()
+
+				tableToAdd.subMenu[#tableToAdd.subMenu+1] = {
+					text = text,
+					bossID = bossID,
+					tl = bossData,
+					zoneID = zoneID,
+					icon = foregroundImage,
+					iconsize = 32,
+				}
+			end
+		end
+
+		for bossID, bossData in next, options.timeLine.Data do
+			local isZone = bossID < 0
+			local instanceID = isZone and -bossID or AddonDB:GetInstanceForEncounter(bossID)
+
+			local category = bossID < 0 and "m+" or AddonDB:InstanceIsDungeon(AddonDB.EJ_DATA.instanceIDtoEJ[ instanceID ]) and "dung" or "raid"
+			local tableToAdd
+
+			local l = category == "dung" and listDung or category == "m+" and listMPlus or self.List
+			tableToAdd = MRT.F.table_find3(l, instanceID, "zoneID")
+			if not tableToAdd then
+				local foregroundImage, backgroundImage, instanceName = AddonDB:GetInstanceImage(instanceID)
+				tableToAdd = {
+					text = instanceName,
+					zoneID = instanceID,
+					subMenu = {},
+					icon = foregroundImage,
+					category = category,
+					prio = AddonDB:GetInstanceSortIndex(instanceID),
+				}
+				l[#l+1] = tableToAdd
+			end
+
+			if bossData.m then -- multiple
+				for i, bossData_i in ipairs(bossData) do
+					Add(tableToAdd, bossID, bossData_i, category)
+				end
+			else -- single
+				Add(tableToAdd, bossID, bossData, category)
+			end
+
+				-- After login select previously selected boss or boss that was previously pulled
+			if VMRT.Reminder.TLBoss and (type(VMRT.Reminder.TLBoss) == "table" and VMRT.Reminder.TLBoss.bossID == bossID) then
+				if VMRT.Reminder.TLBoss.dataIndex then
+					local d = {
+						bossID = bossID,
+						tl = bossData.m and (bossData[VMRT.Reminder.TLBoss.dataIndex] or bossData[1]) or bossData,
+					}
+					res = function() self.SetValue(d) end
+				else
+					local d = {
+						bossID = bossID,
+					}
+					res = function() self.SetValue(d) end
+				end
+			elseif not res and VMRT.Reminder.lastEncounterID == bossID then
+				local d = {
+					bossID = bossID,
+				}
+				res = function() self.SetValue(d) end
+			end
+		end
+
+		PrepareSubmenu(self.List)
+
+		if self.mainframe.frame.bigBossButtons:IsShown() then
+			local list = self.List[1] -- most recent tier
+			if list and list.category == "raid" then
+				self.mainframe.frame.bigBossButtons:Reset()
+				for i=1,#list.subMenu do
+					local encounterID = list.subMenu[i].bossID
+					local inlist = list.subMenu[i]
+					if inlist then
+						self.mainframe.frame.bigBossButtons:Add(encounterID, function() self.SetValue(inlist) end)
+					end
+				end
+			end
+		end
+
+		if #listDung > 0 then
+			PrepareSubmenu(listDung)
+			self.List[#self.List+1] = { text = DUNGEONS or "DUNGEONS", entryID = "dung", subMenu = listDung }
+			-- sort here
+		end
+		if #listMPlus > 0 then
+			PrepareSubmenu(listMPlus)
+			self.List[#self.List+1] = { text = PLAYER_DIFFICULTY_MYTHIC_PLUS or "M+", entryID = "m+", subMenu = listMPlus }
+			-- sort here
+		end
+
+		tinsert(self.List, 1, {
+			text = LR.Main,
+			isTitle = true,
+		})
+
+		self.List[ #self.List+1 ] = {
+			isDivider = true,
+		}
+
+		self.List[#self.List+1] = {
+			text = LR["Own Data"],
+			isTitle = true,
+		}
+
+		local historyList = {}
 		for encounterID, tbl in next, module.db.history do
 			local tableToAdd -- zone or subMenu
 			local isZone = encounterID == "m+"
@@ -1405,30 +1616,25 @@ function options:TimelineInitialize()
 
 			if not isZone then -- boss
 				bossImg = AddonDB:GetBossPortrait(encounterID)
-			end
-
-			if not instanceID then
-				local instance = AddonDB:FindInstanceTableByBossID(encounterID)
-				if instance then
-					instanceID = instance[1]
-				end
+				instanceID = AddonDB:GetInstanceForEncounter(encounterID)
 			end
 
 			if not isZone and instanceID then
-				local zone_data = MRT.F.table_find3(subMenu,instanceID,"zoneID")
+				local zone_data = MRT.F.table_find3(historyList, instanceID, "zoneID")
 				if not zone_data then
 					local instanceName = LR.instance_name[instanceID]
 					zone_data = {
 						zoneID = instanceID,
+						prio = AddonDB:GetInstanceSortIndex(instanceID),
 						text = instanceName,
 						subMenu = {},
 						icon = AddonDB:GetInstanceImage(instanceID),
 					}
-					subMenu[#subMenu+1] = zone_data
+					historyList[#historyList+1] = zone_data
 				end
 				tableToAdd = zone_data.subMenu
 			else
-				tableToAdd = subMenu
+				tableToAdd = historyList
 			end
 
 			local bossMenu
@@ -1438,6 +1644,7 @@ function options:TimelineInitialize()
 					text = encounterName,
 					subMenu = {},
 					bossID = encounterID,
+					prio = AddonDB:GetEncounterSortIndex(encounterID),
 					icon = bossImg,
 				}
 			else
@@ -1449,7 +1656,7 @@ function options:TimelineInitialize()
 			end
 			tableToAdd[#tableToAdd+1] = bossMenu
 
-			for diffID,history in next, tbl do -- for zones it is -zoneID, history
+			for diffID, history in next, tbl do -- for zones it is -zoneID, history
 				local text, zoneImg
 				if isZone then
 					text = LR.instance_name[-diffID]
@@ -1484,11 +1691,13 @@ function options:TimelineInitialize()
 							text = text,
 							fightData = fightData,
 							bossID = encounterID,
+							prio = AddonDB:GetEncounterSortIndex(encounterID),
 						}
 					end
 				end
 			end
-			sort(bossMenu.subMenu,function(a,b)
+
+			sort(bossMenu.subMenu, function(a,b)
 				local prioA = diffSortPrio[a.prio]
 				local prioB = diffSortPrio[b.prio]
 				if prioA and prioB then
@@ -1503,53 +1712,18 @@ function options:TimelineInitialize()
 			end)
 		end
 
-		sort(subMenu,function(a,b)
-			if a.zoneID and b.zoneID then
-				return AddonDB:GetEncounterSortIndex(a.zoneID,100000-a.zoneID) < AddonDB:GetEncounterSortIndex(b.zoneID,100000-b.zoneID)
-			elseif a.zoneID then
-				return true
-			elseif b.zoneID then
-				return false
-			elseif type(a.bossID) == "number" and type(b.bossID) == "number" then
-				return AddonDB:GetEncounterSortIndex(a.bossID,100000-a.bossID) < AddonDB:GetEncounterSortIndex(b.bossID,100000-b.bossID)
-			elseif type(a.bossID) == "number" then
-				return true
-			elseif type(b.bossID) == "number" then
-				return false
+		if #historyList > 0 then
+			sort(historyList, subMenuSortFunc)
+			for i=1,#historyList do
+				local t = historyList[i]
+				if t.zoneID then
+					sort(t.subMenu, subMenuSortFunc)
+				end
 			end
-			return false
-		end)
-		for i=1,#subMenu do
-			local t = subMenu[i]
-			if t.zoneID then
-				sort(t.subMenu,function(a,b)
-					if a.zoneID and b.zoneID then
-						return AddonDB:GetEncounterSortIndex(a.zoneID,100000-a.zoneID) < AddonDB:GetEncounterSortIndex(b.zoneID,100000-b.zoneID)
-					elseif a.zoneID then
-						return true
-					elseif b.zoneID then
-						return false
-					elseif type(a.bossID) == "number" and type(b.bossID) == "number" then
-						return AddonDB:GetEncounterSortIndex(a.bossID,100000-a.bossID) < AddonDB:GetEncounterSortIndex(b.bossID,100000-b.bossID)
-					elseif type(a.bossID) == "number" then
-						return true
-					elseif type(b.bossID) == "number" then
-						return false
-					end
-					return false
-				end)
-			end
-		end
 
-		self.List[#self.List+1] = {
-			text = LR["Own Data"],
-			isTitle = true,
-			prio = -99995,
-		}
-		if #subMenu > 0 then
 			self.List[ #self.List+1 ] = {
 				text = LR.FromHistory,
-				subMenu = subMenu,
+				subMenu = historyList,
 				prio = -99996,
 			}
 			self.List[ #self.List+1 ] = {
@@ -1560,204 +1734,14 @@ function options:TimelineInitialize()
 
 		self.List[ #self.List+1 ] = {
 			text = LR.ImportHistory,
-			func = function()
-				if not imp then
-					imp, exp = MRT.F.CreateImportExportWindows()
-				end
-				function imp.ImportFunc(imp,str)
-					if not str or #str < 200 then
-						prettyPrint("Invalid import string")
-					end
-					AsyncHandler.Async(AsyncHandler,function()
-						options.timeLine.frame:ShowSpinner(10)
-						local historyEntry = module:ProcessHistoryTextToData("Import",str)
-						if not historyEntry then
-							prettyPrint("Invalid import string")
-							options.timeLine.frame:HideSpinner()
-							return
-						end
-						local encounterID = historyEntry.encounterID
-
-						local d = {
-							bossID = encounterID,
-							fightData = historyEntry,
-						}
-						self.SetValue(d)
-						options.timeLine.frame:HideSpinner()
-					end)
-				end
-				imp:Show()
-			end,
-			prio = -99998,
+			func = importDropDownFunc,
 		}
 		self.List[ #self.List+1 ] = {
 			text = LR.ExportHistory,
-			func = function()
-				local fightData = self.mainframe.CUSTOM_TIMELINE and self.mainframe.CUSTOM_TIMELINE.fightData
-				if fightData then
-					AsyncHandler:Async(function()
-						if not exp then
-							imp, exp = MRT.F.CreateImportExportWindows()
-						end
-						options.timeLine.frame:ShowSpinner(10)
-						local str = module:GetHistoryExportString(fightData)
-						exp.Edit:SetText(str)
-						exp:Show()
-						options.timeLine.frame:HideSpinner()
-					end)
-				end
-			end,
+			func = exportDropDownFunc,
 			isDisabled = not (self.mainframe.CUSTOM_TIMELINE and self.mainframe.CUSTOM_TIMELINE.fightData),
-			prio = -99999,
-		}
-		self.List[ #self.List+1 ] = {
-			text = LR.Main,
-			isTitle = true,
-			prio = 100000,
-		}
-		self.List[ #self.List+1 ] = {
-			isDivider = true,
-			prio = -1,
 		}
 
-		local listDung = {}
-		self.List[#self.List+1] = {text = DUNGEONS or "DUNGEONS", entryID = "dung", subMenu = listDung, prio = 40000-1, isHidden = MRT.isClassic}
-
-		for bossID,bossData in next, options.timeLine.Data do
-			local toadd
-			local isZone
-			if bossID > 0 then
-				local zone = AddonDB:FindInstanceTableByBossID(bossID)
-				if zone then
-					local isDung = AddonDB:InstanceIsDungeon(AddonDB.EJ_DATA.instanceIDtoEJ[ zone[1] ])
-
-					if not isDung then
-						toadd = MRT.F.table_find3(self.List,zone[1],"entryID")
-					else
-						toadd = MRT.F.table_find3(listDung,zone[1],"entryID")
-					end
-					if not toadd then
-						local text = LR.instance_name[zone[1]]
-
-						local foregroundImage, backgroundImage, instanceName = AddonDB:GetInstanceImage(zone[1])
-						local zoneImg = foregroundImage
-						text = instanceName or text
-
-						toadd = {
-							text = text,
-							entryID = zone[1],
-							subMenu = {},
-							zonemd = zone,
-							prio = 40000+zone[1],
-							icon = zoneImg
-						}
-						if not isDung then
-							self.List[#self.List+1] = toadd
-						else
-							listDung[#listDung+1] = toadd
-						end
-					end
-					toadd = toadd.subMenu
-				end
-			else
-				isZone = true
-				toadd = MRT.F.table_find3(self.List,"m+","entryID")
-				if not toadd then
-					toadd = {text = PLAYER_DIFFICULTY_MYTHIC_PLUS or "M+", entryID = "m+", subMenu = {}, prio = 40000-1, isHidden = MRT.isClassic}
-					self.List[#self.List+1] = toadd
-				end
-				toadd = toadd.subMenu
-			end
-			if not toadd then
-				toadd = self.List
-			end
-
-			local bossImg = AddonDB:GetBossPortrait(bossID)
-
-			local boss_list = {
-				text = LR.boss_name[bossID] .. (bossData.PTR and " |cffff0000PTR|r" or ""),
-				prio = AddonDB:GetEncounterSortIndex(bossID,100000-bossID),
-				icon = bossImg,
-				iconsize = 32,
-				isHidden = not isZone and AddonDB.EJ_DATA.encounterIDtoEJ[bossID] == nil,
-				bossID = bossID,
-				tl = bossData,
-			}
-			if isZone then
-				local name = LR.instance_name[-bossID]
-				boss_list.text = name .. ((bossData.d.k and " +"..bossData.d.k or "")) ..(bossData.PTR and " |cffff0000PTR|r" or "")
-				boss_list.prio = -10000-bossID
-			end
-			if boss_list.text ~= ""  then -- and not MRT.isClassic
-				toadd[#toadd+1] = boss_list
-			end
-
-			if bossData.m then
-				local subMenu = {}
-				boss_list.subMenu = subMenu
-				for i=1,#bossData do
-					local bossData_i = bossData[i]
-					local diff = bossData_i.d[1]
-					local diffName = LR.diff_name[diff]
-					local hasEventsData = bossData_i.events
-					local isPtr = bossData_i.PTR
-					local text = (diffName) .. (bossData_i.d.k and "+"..bossData_i.d.k or "") .. " ".. module:FormatTime(bossData_i.d[2]) .. (hasEventsData and " |cff00ff00*|r" or "") .. (isPtr and " |cffff0000PTR|r" or "")
-					local newEntry = {
-						text = text,
-						prio = bossData_i.d[1] + bossData_i.d[2] / 10000,
-						tl = bossData_i,
-						bossID = bossID,
-					}
-					subMenu[#subMenu+1] = newEntry
-				end
-				sort(subMenu,function(a,b)
-					return (a.prio or 0) > (b.prio or 0)
-				end)
-			elseif bossData.d then
-				local diff = bossData.d[1]
-				if diff then
-					local diffName = LR.diff_name[diff]
-
-					boss_list.tooltip = (diffName) .. " ".. module:FormatTime(bossData.d[2])
-				else
-					boss_list.tooltip = module:FormatTime(bossData.d[2])
-				end
-			end
-
-
-			-- After login select previously selected boss or boss that was previously pulled
-			if VMRT.Reminder.TLBoss and (type(VMRT.Reminder.TLBoss) == "table" and VMRT.Reminder.TLBoss.bossID == bossID) then
-				if VMRT.Reminder.TLBoss.dataIndex then
-					local d = {
-						bossID = bossID,
-						tl = bossData.m and (bossData[VMRT.Reminder.TLBoss.dataIndex] or bossData[1]) or bossData,
-					}
-					res = function() self.SetValue(d) end
-				else
-					local d = {
-						bossID = bossID,
-					}
-					res = function() self.SetValue(d) end
-				end
-			elseif not res and VMRT.Reminder.lastEncounterID == bossID then
-				local d = {
-					bossID = bossID,
-				}
-				res = function() self.SetValue(d) end
-			end
-		end
-		for i=1,#self.List do
-			local list = self.List[i]
-			if list.zonemd then
-				sort(list.subMenu,function(a,b) return (MRT.F.table_find(list.zonemd,a.bossID) or 0) > (MRT.F.table_find(list.zonemd,b.bossID) or 0) end)
-			end
-		end
-		for i=1,#listDung do
-			local list = listDung[i]
-			if list.zonemd then
-				sort(list.subMenu,function(a,b) return (MRT.F.table_find(list.zonemd,a.bossID) or 0) > (MRT.F.table_find(list.zonemd,b.bossID) or 0) end)
-			end
-		end
 		self.List[#self.List+1] = {
 			text = LR.Custom .. " encounter ID",
 			func = function()
@@ -1776,7 +1760,6 @@ function options:TimelineInitialize()
 						}
 					})
 				end,{text=LR.EncounterID,onlyNum=true},{text=LR.DifficultyID,onlyNum=true}) end,
-			prio = -990000,
 		}
 		local customSubMenu = {}
 		if VMRT.Reminder.CustomTLData then
@@ -1813,42 +1796,22 @@ function options:TimelineInitialize()
 		customSubMenu[#customSubMenu+1] = {
 			text = LR["Open editor"],
 			func = function() ELib:DropDownClose() options.timeLine.customTimeLineDataFrame:OpenEdit(nil,{}) end,
-			prio = 100000,
 		}
 		sort(customSubMenu,function(a,b)
 			return (a.prio or 0) > (b.prio or 0)
 		end)
 		self.List[#self.List+1] = {
 			text = LR.Custom,
-			prio = -989990,
 			subMenu = customSubMenu,
 			Lines = #customSubMenu > 15 and 15,
 		}
 
-		sort(self.List,function(a,b)
-			return (a.prio or 0) > (b.prio or 0)
-		end)
-
-		if self.mainframe.frame.bigBossButtons:IsShown() then
-			local list = self.List[2]	--most recent tier
-			if list.zonemd then
-				self.mainframe.frame.bigBossButtons:Reset()
-				for i=2,#list.zonemd do
-					local encounterID = list.zonemd[i]
-					local inlist = MRT.F.table_find3(list.subMenu,encounterID,"bossID")
-					if inlist then
-						self.mainframe.frame.bigBossButtons:Add(encounterID,function() self.SetValue(inlist) end)
-					end
-				end
-			end
-		end
-
 		return res
 	end
 
-	for bossID,bossData in next, options.timeLine.Data do
+	for bossID, bossData in next, options.timeLine.Data do
 		if bossData.m then
-			for i=1,#bossData do
+			for i = 1, #bossData do
 				if bossData[i].p and bossData[i].p[1] < 0 then
 					local spell = -bossData[i].p[1]
 					local diff = bossData[i].p[2] and bossData[i].p[2] > 0 and bossData[i].p[2] or 0
@@ -2595,7 +2558,7 @@ function options:TimelineInitialize()
 		options.timeLine.frame.bigBossButtons:Hide()
 	end
 
-	function options.timeLine.frame.bigBossButtons:Add(encounterID,clickFunc)
+	function options.timeLine.frame.bigBossButtons:Add(encounterID, clickFunc)
 		local button
 		for i=1,#self.buttons do
 			if not self.buttons[i]:IsShown() then
@@ -2652,30 +2615,7 @@ function options:TimelineInitialize()
 		self:Repos(tr)
 	end
 
-	function options.timeLine.frame:ShowSpinner(timeout)
-		self.initSpinner:Show()
-		self.initSpinner.Anim:Play()
-		if timeout then
-			C_Timer.After(timeout, function()
-				self:HideSpinner()
-			end)
-		end
-	end
-
-	function options.timeLine.frame:HideSpinner()
-		self.initSpinner:Hide()
-		self.initSpinner.Anim:Stop()
-	end
-
-	local initSpinner = CreateFrame("Button", nil, options.timeLine.frame, "LoadingSpinnerTemplate")
-	initSpinner.BackgroundFrame.Background:SetVertexColor(0, 1, 0, 1)
-	initSpinner.AnimFrame.Circle:SetVertexColor(0, 1, 0, 1)
-	initSpinner:SetPoint("CENTER", options.timeLine.frame, "CENTER", 0, 0)
-	initSpinner:SetSize(60, 60)
-	initSpinner:Hide()
-	initSpinner.Anim:Stop()
-	options.timeLine.frame.initSpinner = initSpinner
-
+	options.timeLine.frame.initSpinner = MLib:LoadingSpinner(options.timeLine.frame):Size(60, 60):Point("CENTER", 0, 0)
 
 	self.quickSetupFrame = ELib:Popup(" "):Size(510,470)
 	-- ELib:Border(self.quickSetupFrame,1,.4,.4,.4,.9)
@@ -3241,7 +3181,7 @@ function options:TimelineInitialize()
 				if options.quickSetupFrame.mainframe.SAVED_VAR_XP then
 					local t=floor(options.quickSetupFrame.mainframe.SAVED_VAR_XP*10)/10
 					options.quickSetupFrame.data.triggers[1].delayTime = module:FormatTime(t,true)
-					options.quickSetupFrame.data.triggers[1].pattFind = options.quickSetupFrame.mainframe.SAVED_VAR_P
+					options.quickSetupFrame.data.triggers[1].pattFind = tostring(options.quickSetupFrame.mainframe.SAVED_VAR_P)
 				else
 					options.quickSetupFrame.data.triggers[1].pattFind = "1"
 				end
@@ -4018,7 +3958,11 @@ function options:TimelineInitialize()
 		if data.sound then
 			output = output .. LR["Sound: "] .. (tostring(data.sound):match("([^\\/]+)$") or data.sound) .. "\n"
 		end
+
 		GameTooltip:AddLine(output)
+		GameTooltip:AddLine(" ")
+		GameTooltip:AddLine(LR["Left click - config"])
+		GameTooltip:AddLine(LR["Shift+Left click - advanced config"])
 		GameTooltip:Show()
 	end
 
@@ -5064,12 +5008,12 @@ function options:TimelineInitialize()
 
 		gluerange = 2,
 
-		spell_status = {},
+		spell_status = type(VMRT.Reminder.OptAssigSpellDisabled) == "table" and VMRT.Reminder.OptAssigSpellDisabled or {},
 		spell_dur = {},
 		custom_phase = {},
 		reminder_hide = {},
 		custom_line = {},
-		custom_cd = {},
+		custom_cd = type(VMRT.Reminder.OptAssigCustomCD) == "table" and VMRT.Reminder.OptAssigCustomCD or {},
 		custom_charges = {},
 		custom_spells = {},
 
@@ -5107,12 +5051,14 @@ function options:TimelineInitialize()
 
 		FILTER_SPELL_REP = VMRT.Reminder.OptAssigFSpellsRep,
 		FILTER_REM_ONLYMY = VMRT.Reminder.OptAssigOnlyMy,
-		FILTER_NOTE = VMRT.Reminder.OptAssigFNote
+		FILTER_NOTE = VMRT.Reminder.OptAssigFNote,
 	}
 
 	VMRT.Reminder.OptAssigQFClass = self.assign.QFILTER_CLASS
 	VMRT.Reminder.OptAssigQFRole = self.assign.QFILTER_ROLE
 	VMRT.Reminder.OptAssigQFSpell = self.assign.QFILTER_SPELL
+	VMRT.Reminder.OptAssigCustomCD = self.assign.custom_cd
+	VMRT.Reminder.OptAssigSpellDisabled = self.assign.spell_status
 
 	options.assign.GetTimeLineData = options.timeLine.GetTimeLineData
 
@@ -5257,83 +5203,83 @@ function options:TimelineInitialize()
 	self.assignBoss.mainframe = options.assign
 	self.assignBoss.UpdateText = self.timeLineBoss.UpdateText
 
-	self.assignBoss.SetValue = function(data)
-		AsyncHandler.Async(AsyncHandler,function()
-			if TLbossMenu then
-				TLbossMenu:Close()
+
+	self.assignBoss.SetValue = AddonDB:WrapAsyncSingleton(defaultAsyncConfig, function(data)
+		if TLbossMenu then
+			TLbossMenu:Close()
+		end
+		ELib:DropDownClose()
+		data = data.data or data
+
+		options.assign.frame.bigBossButtons:Hide()
+
+		module.db.simrun = nil
+		wipe(options.assign.custom_phase)
+		wipe(options.assign.reminder_hide)
+		wipe(options.assign.custom_line)
+
+		options.assign:ResetAdjust()
+
+		options.assign.BOSS_ID = nil
+		options.assign.ZONE_ID = nil
+		options.assign.DIFF_ID = nil
+		options.assign.CUSTOM_TIMELINE = nil
+		VMRT.Reminder.TLBoss = nil
+		options.assign.FILTER_SPELL = nil
+
+		options.assign.var_draggedlastline = nil
+
+		if data.bossID > 0 then
+			options.assign.BOSS_ID = data.bossID
+		else -- M+ timeline
+			options.assign.ZONE_ID = -data.bossID
+		end
+		VMRT.Reminder.TLBoss = {bossID = data.bossID}
+
+		local selectedTimeline = self.assign:GetTimeLineData()
+		if data.tl then
+			selectedTimeline = data.tl
+			if selectedTimeline.m then
+				selectedTimeline = selectedTimeline[1]
 			end
-			ELib:DropDownClose()
-			data = data.data or data
-
-			options.assign.frame.bigBossButtons:Hide()
-
-			module.db.simrun = nil
-			wipe(options.assign.custom_phase)
-			wipe(options.assign.reminder_hide)
-			wipe(options.assign.custom_line)
-
-			options.assign:ResetAdjust()
-
-			options.assign.BOSS_ID = nil
-			options.assign.ZONE_ID = nil
-			options.assign.DIFF_ID = nil
-			options.assign.CUSTOM_TIMELINE = nil
-			VMRT.Reminder.TLBoss = nil
-			options.assign.FILTER_SPELL = nil
-
-			options.assign.var_draggedlastline = nil
-
-			if data.bossID > 0 then
-				options.assign.BOSS_ID = data.bossID
-			else -- M+ timeline
-				options.assign.ZONE_ID = -data.bossID
+		elseif data.fightData then
+			options.assign.frame.initSpinner:Start(10)
+			local tempHistory
+			if type(data.fightData.log) == "string" then
+				tempHistory = AddonDB.RestoreFromHistory(data.fightData.log)
+			elseif type(data.fightData.log) == "table" then
+				tempHistory = data.fightData.log
 			end
-			VMRT.Reminder.TLBoss = {bossID = data.bossID}
 
-			local selectedTimeline = self.assign:GetTimeLineData()
-			if data.tl then
-				selectedTimeline = data.tl
-				if selectedTimeline.m then
-					selectedTimeline = selectedTimeline[1]
+			-- ddt(tempHistory)
+			selectedTimeline = options.assign:CreateCustomTimelineFromHistory(tempHistory, data.fightData)
+			options.assign.frame.initSpinner:Stop()
+		end
+
+		if selectedTimeline then
+			options.assign.DIFF_ID = selectedTimeline.d and selectedTimeline.d[1]
+			options.assign.CUSTOM_TIMELINE = selectedTimeline
+		end
+
+		local bossData = options.assign.Data[data.bossID]
+		if bossData and bossData.m then
+			for i=1,#bossData do
+				if bossData[i] == selectedTimeline then
+					VMRT.Reminder.TLBoss.dataIndex = i
+					break
 				end
-			elseif data.fightData then
-				options.assign.frame:ShowSpinner(10)
-				local tempHistory
-				if type(data.fightData.log) == "string" then
-					tempHistory = AddonDB.RestoreFromHistory(data.fightData.log)
-				elseif type(data.fightData.log) == "table" then
-					tempHistory = data.fightData.log
-				end
-
-				-- ddt(tempHistory)
-				selectedTimeline = options.assign:CreateCustomTimelineFromHistory(tempHistory, data.fightData)
-				options.assign.frame:HideSpinner()
 			end
+		end
 
-			if selectedTimeline then
-				options.assign.DIFF_ID = selectedTimeline.d and selectedTimeline.d[1]
-				options.assign.CUSTOM_TIMELINE = selectedTimeline
-			end
+		self.assignBoss:UpdateText()
+		if not data.ignoreReload then
+			options.assign:Update()
+			data.tl = selectedTimeline
+			data.ignoreReload = true
+			options.timeLineBoss.SetValue(data)
+		end
+	end)
 
-			local bossData = options.assign.Data[data.bossID]
-			if bossData and bossData.m then
-				for i=1,#bossData do
-					if bossData[i] == selectedTimeline then
-						VMRT.Reminder.TLBoss.dataIndex = i
-						break
-					end
-				end
-			end
-
-			self.assignBoss:UpdateText()
-			if not data.ignoreReload then
-				options.assign:Update()
-				data.tl = selectedTimeline
-				data.ignoreReload = true
-				options.timeLineBoss.SetValue(data)
-			end
-		end)
-	end
 
 	self.assignBoss.Button:SetScript("OnClick",function(self)
 		options.assignBoss:PreUpdate()
@@ -5748,30 +5694,7 @@ function options:TimelineInitialize()
 	options.assign.frame.bigBossButtons.Util_BottonOnClick = options.timeLine.frame.bigBossButtons.Util_BottonOnClick
 	options.assign.frame.bigBossButtons.Add = options.timeLine.frame.bigBossButtons.Add
 
-	function options.assign.frame:ShowSpinner(timeout)
-		self.initSpinner:Show()
-		self.initSpinner.Anim:Play()
-		if timeout then
-			C_Timer.After(timeout, function()
-				self:HideSpinner()
-			end)
-		end
-	end
-
-	function options.assign.frame:HideSpinner()
-		self.initSpinner:Hide()
-		self.initSpinner.Anim:Stop()
-	end
-
-	local initSpinner = CreateFrame("Button", nil, options.assign.frame, "LoadingSpinnerTemplate")
-	initSpinner.BackgroundFrame.Background:SetVertexColor(0, 1, 0, 1)
-	initSpinner.AnimFrame.Circle:SetVertexColor(0, 1, 0, 1)
-	initSpinner:SetPoint("CENTER", options.assign.frame, "CENTER", 0, 0)
-	initSpinner:SetSize(60, 60)
-	initSpinner:Hide()
-	initSpinner.Anim:Stop()
-	options.assign.frame.initSpinner = initSpinner
-
+	options.assign.frame.initSpinner = MLib:LoadingSpinner(options.assign.frame):Size(60, 60):Point("CENTER", 0, 0)
 
 	options.assign.frame:SetScript("OnUpdate",function(self)
 		local x,y = MRT.F.GetCursorPos(self)
@@ -6177,6 +6100,10 @@ function options:TimelineInitialize()
 			output = output .. LR["Sound: "] .. (tostring(data.sound):match("([^\\/]+)$") or data.sound) .. "\n"
 		end
 		GameTooltip:AddLine(output)
+		GameTooltip:AddLine(" ")
+		GameTooltip:AddLine(LR["Left click - config"])
+		GameTooltip:AddLine(LR["Shift+Left click - advanced config"])
+		GameTooltip:AddLine(LR["Right click - remove"])
 		GameTooltip:Show()
 	end
 	options.assign.Util_LineAssignOnLeave = function(self)
@@ -8974,221 +8901,208 @@ function options:TimelineInitialize()
 		self:UpdateView()
 	end
 
-	--[[
-		data = {
-		d = {diff,combatTime},
-		p={t,n={pName},nc={pCounter},...},
-		events = {
-			event = {
-				spellId = {time,...},
-				...,
-			...
-			}
-		}
-		spellId = {time|{time,c=castTime,d=durTime},...},
-		...
-		}
-		]]
 
-		local cleuKeys = {
-			["SPELL_CAST_SUCCESS"] = true,
-			["SPELL_CAST_START"] = true,
-			["SPELL_AURA_APPLIED"] = true,
-			["SPELL_AURA_REMOVED"] = true,
-		}
-		local ignoreFields = {
-			["fightData"] = true,
-			["spellType"] = true,
-		}
+	----- Export custom timeline created from history -----
 
-		local function IsTimeSame(a,b)
-			a = a * 10
-			a = floor(a + 0.5)
-			a = a / 10
+	local cleuKeys = {
+		["SPELL_CAST_SUCCESS"] = true,
+		["SPELL_CAST_START"] = true,
+		["SPELL_AURA_APPLIED"] = true,
+		["SPELL_AURA_REMOVED"] = true,
+	}
+	local ignoreFields = {
+		["fightData"] = true,
+		["spellType"] = true,
+	}
 
-			b = b * 10
-			b = floor(b + 0.5)
-			b = b / 10
-			return math.abs(a-b) <= 0.1
-		end
+	local function IsTimeSame(a,b)
+		a = a * 10
+		a = floor(a + 0.5)
+		a = a / 10
 
-		-- /run GMRT.A.Reminder.options:ExportTimeline(true)
-		function options:ExportTimeline(useCustomSpells,cData)
-			local data
-			local customSpells = {}
-			if cData then
-				data = cData
-			else
-				local mod
-				if options.main_tab.selected == 2 then
-					mod = options.timeLine
-				elseif options.main_tab.selected == 3 then
-					mod = options.assign
-				end
+		b = b * 10
+		b = floor(b + 0.5)
+		b = b / 10
+		return math.abs(a-b) <= 0.1
+	end
 
-				if not mod or not mod.CUSTOM_TIMELINE then return end
-				customSpells = type(useCustomSpells) == "table" and useCustomSpells or useCustomSpells and mod.FILTER_SPELL
-
-				data = CopyTable(mod.CUSTOM_TIMELINE)
+	-- /run GMRT.A.Reminder.options:ExportTimeline(true)
+	function options:ExportTimeline(useCustomSpells,cData)
+		local data
+		local customSpells = {}
+		if cData then
+			data = cData
+		else
+			local mod
+			if options.main_tab.selected == 2 then
+				mod = options.timeLine
+			elseif options.main_tab.selected == 3 then
+				mod = options.assign
 			end
-			ddt(data,"TimelineData")
-			local function serializeTable(tbl, indent, nextIndent, isEvents)
-				local res = {nextIndent}
-				indent = indent or "\n"
-				isEvents = isEvents or false
 
-				for k, v in next, tbl do
-					if not ignoreFields[k] and (not (module.TimeLineExportBlacklist[k] or options.timeLine.spell_status[k]) or data == cData) then -- and (not customSpells or type(k) ~= "number" or k < 200 or customSpells[k])
-						local keyIsNum = false
-						if type(k) == "number" then
-							keyIsNum = true
-							if (k == 1 or k < 200 and tbl[k-1]) then
-								k = nil
-							else
-								k = "[" .. k .. "]"
-							end
-						elseif type(k) == "string" and string.find(k,"[^%w%_]") then
-							k = format("[%q]", k)
-						end
+			if not mod or not mod.CUSTOM_TIMELINE then return end
+			customSpells = type(useCustomSpells) == "table" and useCustomSpells or useCustomSpells and mod.FILTER_SPELL
 
-						if type(v) == "table" and next(v) then
+			data = CopyTable(mod.CUSTOM_TIMELINE)
+		end
+		ddt(data,"TimelineData")
+		local function serializeTable(tbl, indent, nextIndent, isEvents)
+			local res = {nextIndent}
+			indent = indent or "\n"
+			isEvents = isEvents or false
 
-							 -- reduce events spam, remove every event that already happened in last 2 seconds
-							 if keyIsNum then
-								if isEvents then
-									for i=#v,1,-1 do
-										local time = type(v[i]) == "table" and v[i][1] or v[i]
-										if time then
-											for j=i-1,1,-1 do
-												local prevTime = type(v[j]) == "table" and v[j][1] or v[j]
-												if prevTime and prevTime > time - 2 then
-													local removedEntry = table.remove(v, i)
-													local r = type(removedEntry) == "table" and removedEntry.r or 1
-													if type(v[j]) ~= "table" then
-														v[j] = {v[j],r=1+r}
-													else
-														v[j].r = v[j].r + r
-													end
-													break
-												end
-											end
-										end
-									end
-								else
-									for i=#v,1,-1 do
-										local time = type(v[i]) == "table" and v[i][1] or v[i]
-										if time then
-											for j=i-1,1,-1 do
-												local prevTime = type(v[j]) == "table" and v[j][1] or v[j]
-												if prevTime and prevTime > time - 2 then
-													table.remove(v, i)
-													break
-												end
-											end
-										end
-									end
-								end
-							end
-
-							if type(v[1]) == "table" and v[1].d then -- compress tables with .d
-								local sameD = true
-								for i=2,#v do
-									if not IsTimeSame((type(v[i]) == "table" and v[i].d or v.d or v[1].d), v[1].d) then
-										sameD = false
-										break
-									end
-								end
-								if sameD then
-									v.d = v[1].d
-									for i=1,#v do
-										if type(v[i]) == "table" then
-											v[i] = v[i][1]
-										end
-									end
-								end
-							end
-
-							if type(v[1]) == "table" and v[1].c then -- compress tables with .c
-								local sameC = true
-								for i=2,#v do
-									if not IsTimeSame((type(v[i]) == "table" and v[i].c or v.cast or v[1].c), v[1].c) then
-										sameC = false
-										break
-									end
-								end
-								if sameC then
-									v.cast = v[1].c
-									for i=1,#v do
-										if type(v[i]) == "table" then
-											v[i] = v[i][1]
-										end
-									end
-								end
-							end
-
-							local indent2 = cleuKeys[k] and "\n    " or ""
-							res[#res + 1] = indent2 ..(k and (k .. "=") or "")  .. "{" .. indent2 .. serializeTable(v, indent2, nil, isEvents or k == "events") .. "},"
-						elseif type(v) ~= "table" then
-							if type(v) == "number" then
-								v = v * 10
-								v = floor(v + 0.5)
-								v = v / 10
-							elseif type(v) == "string" then --and string.find(v,"%A")
-								v = format("%q", v)
-							end
-							res[#res + 1] = indent .. (k and (k .. "=") or "") .. tostring(v) .. ","
-						end
-					end
-				end
-				if tbl == data or data.events and (
-					tbl == data.events or
-					tbl == data.events.SPELL_CAST_SUCCESS or
-					tbl == data.events.SPELL_CAST_START or
-					tbl == data.events.SPELL_AURA_APPLIED or
-					tbl == data.events.SPELL_AURA_REMOVED
-				) then
-					sort(res,function(A,B)
-						local aIsSpell = string.find(A,"^%[%d+%]")
-						local bIsSpell = string.find(B,"^%[%d+%]")
-						local aIsEvents = string.find(A,"^events")
-						local bIsEvents = string.find(B,"^events")
-						local aIsPhase = string.find(A,"^p")
-						local bIsPhase = string.find(B,"^p")
-						local aisD = string.find(A,"^d")
-						local bisD = string.find(B,"^d")
-
-						local prioA = aIsSpell and 1 or aIsPhase and 2 or aisD and 3 or aIsEvents and 4 or 5
-						local prioB = bIsSpell and 1 or bIsPhase and 2 or bisD and 3 or bIsEvents and 4 or 5
-						if aIsSpell and bIsSpell then
-							return tonumber(A:match("^%[(%d+)%]") or 0) < tonumber(B:match("^%[(%d+)%]") or 0)
-						elseif tbl == data then
-							return prioA < prioB
+			for k, v in next, tbl do
+				if not ignoreFields[k] and (not (module.TimeLineExportBlacklist[k] or options.timeLine.spell_status[k]) or data == cData) then -- and (not customSpells or type(k) ~= "number" or k < 200 or customSpells[k])
+					local keyIsNum = false
+					if type(k) == "number" then
+						keyIsNum = true
+						if (k == 1 or k < 200 and tbl[k-1]) then
+							k = nil
 						else
-							return false
+							k = "[" .. k .. "]"
 						end
-					end)
-				end
+					elseif type(k) == "string" and string.find(k,"[^%w%_]") then
+						k = format("[%q]", k)
+					end
 
-				if tbl == data then
-					for i=1,#res do
-						local spellID = tonumber(res[i]:match("^%[(%d+)%]") or "?")
-						if spellID then
-							local spellName = GetSpellName(spellID)
-							if spellName then
-								res[i] = res[i] .. " -- " .. spellName
+					if type(v) == "table" and next(v) then
+
+							-- reduce events spam, remove every event that already happened in last 2 seconds
+							if keyIsNum then
+							if isEvents then
+								for i=#v,1,-1 do
+									local time = type(v[i]) == "table" and v[i][1] or v[i]
+									if time then
+										for j=i-1,1,-1 do
+											local prevTime = type(v[j]) == "table" and v[j][1] or v[j]
+											if prevTime and prevTime > time - 2 then
+												local removedEntry = table.remove(v, i)
+												local r = type(removedEntry) == "table" and removedEntry.r or 1
+												if type(v[j]) ~= "table" then
+													v[j] = {v[j],r=1+r}
+												else
+													v[j].r = v[j].r + r
+												end
+												break
+											end
+										end
+									end
+								end
+							else
+								for i=#v,1,-1 do
+									local time = type(v[i]) == "table" and v[i][1] or v[i]
+									if time then
+										for j=i-1,1,-1 do
+											local prevTime = type(v[j]) == "table" and v[j][1] or v[j]
+											if prevTime and prevTime > time - 2 then
+												table.remove(v, i)
+												break
+											end
+										end
+									end
+								end
 							end
+						end
+
+						if type(v[1]) == "table" and v[1].d then -- compress tables with .d
+							local sameD = true
+							for i=2,#v do
+								if not IsTimeSame((type(v[i]) == "table" and v[i].d or v.d or v[1].d), v[1].d) then
+									sameD = false
+									break
+								end
+							end
+							if sameD then
+								v.d = v[1].d
+								for i=1,#v do
+									if type(v[i]) == "table" then
+										v[i] = v[i][1]
+									end
+								end
+							end
+						end
+
+						if type(v[1]) == "table" and v[1].c then -- compress tables with .c
+							local sameC = true
+							for i=2,#v do
+								if not IsTimeSame((type(v[i]) == "table" and v[i].c or v.cast or v[1].c), v[1].c) then
+									sameC = false
+									break
+								end
+							end
+							if sameC then
+								v.cast = v[1].c
+								for i=1,#v do
+									if type(v[i]) == "table" then
+										v[i] = v[i][1]
+									end
+								end
+							end
+						end
+
+						local indent2 = cleuKeys[k] and "\n    " or ""
+						res[#res + 1] = indent2 ..(k and (k .. "=") or "")  .. "{" .. indent2 .. serializeTable(v, indent2, nil, isEvents or k == "events") .. "},"
+					elseif type(v) ~= "table" then
+						if type(v) == "number" then
+							v = v * 10
+							v = floor(v + 0.5)
+							v = v / 10
+						elseif type(v) == "string" then --and string.find(v,"%A")
+							v = format("%q", v)
+						end
+						res[#res + 1] = indent .. (k and (k .. "=") or "") .. tostring(v) .. ","
+					end
+				end
+			end
+			if tbl == data or data.events and (
+				tbl == data.events or
+				tbl == data.events.SPELL_CAST_SUCCESS or
+				tbl == data.events.SPELL_CAST_START or
+				tbl == data.events.SPELL_AURA_APPLIED or
+				tbl == data.events.SPELL_AURA_REMOVED
+			) then
+				sort(res,function(A,B)
+					local aIsSpell = string.find(A,"^%[%d+%]")
+					local bIsSpell = string.find(B,"^%[%d+%]")
+					local aIsEvents = string.find(A,"^events")
+					local bIsEvents = string.find(B,"^events")
+					local aIsPhase = string.find(A,"^p")
+					local bIsPhase = string.find(B,"^p")
+					local aisD = string.find(A,"^d")
+					local bisD = string.find(B,"^d")
+
+					local prioA = aIsSpell and 1 or aIsPhase and 2 or aisD and 3 or aIsEvents and 4 or 5
+					local prioB = bIsSpell and 1 or bIsPhase and 2 or bisD and 3 or bIsEvents and 4 or 5
+					if aIsSpell and bIsSpell then
+						return tonumber(A:match("^%[(%d+)%]") or 0) < tonumber(B:match("^%[(%d+)%]") or 0)
+					elseif tbl == data then
+						return prioA < prioB
+					else
+						return false
+					end
+				end)
+			end
+
+			if tbl == data then
+				for i=1,#res do
+					local spellID = tonumber(res[i]:match("^%[(%d+)%]") or "?")
+					if spellID then
+						local spellName = GetSpellName(spellID)
+						if spellName then
+							res[i] = res[i] .. " -- " .. spellName
 						end
 					end
 				end
-
-				return table.concat(res, indent)
 			end
 
-			local str = serializeTable(data)
-			str = str:gsub("%,%}","}")
-			print(#str)
-			MRT.F:Export(str)
+			return table.concat(res, indent)
 		end
+
+		local str = serializeTable(data)
+		str = str:gsub("%,%}","}")
+		print(#str)
+		MRT.F:Export(str)
+	end
 
 
 	options.timeLine.preload = options.timeLineBoss:PreUpdate()

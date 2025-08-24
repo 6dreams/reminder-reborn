@@ -439,15 +439,14 @@ Always(F) - unchecks load never on import]])
 		else
 			local id = SenderFrameData.id
 			if id then
-				module:Async(function()
-					module:CompressAndSend(id, VMRT.WASync.UpdateLastSync and not IsAltKeyDown(), IsShiftKeyDown()) -- alt for not update last sync time, shift for just add to queue
-				end)
+				-- alt for not update last sync time, shift for just add to queue
+				module:Async(module.CompressAndSend, module, id, VMRT.WASync.UpdateLastSync and not IsAltKeyDown(), IsShiftKeyDown())
 			end
 		end
 	end)
 
 	local bar = CreateFrame("StatusBar",nil,SenderFrame)
-	Mixin(bar,SmoothStatusBarMixin)
+	Mixin(bar, SmoothStatusBarMixin)
 
 	bar:SetSize(380,18)
 	bar:SetPoint("BOTTOM",SenderFrame,"BOTTOM",0,55)

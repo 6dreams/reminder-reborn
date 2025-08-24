@@ -31,7 +31,7 @@ module.db.responces = {}
 local CURRENT_INSTANCE
 local CURRENT_DIFFICULTY = MRT.isClassic and 4 or 15 -- 17 nighthold for test
 
-AddonDB:RegisterCallback("EXRT_REMINDER_PLAYER_ENTERING_WORLD", function()
+AddonDB:RegisterCallback("ENCOUNTER_JOURNAL_PARSED", function()
 	local latestInstance = AddonDB:FindLatestRaidInstance()
 	if latestInstance then
 		CURRENT_INSTANCE = latestInstance

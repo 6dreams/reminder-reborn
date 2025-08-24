@@ -101,12 +101,12 @@ module.DisplayToTableString = DisplayToTableString
 
 
 local function CreateWAEditor()
-	local WAEditorFrame = ELib:Popup("WASync WA Editor"):Size(800, 600)
+	local WAEditorFrame = MLib:Popup("WASync WA Editor"):Size(800, 600):CreateTitleBackground()
 	module.WAEditorFrame = WAEditorFrame
 	WAEditorFrame:SetFrameStrata("FULLSCREEN")
 
 
-	WAEditorFrame.Editor = ELib:MultiEdit(WAEditorFrame):Size(780, 500):Point("TOP", 0, -30):AddPosText():OnChange(function(self)
+	WAEditorFrame.Editor = MLib:MultiEdit(WAEditorFrame):Size(780, 500):Point("TOP", 0, -30):AddPosText():OnChange(function(self)
 		local isSuccessful, data = TableStringToTable(self:GetText())
 		if isSuccessful then
 			WAEditorFrame.data = data
@@ -115,10 +115,7 @@ local function CreateWAEditor()
 			WAEditorFrame.errorText:SetText(data)
 		end
 	end)
-	WAEditorFrame.Editor.background = WAEditorFrame.Editor:CreateTexture(nil,"BACKGROUND",nil,-8)
-	WAEditorFrame.Editor.background:SetAllPoints(WAEditorFrame.Editor)
-	WAEditorFrame.Editor.background:SetColorTexture(.05, .05, .05, 0.85)
-	ELib:Border(WAEditorFrame.Editor,1,.24,.25,.30,1)
+
 	if IndentationLib then
 		local editor_themes = {
 			["Standard"] = {

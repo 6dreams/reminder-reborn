@@ -47,6 +47,7 @@ local GetSpecialization = AddonDB.GetSpecialization
 local GetSpecializationInfo = AddonDB.GetSpecializationInfo
 
 local GUIDIsPlayer = C_PlayerInfo.GUIDIsPlayer
+local SendChatMessage = C_ChatInfo.SendChatMessage or SendChatMessage
 
 
 local function prettyPrint(...)
@@ -4268,7 +4269,8 @@ do
 		return (koreanCount / #letters) > 0.5
 	end
 
-	local missingTTSStrings = {}
+	local missingTTSStrings = VMRT.Reminder.missingTTSStrings or {}
+	VMRT.Reminder.missingTTSStrings = missingTTSStrings
 	local function exportMissingTTSStrings()
 		local t = {}
 		for k in next, missingTTSStrings do
@@ -4298,7 +4300,13 @@ do
 
 
 	local LibTranslit = LibStub("LibTranslit-1.0")
-	function module:PlayTTS(msg,params,forceUseTTSFiles)
+	function module:PlayTTS(msg, params, forceUseTTSFiles)
+		if type(msg) == "number" then
+			msg = tostring(msg)
+		end
+		if type(msg) ~= "string" then
+			error("PlayTTS: msg must be a string or number, got: "..type(msg), 2)
+		end
 		msg = msg:gsub("{rt%d}", markToText)
 
 		local message = module:FormatMsg(msg or "", params)
@@ -5656,7 +5664,10 @@ function module:Enable()
 
 	module.IsEnabled = true
 
-	module:RegisterEvents('ENCOUNTER_START','ENCOUNTER_END','ZONE_CHANGED_NEW_AREA','CHALLENGE_MODE_START','CHALLENGE_MODE_COMPLETED','CHALLENGE_MODE_RESET')
+	module:RegisterEvents('ENCOUNTER_START','ENCOUNTER_END','ZONE_CHANGED_NEW_AREA')
+	if MRT.is11 then -- to avoid errors in mop challenges
+		module:RegisterEvents('CHALLENGE_MODE_START','CHALLENGE_MODE_COMPLETED','CHALLENGE_MODE_RESET')
+	end
 
 	module:RegisterBigWigsCallback("BigWigs_OnBossEngage")
 	module:RegisterDBMCallback("DBM_Pull")

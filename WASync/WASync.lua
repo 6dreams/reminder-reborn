@@ -1,62 +1,76 @@
---[[ guide was written December 26th, 2023 and some info may be outdated
+--[[
+
+Guide was written December 26th, 2023 and some info may be outdated(Last update August 2nd, 2025)
 Explanation on WeakAuras Sync and WAChecker
 
+A dictrionary of terms used in this file:
+* WeakAuras - the addon
+* WA - a singular entity that exists in WeakAuras, may include children
+
 WeakAuras Sync is an expansion for WAChecker module.
-It allows you to send WeakAuras to other players directly, without using chat links.
-It also allows you to track state of WeakAuras of other players, including info about:
+It allows you to send WAs to other players directly, without using chat links.
+It also allows you to track state of WAs of other players, including info about:
 	- if they have WA
 	- when was the last time they updated it(through WeakAuras Sync)
 	- who was the last person to update it
+	- current wago version(version/semver)
+	- current load "never" state
 
 WeakAuras Sync changes default behavior of WAChecker module,
 
 Normal behavior of 'share' button is replaced, but still can be accessed.
-To use default WAChecker functionality:(these are applicable if users you poll don't have WeakAuras Sync installed):
-	- left click on line to poll information about WA status(installed/not installed)
-	- shift left click on name part of line in module window to link WeakAura in chat
+To use default WAChecker functionality:(these are applicable if users you poll don't have this addon installed):
+	- to check if users have WA installed either:
+		- left click on WA name
+		- using right click menu select `Check WA availability`
+	- to link WA in chat:
+		- using right click menu select `Link WA in chat`
 
 How to use WeakAuras Sync functionallity:
-	To send WeakAuras:
+	To send WA:
 		click on 'share' button to open WeakAuras Sync Sender window
 		here you can choose import mode, custom receiver and whether to update last sync time
 
-		import mode is used to determine how to import WeakAuras on receiving end
+		import mode is used to determine how to import WA on receiving end
 
-		for PUBLIC version of WeakAuras Sync there is only one import mode available which is using internal WeakAuras import function and safe to use.
-			Other import modes are available only for PRIVATE version of WeakAuras Sync, because of possible issues:
+		for PUBLIC version of this addon there is only one import mode available which is using internal WeakAuras import function and safe to use.
+			Other import modes are available only for PRIVATE version of this addon, because of possible issues:
 				- Main issue is that import logic of advanced modes is not perfect and instead of creating duplicates
-				  it may delete WeakAuras if they use the same name as the imported ones even if they are located in different groups,
+				  it deletes WAs if they have the same name as the imported ones even if they are located in different groups/have different UID,
 				  but this behavior is intended to avoid duplicates so advanced modes are not coming to public release
 
 		for PRIVATE version of WeakAuras Sync there is 5 import modes available:
 			- [DEFAULT] WeakAuras Import - uses internal WeakAuras import function and safe to use
 
-			- [WAS] Import Missing - imports only WeakAuras that are not present on receiving end
+			See ImportFunctions.lua for more information about import process
 
-			- [WAS] Update - updates WeakAuras data except fields that are handled with 'categories to ignore when importing' setting:
+			- [WAS] Import Missing - imports only WAs that are not present on receiving end
 
-			- [WAS] Force Update(Save Load 'Never') - updates WeakAuras data except load 'Never'
+			- [WAS] Update - updates WAs data except fields that are handled with 'categories to ignore when importing' setting:
 
-			- [WAS] Force Full Update - fully updates WeakAuras data
+			- [WAS] Force Update(Save Load 'Never') - updates WAs data except load 'Never'
 
-		You can specify where to send a WA: channel/specific player, AUTO will send to all players in raid
+			- [WAS] Force Full Update - fully updates WAs data
+
+		You can specify where to send a WA: channel/specific player, AUTO will send to all players in a group
+		If you use GUILD channel, only players who are in your guild and in the same group as you will receive the WA
 
 		update last sync is used to update information about last sync time for WeakAura(pressing send button with alt key pressed will ignore this checkbox)
-		last sync is used to show information about when was the last time WeakAura was updated
+		last sync is used to show information about when was the last time WA was updated
 		if using import modes other than    [WAS] Force Update(Save Load 'Never') or
 											[WAS] Force Full Update
-			last sync time will be used to determine if WeakAura should be updated or not
+			last sync time will be used to determine if WA should be updated or not
 
-		Send button is used to start sending WeakAuras to other players but there is also some modifiers:
-			- default click - will start sending WeakAuras
-			- shift click - will add WeakAuras to queue but wont start sending
-			- alt click - will not update last sync time for current WeakAura(ignoring checkbox)
-			- ctrl click - instead of adding WeakAura to queue will start sending WeakAuras that are already on queue
+		Send button is used to send WAs to other players but there is also some modifiers:
+			- default click - to send WA
+			- shift click - to add WA to the queue but do not send it yet
+			- alt click - to not update last sync time for current WA(ignoring checkbox)
+			- ctrl click - instead of adding WA to queue will start sending WAs that are already queued
 
 	To poll information about last sync and last sender:
 		right click on 'share' button to start poll
 		when information is received it will be shown in tooltips for icons(yellow cheks or thiccker red x)
-		to poll information about WeakAuras ADDON VERSION you need to left click on line "WeakAuras AddOn Version" or press button "Update"
+		to poll information about WeakAuras ADDON VERSION you need to left click on line "WeakAuras AddOn Version" or press "Update" button
 ]]
 
 local GlobalAddonName = ...
@@ -76,7 +90,7 @@ AddonDB:RenameModule(module, "|cFF8855FFWeakAuras Sync|r")
 AddonDB:SwitchModulesOrder(module, MRT.A.Profiles)
 
 ---@class ELib
-local ELib,L = MRT.lib,MRT.L
+local ELib, L = MRT.lib, MRT.L
 ---@class MLib
 local MLib = AddonDB.MLib
 
@@ -86,51 +100,23 @@ AddonDB.WASYNC = {}
 ---@class WASyncPrivate
 local WASync = AddonDB.WASYNC
 WASync.RELOAD_AFTER_IMPORTS = false -- in case we need to reload due to changes in WeakAuras
-WASync.FORCE_IMPORTS = false -- in case i dont want people to skip imports
+WASync.FORCE_IMPORTS = false -- in case we dont want people to have an option to skip imports
 WASync.isDebugMode = false
 WASync.VERSION = 13
 WASync.WAMAP_VERSION = 2
 
-local defaultHandlerConfig = {
-	type = "everyFrame",
+local defaultAsyncConfig = {
 	maxTime = 50,
 	maxTimeCombat = 8,
 	errorHandler = geterrorhandler(),
 }
-local AsyncHandler = LibStub("LibAsync"):GetHandler(defaultHandlerConfig)
-function module:Async(func,...)
-	AsyncHandler:Async(func,...)
+
+function module:Async(func, ...)
+	AddonDB:Async(defaultAsyncConfig, func, ...)
 end
 
-local importHandlerConfig = {
-	type = "everyFrame",
-	maxTime = 50,
-	maxTimeCombat = 8,
-	errorHandler =  function(msg, stacktrace, name)
-		local queueItem
-		if module.QueueFrame.IsImporting then
-			queueItem = module.QueueFrame.RemoveFromQueue()
-		end
-
-		if queueItem then
-			local diagnostics = module:GetDiagonsticsForQueueItem(queueItem)
-			stacktrace = diagnostics..stacktrace
-		end
-
-		if AddonDB.OnError then
-			AddonDB:OnError(msg, stacktrace, name)
-		end
-		geterrorhandler()(msg, stacktrace, name)
-	end,
-}
-
-local ImportAsyncHandler = LibStub("LibAsync"):GetHandler(importHandlerConfig)
-function module:ImportAsync(func,...)
-	ImportAsyncHandler:Async(func,...)
-end
-
--- WASYNC_MAIN_PRIVATE - global for main WA addon's namespace
--- WASYNC_OPTIONS_PRIVATE - global for options addon's namespace
+-- WASYNC_MAIN_PRIVATE - global for WeakAuras addon's namespace
+-- WASYNC_OPTIONS_PRIVATE - global for WeakAurasOptions addon's namespace
 WASYNC_PROXY = WeakAuras -- global to access WeakAuras functions from custom code
 module.PUBLIC = AddonDB.PUBLIC
 
@@ -151,8 +137,8 @@ module.db.allowList = {}
 -- upvalues
 local type, next, unpack, string, print = type, next, unpack, string, print
 local min, Ambiguate, wipe, time, floor, max = min, Ambiguate, wipe, time, floor, max
-local bit_lshift, bit_bor, GetTime, UnitName, IsInGroup, IsShiftKeyDown, IsAltKeyDown =
-	bit.lshift, bit.bor, GetTime, UnitName, IsInGroup, IsShiftKeyDown, IsAltKeyDown
+local bit_lshift, bit_bor, GetTime, IsInGroup, IsShiftKeyDown, IsAltKeyDown =
+	bit.lshift, bit.bor, GetTime, IsInGroup, IsShiftKeyDown, IsAltKeyDown
 local bit_band, bit_bxor, UnitFullName, GetCurrentKeyBoardFocus, ChatFrame_OpenChat =
 	bit.band, bit.bxor, UnitFullName, GetCurrentKeyBoardFocus, ChatFrame_OpenChat
 
@@ -161,6 +147,7 @@ local WeakAuras = WeakAuras
 
 local WASYNC_ERROR = "|cffee5555ERROR:|r"
 module.WASYNC_ERROR = WASYNC_ERROR
+module.colorCode = "|cff9f3fff"
 
 local function prettyPrint(...)
 	print("|cff9f3fff[WASync]|r", ...)
@@ -189,7 +176,7 @@ function module:ShareButtonClick(button)
 	end
 end
 
-function module:ExternalExportWA(id,config)
+function module:ExternalExportWA(id, config)
 	assert(type(id) == "string", "module:ExternalExportWA(id, config): id must be string")
 	if not module.SenderFrame then
 		module:CreateSenderFrame()
@@ -201,9 +188,7 @@ function module:ExternalExportWA(id,config)
 	end
 	module.SenderFrame:Update(id)
 	if config and config.send then
-		module:Async(function()
-			module:CompressAndSend(id,true,nil,true)
-		end)
+		module:Async(module.CompressAndSend, module, id, true, nil, true)
 	end
 end
 
@@ -273,7 +258,8 @@ WASync.update_categories = {
 			scale = true,
 			grow = true,
 			align = true,
-
+			zoom = true,
+			keepAspectRatio = true,
 		},
 		label = "Size & Position",
 		label2 = "S&P",
@@ -363,10 +349,12 @@ WASync.update_categories = {
 			shadowColor = true,
 			enableGradient = true,
 			gradientOrientation = true,
+			texture = true,
+			textureSource = true,
 		},
 		default = false,
-		label = "Color",
-		label2 = "Clr",
+		label = "Color and Textures",
+		label2 = "Clr&Tex",
 	},
 	{
 		name = "fonts",
@@ -458,12 +446,14 @@ do
 		glowXOffset = true,
 		glowYOffset = true,
 		useGlowColor = true,
-		__WASYNC_ADDITIONAL_CHECK = function(data1,data2) return data1.type == data2.type end, -- do not preserve settings if subregion type has changed
+		__WASYNC_ADDITIONAL_CHECK = function(data1, data2) return data1.type == data2.type end, -- do not preserve settings if subregion type has changed
 	}
 
 	local subregionFonts = {
 		anchorXOffset = true,
 		anchorYOffset = true,
+		anchor_point = true,
+		text_selfPoint = true,
 
 		text_anchorPoint = true,
 		text_anchorXOffset = true,
@@ -475,7 +465,6 @@ do
 		text_fontSize = true,
 		text_fontType = true,
 		text_justify = true,
-		text_selfPoint = true,
 		text_shadowColor = true,
 		text_shadowXOffset = true,
 		text_shadowYOffset = true,
@@ -487,15 +476,15 @@ do
 		border_offset = true,
 		border_size = true,
 		border_visible = true,
-		__WASYNC_ADDITIONAL_CHECK = function(data1,data2) return data1.type == data2.type end, -- do not preserve settings if subregion type has changed
+		__WASYNC_ADDITIONAL_CHECK = function(data1, data2) return data1.type == data2.type end, -- do not preserve settings if subregion type has changed
 	}
 
-	for i,c in next, WASync.update_categories do
+	for i, c in next, WASync.update_categories do
 		if c.name == "sounds" then
-			for i=1,12 do
+			for i = 1, 12 do
 				local changes_template = {
 					value = true,
-					__WASYNC_ADDITIONAL_CHECK = function(data1,data2) -- do not preserve settings if property has changed
+					__WASYNC_ADDITIONAL_CHECK = function(data1, data2) -- do not preserve settings if property has changed
 						return data1.property == data2.property and
 						data1.property == "sound" and
 						type(data1.value) == "table" and type(data2.value) == "table" and
@@ -503,20 +492,20 @@ do
 					end,
 				}
 				local changes = {}
-				for j=1,12 do
-					tinsert(changes,changes_template)
+				for j = 1, 12 do
+					tinsert(changes, changes_template)
 				end
 				tinsert(c.fields.conditions, {
 					changes = changes
 				})
 			end
 		elseif c.name == "glows" then
-			for i=1,12 do
+			for i = 1, 12 do
 				tinsert(c.fields.subRegions,CopyTable(subregionGlows))
 
 				local changes_template = {
 					value = true,
-					__WASYNC_ADDITIONAL_CHECK = function(data1,data2) -- do not preserve settings if property has changed
+					__WASYNC_ADDITIONAL_CHECK = function(data1, data2) -- do not preserve settings if property has changed
 						return data1.property == data2.property and
 						(
 							( -- glow external element
@@ -533,16 +522,16 @@ do
 					end,
 				}
 				local changes = {}
-				for j=1,10 do
-					tinsert(changes,changes_template)
+				for j = 1, 10 do
+					tinsert(changes, changes_template)
 				end
 				tinsert(c.fields.conditions, {
 					changes = changes
 				})
 			end
 		elseif c.name == "fonts" then
-			for i=1,12 do
-				tinsert(c.fields.subRegions,CopyTable(subregionFonts))
+			for i = 1, 12 do
+				tinsert(c.fields.subRegions, CopyTable(subregionFonts))
 			end
 		end
 	end
@@ -551,52 +540,25 @@ end
 
 function module.getDefaultUpdateConfig()
 	local updateConfig = 0
-	for i=1,#WASync.update_categories do
+	for i = 1, #WASync.update_categories do
 		if not WASync.update_categories[i].default then
-			updateConfig = bit_bor(updateConfig,bit_lshift(1,i-1))
+			updateConfig = bit_bor(updateConfig, bit_lshift(1, i - 1))
 		end
 	end
 	return updateConfig
 end
 
--- local categories = {
---     "Ro", -- ?? region options????  --- def true, too hard for now, is there a way to get region specific options?
---     -- "PnS", -- position and size?? copilot pog(and maybe anchors)
---     -- "SR", -- ?? sub regions --- def true
---     -- "Clr", -- color?? copilot kekw
-
---     -- "Trig", -- ?? triggers --- def true
-
---     -- "Cond", -- conditions
-
---     -- "AC", -- ?? actions --- def true
-
---     -- "Anm", -- ?? animation --- def true
-
---     -- "load", -- ?? -- load --- def true
-
---     -- "AO", -- ?? author options --- def true
---     -- "Conf", -- config
-
---     "Info", -- ?? information, misc --- def true
---     "user",  -- probably some user preferences??
-
---     -- fields that do not fall to any of the categories goes to "diplay" category which is not the best idead for out use case
--- }
-
-
-
 --[[
 default load never logic
 
+* Load always means load never is set to false
+
 exrtDefaultLoadNever
 nil - save previous or inherit imported
-1 - load never
-2 - load always
-3 - load never force
-4 - load always force
-
-
+1 - load never on first import
+2 - load always on first import
+3 - force load never
+4 - force load always
 ]]
 
 
@@ -634,7 +596,7 @@ function module:SetPending(id,scheduleRecheck,Sender,ignoreSelf)
 	end
 end
 
-local TWO_WEEKS_CUTOFF = time() - 60*60*24*14
+local TWO_WEEKS_CUTOFF = time() - 60 * 60 * 24 * 14
 
 local filterKeywords = {
 	["exrtToSend"] = {
@@ -669,7 +631,7 @@ local filterKeywords = {
 	},
 }
 
-local function CheckFilter(id,ignoreKeywords)
+local function CheckFilter(id, ignoreKeywords)
 	local filter = module.options.Filter
 	local filterLower = module.options.FilterLower
 
@@ -679,7 +641,7 @@ local function CheckFilter(id,ignoreKeywords)
 
 	local isKeyword = filterKeywords[filter]
 	if not isKeyword or ignoreKeywords then
-		return id:lower():find(filterLower,1,true) and true or false, false
+		return id:lower():find(filterLower, 1, true) and true or false, false
 	elseif type(isKeyword.func) == "function" then
 		return isKeyword.func(id), true
 	else
@@ -706,7 +668,7 @@ end
 
 local function checkWATooltip(tooltip,elementDescription)
 	tooltip:AddLine(MenuUtil.GetElementText(elementDescription))
-	tooltip:AddLine(LR.WASyncWACheckTip,1,1,1,true)
+	tooltip:AddLine(LR.WASyncWACheckTip, 1, 1, 1, true)
 end
 
 local function linkOnClick(id)
@@ -715,8 +677,8 @@ local function linkOnClick(id)
 		local url = WAData.url and  (" " .. WAData.url) or ""
 
 		local name, realm = UnitFullName("player")
-		local fullName = name.."-"..realm
-		local link = "[WeakAuras: "..fullName.." - "..id.."]" .. url
+		local fullName = name .. "-" .. realm
+		local link = "[WeakAuras: " .. fullName .. " - " .. id .. "]" .. url
 
 		local editbox = GetCurrentKeyBoardFocus()
 		if(editbox) then
@@ -731,9 +693,9 @@ local function sendWAOG(id)
 	module:SendWA_OG(id)
 end
 
-local function sendWAOGTooltip(tooltip,elementDescription)
+local function sendWAOGTooltip(tooltip, elementDescription)
 	tooltip:AddLine(MenuUtil.GetElementText(elementDescription))
-	tooltip:AddLine(LR["WASyncSendOGTooltip"],1,1,1,true)
+	tooltip:AddLine(LR["WASyncSendOGTooltip"], 1, 1, 1, true)
 end
 
 local function markToSendOnClick(id)
@@ -743,9 +705,9 @@ local function markToSendOnClick(id)
 		module.options.UpdatePage(true)
 	end
 end
-local function markToSendTooltip(tooltip,elementDescription)
+local function markToSendTooltip(tooltip, elementDescription)
 	tooltip:AddLine(MenuUtil.GetElementText(elementDescription))
-	tooltip:AddLine(LR.WASyncMarkToSendTip,1,1,1,true)
+	tooltip:AddLine(LR.WASyncMarkToSendTip, 1, 1, 1, true)
 end
 
 local function showWAOnClick(id)
@@ -762,17 +724,17 @@ local function showWAOnClick(id)
 		end
 	end
 end
-local function showWATooltip(tooltip,elementDescription)
+local function showWATooltip(tooltip, elementDescription)
 	tooltip:AddLine(MenuUtil.GetElementText(elementDescription))
-	tooltip:AddLine(LR.WASyncShowInWATip,1,1,1,true)
+	tooltip:AddLine(LR.WASyncShowInWATip, 1, 1, 1, true)
 end
 
-local function ContextMenuGeneratorForID(ownerRegion,rootDescription, id)
+local function ContextMenuGeneratorForID(ownerRegion, rootDescription, id)
 	local WAData = WeakAuras.GetData(id)
 	if not WAData then return end
 
 	rootDescription:CreateTitle(id)
-	rootDescription:CreateButton(LR.ListdSend .."...", sendOnClick, id)
+	rootDescription:CreateButton(LR.ListdSend .. "...", sendOnClick, id)
 	rootDescription:CreateButton(LR.WASyncVersionCheck, checkVersionOnClick, id)
 	local b1 = rootDescription:CreateButton(LR.WASyncWACheck, checkWAOnClick, id)
 	b1:SetTooltip(checkWATooltip)
@@ -788,27 +750,26 @@ local function ContextMenuGeneratorForID(ownerRegion,rootDescription, id)
 end
 
 function module.options:Load()
-
 	-- code from og wachecker, overwriting whole ui part
 	self:CreateTilte()
 	MLib:CreateModuleHeader(self)
 
-	self.tab = MLib:Tabs2(self,0,"WeakAuras","Archive","Comparator"):Point(0,-45):Size(698,570):SetTo(1)
+	self.tab = MLib:Tabs2(self, 0, "WeakAuras", "Archive", "Comparator"):Point(0, -45):Size(698, 570):SetTo(1)
 
-	local decorationLine = ELib:DecorationLine(self,true,"BACKGROUND",-5):Point("TOPLEFT",self,0,-25):Point("BOTTOMRIGHT",self,"TOPRIGHT",0,-45)
-	decorationLine:SetGradient("VERTICAL",CreateColor(0.17,0.17,0.17,0.77), CreateColor(0.17,0.17,0.17,0.77))
+	local decorationLine = ELib:DecorationLine(self, true, "BACKGROUND", -5):Point("TOPLEFT", self, 0, -25):Point("BOTTOMRIGHT", self, "TOPRIGHT", 0, -45)
+	decorationLine:SetGradient("VERTICAL", CreateColor(0.17, 0.17, 0.17, 0.77), CreateColor(0.17, 0.17, 0.17, 0.77))
 
 	local UpdatePage
 
-	local errorNoWA = ELib:Text(self,L.WACheckerWANotFound):Point("TOP",0,-30)
+	local errorNoWA = ELib:Text(self, L.WACheckerWANotFound):Point("TOP", 0, -30)
 	errorNoWA:Hide()
 
-	local PAGE_HEIGHT,PAGE_WIDTH = 435,799
-	local LINE_HEIGHT,LINE_NAME_WIDTH = 16,243
+	local PAGE_HEIGHT, PAGE_WIDTH = 435, 799
+	local LINE_HEIGHT, LINE_NAME_WIDTH = 16, 243
 	local VERTICALNAME_WIDTH = 20
 	local VERTICALNAME_COUNT = 26
 
-	self.ReloadRequest = MLib:Button(self,LR["Request ReloadUI"]):Point("TOPRIGHT",self,"TOPRIGHT",-5,-25):Size(140,20):OnClick(function()
+	self.ReloadRequest = MLib:Button(self, LR["Request ReloadUI"]):Point("TOPRIGHT", self, "TOPRIGHT", -5, -25):Size(140, 20):OnClick(function()
 		local isPass, reason = AddonDB:CheckSelfPermissions(WASync.isDebugMode)
 		if not isPass then
 			prettyPrint(LR["Not enough permissions to request reload UI"] .. (reason and ": " .. reason or ""))
@@ -817,17 +778,17 @@ function module.options:Load()
 		module:RequestReloadUI()
 	end)
 
-	local mainScroll = ELib:ScrollFrame(self.tab.tabs[1]):Size(PAGE_WIDTH,PAGE_HEIGHT):Point("BOTTOMLEFT",self,"BOTTOMLEFT",0,30):Height(700)
-	ELib:Border(mainScroll,0)
+	local mainScroll = ELib:ScrollFrame(self.tab.tabs[1]):Size(PAGE_WIDTH, PAGE_HEIGHT):Point("BOTTOMLEFT", self, "BOTTOMLEFT", 0, 30):Height(700)
+	ELib:Border(mainScroll, 0)
 
-	ELib:DecorationLine(self.tab.tabs[1]):Point("BOTTOM",mainScroll,"TOP",0,0):Point("LEFT",self):Point("RIGHT",self):Size(0,1)
-	ELib:DecorationLine(self.tab.tabs[1]):Point("TOP",mainScroll,"BOTTOM",0,0):Point("LEFT",self):Point("RIGHT",self):Size(0,1)
+	ELib:DecorationLine(self.tab.tabs[1]):Point("BOTTOM", mainScroll, "TOP", 0, 0):Point("LEFT", self):Point("RIGHT", self):Size(0, 1)
+	ELib:DecorationLine(self.tab.tabs[1]):Point("TOP", mainScroll, "BOTTOM", 0, 0):Point("LEFT", self):Point("RIGHT", self):Size(0, 1)
 
 	local prevTopLine = 0
 	local prevPlayerCol = 0
 
 	mainScroll.ScrollBar:ClickRange(LINE_HEIGHT)
-	mainScroll.ScrollBar.slider:SetScript("OnValueChanged", function (self,value)
+	mainScroll.ScrollBar.slider:SetScript("OnValueChanged", function (self, value)
 		local parent = self:GetParent():GetParent()
 		parent:SetVerticalScroll(value % LINE_HEIGHT)
 		self:UpdateButtons()
@@ -838,7 +799,7 @@ function module.options:Load()
 		end
 	end)
 
-	local raidSlider = ELib:Slider(self,""):Point("TOPLEFT",mainScroll,"BOTTOMLEFT",LINE_NAME_WIDTH + 15,-3):Range(0,25):Size(VERTICALNAME_WIDTH*VERTICALNAME_COUNT):SetTo(0):OnChange(function(self,value)
+	local raidSlider = ELib:Slider(self, ""):Point("TOPLEFT", mainScroll, "BOTTOMLEFT", LINE_NAME_WIDTH + 15, -3):Range(0, 25):Size(VERTICALNAME_WIDTH * VERTICALNAME_COUNT):SetTo(0):OnChange(function(self, value)
 		local currPlayerCol = floor(value)
 		if currPlayerCol ~= prevPlayerCol then
 			prevPlayerCol = currPlayerCol
@@ -852,7 +813,7 @@ function module.options:Load()
 	raidSlider.High.Show = raidSlider.High.Hide
 
 
-	local function SetIcon(self,type)
+	local function SetIcon(self, type)
 		if self.lastType == type then
 			return
 		end
@@ -890,28 +851,28 @@ function module.options:Load()
 	for i=0,2 do
 		local icon = self.tab.tabs[1]:CreateTexture(nil,"ARTWORK")
 		icon:SetPoint("TOPLEFT",self,"TOPLEFT",2,(-14-i*14)-40)
-		icon:SetSize(16,16)
+		icon:SetSize(16, 16)
 		icon:SetTexture("Interface\\AddOns\\MRT\\media\\DiesalGUIcons16x256x128")
-		SetIcon(icon,i+1)
-		local t = ELib:Text(self.tab.tabs[1],"",10):Point("LEFT",icon,"RIGHT",2,0):Size(0,16):Color(1,1,1)
-		if i==0 then
+		SetIcon(icon, i + 1)
+		local t = ELib:Text(self.tab.tabs[1], "", 10):Point("LEFT", icon, "RIGHT", 2, 0):Size(0, 16):Color(1, 1, 1)
+		if i == 0 then
 			t:SetText(L.WACheckerMissingAura)
-		elseif i==1 then
+		elseif i == 1 then
 			t:SetText(L.WACheckerExistsAura)
-		elseif i==2 then
+		elseif i == 2 then
 			t:SetText(L.WACheckerPlayerHaveNotWA)
 		end
-		self.helpicons[i+1] = {icon,t}
+		self.helpicons[i + 1] = {icon, t}
 	end
 	self.helpicons2 = {}
 	for i=0,2 do
-		local icon = self.tab.tabs[1]:CreateTexture(nil,"ARTWORK")
-		icon:SetPoint("TOPLEFT",self,"TOPLEFT",150,(-14-i*14)-40)
-		icon:SetSize(16,16)
+		local icon = self.tab.tabs[1]:CreateTexture(nil, "ARTWORK")
+		icon:SetPoint("TOPLEFT", self, "TOPLEFT", 150, (-14 - i * 14) - 40)
+		icon:SetSize(16, 16)
 		icon:SetTexture("Interface\\AddOns\\MRT\\media\\DiesalGUIcons16x256x128")
-		SetIcon(icon,-(i+1))
-		local t = ELib:Text(self.tab.tabs[1],"",10):Point("LEFT",icon,"RIGHT",2,0):Size(0,16):Color(1,1,1)
-		if i==0 then
+		SetIcon(icon, -(i + 1))
+		local t = ELib:Text(self.tab.tabs[1], "", 10):Point("LEFT", icon, "RIGHT", 2, 0):Size(0, 16):Color(1, 1, 1)
+		if i == 0 then
 			t:SetText(LR["Aura not updated"])
 		elseif i==1 then
 			t:SetText(LR["Aura updated"])
@@ -922,24 +883,24 @@ function module.options:Load()
 	end
 	self.helpicons3 = {}
 	for i=1,3 do
-		local icon = ELib:Text(self.tab.tabs[1],"S",14):Point("TOPLEFT",self,"TOPLEFT",5,-84-i*14):Size(0,14):Color(1,1,1)
-		local t = ELib:Text(self.tab.tabs[1],"",10):Point("LEFT",icon,"RIGHT",1,0):Size(0,16):Color(1,1,1)
-		if i==1 then
+		local icon = ELib:Text(self.tab.tabs[1], "S", 14):Point("TOPLEFT", self, "TOPLEFT", 5, -84 - i * 14):Size(0, 14):Color(1, 1, 1)
+		local t = ELib:Text(self.tab.tabs[1], "", 10):Point("LEFT", icon, "RIGHT", 1, 0):Size(0, 16):Color(1, 1, 1)
+		if i == 1 then
 			t:SetText(LR["Was ever sent"])
-			icon:Color(.33,.93,.33)
-		elseif i==2 then
+			icon:Color(.33, .93, .33)
+		elseif i == 2 then
 			t:SetText(LR["Updated less then 2 weeks ago"])
-			icon:Color(1,.5,.0)
-		elseif i==3 then
+			icon:Color(1, .5, .0)
+		elseif i == 3 then
 			icon:FontSize(12)
 			icon:SetText("MTS")
 			t:SetText(LR["Marked To Send"])
-			icon:Color(0,.5,1)
+			icon:Color(0, .5, 1)
 		end
-		self.helpicons3[i] = {icon,t}
+		self.helpicons3[i] = {icon, t}
 	end
 
-	self.filterEdit = ELib:Edit(self.tab.tabs[1]):Size(LINE_NAME_WIDTH,20):InsideIcon([[Interface\Common\UI-Searchbox-Icon]],nil,18):Point("BOTTOMLEFT",mainScroll,"TOPLEFT",2,4):Tooltip(SEARCH):OnChange(function(self,isUser)
+	self.filterEdit = ELib:Edit(self.tab.tabs[1]):Size(LINE_NAME_WIDTH, 20):InsideIcon([[Interface\Common\UI-Searchbox-Icon]], nil, 18):Point("BOTTOMLEFT", mainScroll, "TOPLEFT", 2, 4):Tooltip(SEARCH):OnChange(function(self, isUser)
 		local text = self:GetText()
 		if text == "" then
 			text = nil
@@ -954,19 +915,19 @@ function module.options:Load()
 		if self.scheduledUpdate then
 			return
 		end
-		self.scheduledUpdate = C_Timer.NewTimer(.1,function()
+		self.scheduledUpdate = C_Timer.NewTimer(.1, function()
 			self.scheduledUpdate = nil
 			-- module.options.scrollList.ScrollBar.slider:SetValue(0)
 			UpdatePage(true)
 		end)
 	end)
 	self.filterEdit:BackgroundText(SEARCH)
-	self.filterEdit:SetTextColor(0,1,0,1)
-	self.filterEditDropDown = ELib:DropDown(self.filterEdit,260,-1):Size(20):Point("RIGHT",self.filterEdit,"RIGHT",0,0)
+	self.filterEdit:SetTextColor(0, 1, 0, 1)
+	self.filterEditDropDown = ELib:DropDown(self.filterEdit, 260, -1):Size(20):Point("RIGHT", self.filterEdit, "RIGHT", 0, 0)
 	self.filterEditDropDown:HideBorders()
 
 	do
-		local function SetValue(_,k)
+		local function SetValue(_, k)
 			module.options.filterEdit:SetText("")
 			module.options.filterEdit:SetText(k or "")
 			module.options.filterEdit:ClearFocus()
@@ -990,7 +951,7 @@ function module.options:Load()
 				tooltip = data.tooltip,
 			}
 		end
-		sort(List,function(a,b) return a.text < b.text end)
+		sort(List, function(a, b) return a.text < b.text end)
 		List[#List+1] = {
 			text = DELETE,
 			func = SetValue,
@@ -1004,41 +965,41 @@ function module.options:Load()
 	local function OnTooltipEnter(self)
 		local text = self.t:GetText()
 		if text == "WeakAuras AddOn Version" then
-			ELib.Tooltip.Show(self,self.a,text:trim(),{LR.WASyncLineNameTip2,1,1,1})
+			ELib.Tooltip.Show(self, self.a, text:trim(), {LR.WASyncLineNameTip2, 1, 1, 1})
 			return
 		end
 		local line = self:GetParent()
 		local db = line.db
 
-		local tooltip = {{LR.WASyncLineNameTip1,1,1,1}}
+		local tooltip = {{LR.WASyncLineNameTip1, 1, 1, 1}}
 		local id = db and db.name
 		local checkTime = module.db.lastCheck[id]
 		if checkTime then
-			local checkName = module.db.lastCheckName[id] and Ambiguate(module.db.lastCheckName[id],"none") or "UNKNOWN"
+			local checkName = module.db.lastCheckName[id] and Ambiguate(module.db.lastCheckName[id], "none") or "UNKNOWN"
 			local now = time()
 			local checkTime = module.db.lastCheck[id]
 			tooltip[#tooltip+1] = " "
-			tooltip[#tooltip+1] = {LR["Last basic check:"].. " " .. date("%X", checkTime),1,1,1}
+			tooltip[#tooltip+1] = {LR["Last basic check:"].. " " .. date("%X", checkTime), 1, 1, 1}
 			if UnitExists(checkName) then
 				checkName = AddonDB:ClassColorName(checkName)
 			end
-			tooltip[#tooltip+1] = {now-checkTime .. " " .. LR["seconds ago by"] .. " " .. checkName,1,1,1}
+			tooltip[#tooltip+1] = {now-checkTime .. " " .. LR["seconds ago by"] .. " " .. checkName, 1, 1, 1}
 		end
 		local verCheckTime = module.db.versionChecks[id]
 		if verCheckTime then
 			local now = time()
 			tooltip[#tooltip+1] = " "
-			tooltip[#tooltip+1] = {LR["Last version check:"] .. " " .. date("%X", verCheckTime),1,1,1}
-			local checkName = module.db.versionChecksNames[id] and Ambiguate(module.db.versionChecksNames[id],"none") or "UNKNOWN"
+			tooltip[#tooltip+1] = {LR["Last version check:"] .. " " .. date("%X", verCheckTime), 1, 1, 1}
+			local checkName = module.db.versionChecksNames[id] and Ambiguate(module.db.versionChecksNames[id], "none") or "UNKNOWN"
 			if UnitExists(checkName) then
 				checkName = AddonDB:ClassColorName(checkName)
 			end
-			tooltip[#tooltip+1] = {now-verCheckTime ..  " " .. LR["seconds ago by"] .. " "  .. checkName,1,1,1}
+			tooltip[#tooltip+1] = {now-verCheckTime ..  " " .. LR["seconds ago by"] .. " "  .. checkName, 1, 1, 1}
 		end
-		ELib.Tooltip.Show(self,self.a,text:trim(),unpack(tooltip))
+		ELib.Tooltip.Show(self, self.a, text:trim(), unpack(tooltip))
 	end
 
-	local function LineName_OnClick(self,button,isUP)
+	local function LineName_OnClick(self, button, isUP)
 		if button == "RightButton" then
 			local db = self:GetParent().db
 			local id = db and db.data and db.data.id or "--"
@@ -1048,7 +1009,7 @@ function module.options:Load()
 				print("No menu for you classic guy. Stay small")
 				return
 			end
-			MenuUtil.CreateContextMenu(self,ContextMenuGeneratorForID,id)
+			MenuUtil.CreateContextMenu(self, ContextMenuGeneratorForID, id)
 		else
 			local db = self:GetParent().db
 			local id = db and db.data and db.data.id or "--"
@@ -1064,25 +1025,25 @@ function module.options:Load()
 		if module.ShareButtonHover then
 			module.ShareButtonHover(self)
 		end
-		self.background:SetVertexColor(1,1,0,1)
+		self.background:SetVertexColor(1, 1, 0, 1)
 	end
 	local function LineName_ShareButton_OnLeave(self)
 		if module.ShareButtonLeave then
 			module.ShareButtonLeave(self)
 		end
-		self.background:SetVertexColor(1,1,1,1)
+		self.background:SetVertexColor(1, 1, 1, 1)
 	end
-	local function LineName_ShareButton_OnClick(self,...)
-		module.ShareButtonClick(self,...)
+	local function LineName_ShareButton_OnClick(self, ...)
+		module.ShareButtonClick(self, ...)
 	end
 
 	local function LineName_Icon_OnEnter(self)
 		if self.HOVER_TEXT then
-			ELib.Tooltip.Show(self,nil,self.HOVER_TEXT)
+			ELib.Tooltip.Show(self, nil, self.HOVER_TEXT)
 		end
 		if module.IconHoverFunctions then
 			for i=1,#module.IconHoverFunctions do
-				module.IconHoverFunctions[i](self,true)
+				module.IconHoverFunctions[i](self, true)
 			end
 		end
 	end
@@ -1092,7 +1053,7 @@ function module.options:Load()
 		end
 		if module.IconHoverFunctions then
 			for i=1,#module.IconHoverFunctions do
-				module.IconHoverFunctions[i](self,false)
+				module.IconHoverFunctions[i](self, false)
 			end
 		end
 	end
@@ -1100,59 +1061,59 @@ function module.options:Load()
 	local lines = {}
 	self.lines = lines
 	for i=1,floor(PAGE_HEIGHT / LINE_HEIGHT) + 2 do
-		local line = CreateFrame("Frame",nil,mainScroll.C)
+		local line = CreateFrame("Frame", nil, mainScroll.C)
 		lines[i] = line
-		line:SetPoint("TOPLEFT",0,-(i-1)*LINE_HEIGHT)
-		line:SetPoint("TOPRIGHT",0,-(i-1)*LINE_HEIGHT)
-		line:SetSize(0,LINE_HEIGHT)
+		line:SetPoint("TOPLEFT", 0, -(i-1)*LINE_HEIGHT)
+		line:SetPoint("TOPRIGHT", 0, -(i-1)*LINE_HEIGHT)
+		line:SetSize(0, LINE_HEIGHT)
 
-		line.name = ELib:Text(line,"",10):Point("LEFT",5,0):Size(LINE_NAME_WIDTH-LINE_HEIGHT/2,LINE_HEIGHT):Color(1,1,1):Tooltip("ANCHOR_LEFT",true)
-		line.name.TooltipFrame:SetScript("OnClick",LineName_OnClick)
-		line.name.TooltipFrame:SetScript("OnEnter",OnTooltipEnter)
-		line.name.TooltipFrame:SetScript("OnLeave",ELib.Tooltip.Hide)
-		line.name.TooltipFrame:RegisterForClicks("LeftButtonUp","RightButtonUp")
+		line.name = ELib:Text(line, "", 10):Point("LEFT", 5, 0):Size(LINE_NAME_WIDTH - LINE_HEIGHT/2, LINE_HEIGHT):Color(1, 1, 1):Tooltip("ANCHOR_LEFT", true)
+		line.name.TooltipFrame:SetScript("OnClick", LineName_OnClick)
+		line.name.TooltipFrame:SetScript("OnEnter", OnTooltipEnter)
+		line.name.TooltipFrame:SetScript("OnLeave", ELib.Tooltip.Hide)
+		line.name.TooltipFrame:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 
 
-		line.share = CreateFrame("Button",nil,line)
-		line.share:SetPoint("LEFT",line.name,"RIGHT",0,0)
-		line.share:SetSize(LINE_HEIGHT,LINE_HEIGHT)
-		line.share:SetScript("OnEnter",LineName_ShareButton_OnEnter)
-		line.share:SetScript("OnLeave",LineName_ShareButton_OnLeave)
-		line.share:SetScript("OnClick",LineName_ShareButton_OnClick)
-		line.share:RegisterForClicks("LeftButtonUp","RightButtonUp")
+		line.share = CreateFrame("Button", nil, line)
+		line.share:SetPoint("LEFT", line.name, "RIGHT", 0, 0)
+		line.share:SetSize(LINE_HEIGHT, LINE_HEIGHT)
+		line.share:SetScript("OnEnter", LineName_ShareButton_OnEnter)
+		line.share:SetScript("OnLeave", LineName_ShareButton_OnLeave)
+		line.share:SetScript("OnClick", LineName_ShareButton_OnClick)
+		line.share:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 
-		line.share.background = line.share:CreateTexture(nil,"ARTWORK")
+		line.share.background = line.share:CreateTexture(nil, "ARTWORK")
 		line.share.background:SetPoint("CENTER")
-		line.share.background:SetSize(LINE_HEIGHT-4,LINE_HEIGHT-4)
+		line.share.background:SetSize(LINE_HEIGHT-4, LINE_HEIGHT-4)
 		line.share.background:SetAtlas("common-icon-forwardarrow")
 		line.share.background:SetDesaturated(true)
 
 		line.icons = {}
-		local iconSize = min(VERTICALNAME_WIDTH,LINE_HEIGHT) + 2
+		local iconSize = min(VERTICALNAME_WIDTH, LINE_HEIGHT) + 2
 		for j=1,VERTICALNAME_COUNT do
-			local icon = line:CreateTexture(nil,"ARTWORK")
+			local icon = line:CreateTexture(nil, "ARTWORK")
 			line.icons[j] = icon
-			icon:SetPoint("CENTER",line,"LEFT",LINE_NAME_WIDTH + 15 + VERTICALNAME_WIDTH*(j-1) + VERTICALNAME_WIDTH / 2,0)
-			icon:SetSize(iconSize,iconSize)
+			icon:SetPoint("CENTER", line, "LEFT", LINE_NAME_WIDTH + 15 + VERTICALNAME_WIDTH*(j-1) + VERTICALNAME_WIDTH / 2, 0)
+			icon:SetSize(iconSize, iconSize)
 			icon:SetTexture("Interface\\AddOns\\MRT\\media\\DiesalGUIcons16x256x128")
-			SetIcon(icon,(i+j)%4)
+			SetIcon(icon, (i+j)%4)
 
-			icon.hoverFrame = CreateFrame("Frame",nil,line)
+			icon.hoverFrame = CreateFrame("Frame", nil, line)
 			-- icon.hoverFrame:Hide()
 			icon.hoverFrame:SetAllPoints(icon)
-			icon.hoverFrame:SetScript("OnEnter",LineName_Icon_OnEnter)
-			icon.hoverFrame:SetScript("OnLeave",LineName_Icon_OnLeave)
+			icon.hoverFrame:SetScript("OnEnter", LineName_Icon_OnEnter)
+			icon.hoverFrame:SetScript("OnLeave", LineName_Icon_OnLeave)
 		end
 
-		line.t=line:CreateTexture(nil,"BACKGROUND")
+		line.t = line:CreateTexture(nil, "BACKGROUND")
 		line.t:SetAllPoints()
-		line.t:SetColorTexture(1,1,1,.05)
+		line.t:SetColorTexture(1, 1, 1, .05)
 	end
 
 	local function RaidNames_OnEnter(self)
 		local t = self.t:GetText()
 		if t ~= "" then
-			ELib.Tooltip.Show(self,"ANCHOR_LEFT",t)
+			ELib.Tooltip.Show(self, "ANCHOR_LEFT", t)
 		end
 	end
 
@@ -1175,30 +1136,30 @@ function module.options:Load()
 		self:GetParent():GetParent():GetParent():GetParent():StopMovingOrSizing()
 	end
 
-	local raidNames = CreateFrame("Frame",nil,self.tab.tabs[1])
+	local raidNames = CreateFrame("Frame", nil, self.tab.tabs[1])
 	for i=1,VERTICALNAME_COUNT do
-		raidNames[i] = ELib:Text(raidNames,"RaidName"..i,10):Point("BOTTOMLEFT",mainScroll,"TOPLEFT",LINE_NAME_WIDTH + 15 + VERTICALNAME_WIDTH*(i-1),0):Color(1,1,1)
+		raidNames[i] = ELib:Text(raidNames, "RaidName"..i, 10):Point("BOTTOMLEFT", mainScroll, "TOPLEFT", LINE_NAME_WIDTH + 15 + VERTICALNAME_WIDTH*(i-1), 0):Color(1, 1, 1)
 
-		local f = CreateFrame("Button",nil,self.tab.tabs[1])
-		f:SetPoint("BOTTOMLEFT",mainScroll,"TOPLEFT",LINE_NAME_WIDTH + 15 + VERTICALNAME_WIDTH*(i-1),0)
-		f:SetSize(VERTICALNAME_WIDTH,65)
-		f:SetScript("OnEnter",RaidNames_OnEnter)
-		f:SetScript("OnLeave",ELib.Tooltip.Hide)
+		local f = CreateFrame("Button", nil, self.tab.tabs[1])
+		f:SetPoint("BOTTOMLEFT", mainScroll, "TOPLEFT", LINE_NAME_WIDTH + 15 + VERTICALNAME_WIDTH*(i-1), 0)
+		f:SetSize(VERTICALNAME_WIDTH, 65)
+		f:SetScript("OnEnter", RaidNames_OnEnter)
+		f:SetScript("OnLeave", ELib.Tooltip.Hide)
 		f.t = raidNames[i]
 
 		f:RegisterForClicks("LeftButtonUp")
-		f:SetScript("OnClick",RaidNames_OnClick)
+		f:SetScript("OnClick", RaidNames_OnClick)
 
 		f:RegisterForDrag("LeftButton")
-		f:SetScript("OnDragStart",RaidNames_OnDragStart)
-		f:SetScript("OnDragStop",RaidNames_OnDragStop)
+		f:SetScript("OnDragStart", RaidNames_OnDragStart)
+		f:SetScript("OnDragStop", RaidNames_OnDragStop)
 
-		local t=mainScroll:CreateTexture(nil,"BACKGROUND")
+		local t = mainScroll:CreateTexture(nil, "BACKGROUND")
 		raidNames[i].t = t
-		t:SetPoint("TOPLEFT",LINE_NAME_WIDTH + 15 + VERTICALNAME_WIDTH*(i-1),0)
-		t:SetSize(VERTICALNAME_WIDTH,PAGE_HEIGHT)
+		t:SetPoint("TOPLEFT", LINE_NAME_WIDTH + 15 + VERTICALNAME_WIDTH*(i-1), 0)
+		t:SetSize(VERTICALNAME_WIDTH, PAGE_HEIGHT)
 		if i%2==1 then
-			t:SetColorTexture(.5,.5,1,.05)
+			t:SetColorTexture(.5, .5, 1, .05)
 			t.Vis = true
 		end
 	end
@@ -1211,22 +1172,22 @@ function module.options:Load()
 	rotation:SetDegrees(60)
 	group:Play()
 
-	local highlight_y = mainScroll.C:CreateTexture(nil,"BACKGROUND",nil,2)
-	highlight_y:SetColorTexture(1,1,1,.2)
-	local highlight_x = mainScroll:CreateTexture(nil,"BACKGROUND",nil,2)
-	highlight_x:SetColorTexture(1,1,1,.2)
+	local highlight_y = mainScroll.C:CreateTexture(nil, "BACKGROUND", nil, 2)
+	highlight_y:SetColorTexture(1, 1, 1, .2)
+	local highlight_x = mainScroll:CreateTexture(nil, "BACKGROUND", nil, 2)
+	highlight_x:SetColorTexture(1, 1, 1, .2)
 
 	local highlight_onupdate_maxY = (floor(PAGE_HEIGHT / LINE_HEIGHT) + 2) * LINE_HEIGHT
 	local highlight_onupdate_minX = LINE_NAME_WIDTH + 15
 	local highlight_onupdate_maxX = highlight_onupdate_minX + #raidNames * VERTICALNAME_WIDTH
-	mainScroll.C:SetScript("OnUpdate",function(self)
-		local x,y = MRT.F.GetCursorPos(mainScroll)
+	mainScroll.C:SetScript("OnUpdate", function(self)
+		local x, y = MRT.F.GetCursorPos(mainScroll)
 		if y < 0 or y > PAGE_HEIGHT then
 			highlight_x:Hide()
 			highlight_y:Hide()
 			return
 		end
-		local x,y = MRT.F.GetCursorPos(self)
+		local x, y = MRT.F.GetCursorPos(self)
 		if y >= 0 and y <= highlight_onupdate_maxY then
 			y = floor(y / LINE_HEIGHT)
 			highlight_y:ClearAllPoints()
@@ -1250,19 +1211,19 @@ function module.options:Load()
 		end
 	end)
 
-	self.UpdateButton = MLib:Button(self.tab.tabs[1],UPDATE):Point("TOPLEFT",mainScroll,"BOTTOMLEFT",2,-5):Size(120,20):OnClick(function(self)
+	self.UpdateButton = MLib:Button(self.tab.tabs[1], UPDATE):Point("TOPLEFT", mainScroll, "BOTTOMLEFT", 2, -5):Size(120, 20):OnClick(function(self)
 		wipe(module.db.responces)
 		module:SendReq() -- using old here as sendReq2 requires abnormous amount of data
 		self:Disable()
-		C_Timer.After(5,function()
+		C_Timer.After(5, function()
 			self:Enable()
 		end)
 	end)
 
-	local function sortByUnitName(nameA,nameB)
+	local function sortByUnitName(nameA, nameB)
 		if nameA and nameB then
-			local shortNameA = Ambiguate(nameA,"none")
-			local shortNameB = Ambiguate(nameB,"none")
+			local shortNameA = Ambiguate(nameA, "none")
+			local shortNameB = Ambiguate(nameB, "none")
 
 			local hasCyrA = nameA:find("([\194-\244])") --("([%z\1-\127\194-\244][\128-\191]*)(.*)")
 			local hasCyrB = nameB:find("([\194-\244])")
@@ -1298,7 +1259,7 @@ function module.options:Load()
 		end
 	end
 
-	local function sortByName(a,b)
+	local function sortByName(a, b)
 		return a.name < b.name
 	end
 
@@ -1348,7 +1309,7 @@ function module.options:Load()
 			local auras = {} -- auras that will be shown, table have a nested structure
 			local ignore = {}
 
-			local function addToShow(data,levelCount,prevLevel,shallow)
+			local function addToShow(data, levelCount, prevLevel, shallow)
 				levelCount = levelCount or 0
 
 				local aura = {
@@ -1368,7 +1329,7 @@ function module.options:Load()
 
 						local child = WeakAuras.GetData(data.controlledChildren[i])
 						if child then
-							addToShow(child,levelCount+1,aura,shallow)
+							addToShow(child, levelCount+1, aura, shallow)
 						end
 					end
 				end
@@ -1383,7 +1344,7 @@ function module.options:Load()
 					if isPass then
 						-- add aura and a parent and a children to auras
 						local parent = GetTopParent(data) -- if data is already top level it will return itself's id
-						addToShow(parent,nil,nil,isKeyword)
+						addToShow(parent, nil, nil, isKeyword)
 
 					end
 				end
@@ -1393,7 +1354,7 @@ function module.options:Load()
 			if not self.Filter then
 				sortedTable[1] = {name="VERSION"}
 			end
-			sort(auras,sortByName)
+			sort(auras, sortByName)
 			local function addAuras(auras)
 				for i=1,#auras do
 					local aura = auras[i]
@@ -1408,12 +1369,12 @@ function module.options:Load()
 
 			self.sortedTable = sortedTable
 			self.sortedTableLength = #sortedTable
-			mainScroll.ScrollBar:Range(0,max(0,self.sortedTableLength * LINE_HEIGHT - 1 - PAGE_HEIGHT),nil,true)
+			mainScroll.ScrollBar:Range(0, max(0, self.sortedTableLength * LINE_HEIGHT - 1 - PAGE_HEIGHT), nil, true)
 		else
 			sortedTable = self.sortedTable
 		end
 
-		local namesList,namesList2 = {},{}
+		local namesList, namesList2 = {}, {}
 
 		for unit in AddonDB:IterateGroupMembers() do
 			namesList[#namesList + 1] = AddonDB:GetFullName(unit)
@@ -1433,17 +1394,17 @@ function module.options:Load()
 			prevPlayerCol = 0
 		else
 			raidSlider:Show()
-			raidSlider:Range(0,#namesList - VERTICALNAME_COUNT)
+			raidSlider:Range(0, #namesList - VERTICALNAME_COUNT)
 		end
 
 		local raidNamesUsed = 0
-		for i=1+prevPlayerCol,#namesList do
+		for i=1+prevPlayerCol, #namesList do
 			raidNamesUsed = raidNamesUsed + 1
 			if not raidNames[raidNamesUsed] then
 				break
 			end
 			local name = namesList[i]
-			local shortName = Ambiguate(name,"none")
+			local shortName = Ambiguate(name, "none")
 			local coloredName = AddonDB:ClassColorName(shortName)
 			raidNames[raidNamesUsed]:SetAlpha(1)
 
@@ -1551,12 +1512,17 @@ function module.options:Load()
 		end
 	end
 
-	module.importWindow, module.exportWindow = MRT.F.CreateImportExportWindows()
-	module.importWindow:Size(650,144)
-	module.importWindow.ImportTypeDropDown = ELib:DropDown(module.importWindow,230,#WASync.ImportTypes):Size(200,20):Point("BOTTOMLEFT",module.importWindow,"BOTTOMLEFT",10,5)
-	module.importWindow.ImportTypeText = ELib:Text(module.importWindow,LR["Import Mode:"]):Point("BOTTOMLEFT",module.importWindow.ImportTypeDropDown,"TOPLEFT",0,5):Color():Shadow()
+
+	module.importWindow = MLib:Popup(module.colorCode.."WASync Import"):CreateTitleBackground()
+	module.importWindow:Size(400, 180)
+
+	module.importWindow.idText = ELib:Text(module.importWindow, "ID:"):Point("TOPLEFT", module.importWindow, "TOPLEFT", 10, -30):Color():Shadow()
+	module.importWindow.uidText = ELib:Text(module.importWindow, "UID:"):Point("TOPLEFT", module.importWindow.idText, "BOTTOMLEFT", 0, -5):Color():Shadow()
+
+	module.importWindow.ImportTypeDropDown = ELib:DropDown(module.importWindow, 230, #WASync.ImportTypes):Size(200, 20):Point("BOTTOMLEFT", module.importWindow, "BOTTOMLEFT", 10, 10)
+	module.importWindow.ImportTypeText = ELib:Text(module.importWindow, LR["Import Mode:"]):Point("BOTTOMLEFT", module.importWindow.ImportTypeDropDown, "TOPLEFT", 0, 5):Color():Shadow()
 	do
-		local ImportSetValue = function(_,arg)
+		local ImportSetValue = function(_, arg)
 			ELib:DropDownClose()
 			module.importWindow.importType = arg
 			module.importWindow.ImportTypeDropDown:SetText(WASync.ImportTypes[arg])
@@ -1574,28 +1540,27 @@ function module.options:Load()
 				func = ImportSetValue,
 			}
 		end
-		ImportSetValue(nil,3)
+		ImportSetValue(nil, 3)
 	end
-
 
 	module.importWindow.updateConfig = module.getDefaultUpdateConfig()
 
-	module.importWindow.updateConfigDropDown = ELib:DropDown(module.importWindow,230,10):Size(300,20):Point("LEFT",module.importWindow.ImportTypeDropDown,"RIGHT",5,0)
-	module.importWindow.updateConfigText = ELib:Text(module.importWindow.updateConfigDropDown,LR["Categories to ignore when importing:"]):Point("BOTTOMLEFT",module.importWindow.updateConfigDropDown,"TOPLEFT",0,5):Color():Shadow()
+	module.importWindow.updateConfigDropDown = ELib:DropDown(module.importWindow, 230, -1):Size(300, 20):Point("BOTTOMLEFT", module.importWindow.ImportTypeDropDown, "TOPLEFT", 0, 25)
+	module.importWindow.updateConfigText = ELib:Text(module.importWindow.updateConfigDropDown, LR["Categories to ignore when importing:"]):Point("BOTTOMLEFT", module.importWindow.updateConfigDropDown, "TOPLEFT", 0, 5):Color():Shadow()
 	do
-		local function config_SetValue(_,arg1)
+		local function config_SetValue(_, arg1)
 			module.importWindow.updateConfig = arg1
 			-- update drop down text
 			local text = ""
 			for i=1,#WASync.update_categories do
-				if bit_band(module.importWindow.updateConfig or 0,bit_lshift(1,i-1)) > 0 then
+				if bit_band(module.importWindow.updateConfig or 0, bit_lshift(1,i-1)) > 0 then
 					text = text .. (text == "" and "" or ", ") .. WASync.update_categories[i].label2
 				end
 			end
 
 			-- update state cheks
 			for i=1,#module.importWindow.updateConfigDropDown.List do
-				local check = bit_band(module.importWindow.updateConfig or 0,bit_lshift(1,i-1)) > 0
+				local check = bit_band(module.importWindow.updateConfig or 0, bit_lshift(1, i-1)) > 0
 				module.importWindow.updateConfigDropDown.List[i].checkState = check
 			end
 
@@ -1611,30 +1576,30 @@ function module.options:Load()
 			local val = module.importWindow.updateConfig or 0
 			local arg1 = self.data.arg1
 			local arg2 = self.data.arg2
-			-- val is out bitfield
+			-- val is our bitfield
 			-- arg1 is index of bit to change
 			-- check state is new state of bit
 			-- use bit functions to change bit
-			local checkState = not (bit_band(val,bit_lshift(1,arg1)) > 0)
+			local checkState = not (bit_band(val, bit_lshift(1, arg1)) > 0)
 
 			if checkState then
-				val = bit_bor(val,arg2)
+				val = bit_bor(val, arg2)
 			else
-				val = bit_bxor(val,arg2)
+				val = bit_bxor(val, arg2)
 			end
 
 			-- if val == 0 then
 			--     val = nil
 			-- end
-			config_SetValue(nil,val)
+			config_SetValue(nil, val)
 		end
 
-		local function hoverFunc(self,hoverArg)
-			GameTooltip:SetOwner(self, "ANCHOR_RIGHT",20)
+		local function hoverFunc(self, hoverArg)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT", 20)
 			GameTooltip:AddLine(self:GetText())
 			if hoverArg then
 				GameTooltip:AddLine(" ")
-				GameTooltip:AddLine(hoverArg,1,1,1,true)
+				GameTooltip:AddLine(hoverArg, 1, 1, 1, true)
 			end
 			GameTooltip:Show()
 		end
@@ -1657,45 +1622,76 @@ function module.options:Load()
 		module.importWindow.updateConfigDropDown:SetValue(module.importWindow.updateConfig)
 	end
 	module.importWindow.updateConfigDropDown:Shown(module.importWindow.importType == 3)
+	module.importWindow.importButton = MLib:Button(module.importWindow, LR["Import"]):Size(120, 20):Point("BOTTOMRIGHT", module.importWindow, "BOTTOMRIGHT", -10, 10):OnClick(function(self)
+		local transmit = module.importWindow.transmit
 
+		-- apply ignore config to the parent aura and clear children
+		transmit.d.exrtUpdateConfig = module.importWindow.updateConfig or module.getDefaultUpdateConfig() or 0
+		if transmit.c then
+			for i, child in ipairs(transmit.c) do
+				child.exrtUpdateConfig = nil
+			end
+		end
 
-	local importButton = MLib:Button(self.tab.tabs[1],LR["Import"]):Size(120,20):Point("LEFT",self.UpdateButton,"RIGHT",5,0):OnClick(function()
-		module.importWindow:Show()
+		module.QueueFrame:AddToQueue({
+			str = transmit,
+			sender = "WAS Import",
+			id = transmit.d.id,
+			importType = module.PUBLIC and 1 or module.importWindow.importType,
+			stringNum = 1,
+			imageNum = 1,
+			skipPrompt = true,
+			postImportCallback = type(transmit.postImportCallback) == "function" and transmit.postImportCallback or nil,
+		})
+		module.importWindow:Hide()
 	end)
-	if module.PUBLIC then
-		importButton:Hide()
+
+	function module.importWindow:Update()
+		local transmit = module.importWindow.transmit
+		if transmit then
+			module.importWindow.idText:SetText("ID: " .. transmit.d.id)
+			module.importWindow.uidText:SetText("UID: " .. transmit.d.uid)
+		else
+			module.importWindow.idText:SetText("ID: none")
+			module.importWindow.uidText:SetText("UID: none")
+		end
 	end
-	function module.importWindow:ImportFunc(str)
+
+	function module.importWindow:SetTransmit(transmit)
+		if transmit then
+			module.importWindow.transmit = transmit
+			module.importWindow:Update()
+			module.importWindow:Show()
+		else
+			module.importWindow.transmit = nil
+			module.importWindow:Hide()
+		end
+	end
+
+	local ParseImportString = AddonDB:WrapAsyncSingleton(function(str)
 		if str:trim() == "" or #str < 200 then
 			return
 		end
 
-		local data = module.StringToTable(str,true)
+		local data = module.StringToTable(str, true)
 		if type(data) == "table" then
-
-			data.d.exrtUpdateConfig = module.importWindow.updateConfig
-			---@type WASyncImportQueueItem
-			local queueItem = {
-				str = data,
-				sender = "WAS Import",
-				id = data.d.id,
-				importType = module.PUBLIC and 1 or module.importWindow.importType,
-				stringNum = 1,
-				imageNum = 1,
-			}
-
-			module.QueueFrame:AddToQueue(queueItem)
+			module.importWindow:SetTransmit(data)
+		else
+			prettyPrint("WASync Import Error", data)
+			module.importWindow:SetTransmit(nil)
 		end
-	end
+	end)
 
+	local importButton = MLib:Button(self.tab.tabs[1], LR["Import"]):Size(120, 20):Point("LEFT", self.UpdateButton, "RIGHT", 5, 0):OnClick(function()
+		AddonDB:QuickPaste(module.colorCode .. "WASync Import", ParseImportString)
+	end):Shown(not module.PUBLIC)
 
 	local debugCheck = ELib:Check(self.tab.tabs[1], L["Debug Mode"], WASync.isDebugMode):Point("LEFT", importButton, "RIGHT", 5, 0):OnClick(function(self)
 		WASync.isDebugMode = self:GetChecked()
 		if module.SenderFrame then
 			module.SenderFrame:Update()
 		end
-	end)
-	debugCheck:Hide()
+	end):Shown(AddonDB.IsDev)
 
 
 	module.options:LoadArchive()
@@ -1708,7 +1704,7 @@ function module.options:Load()
 
 	function module.options:AdditionalOnShow()
 		UpdatePage(true)
-		if (IsShiftKeyDown() and IsAltKeyDown()) or WASync.isDebugMode then
+		if (IsShiftKeyDown() and IsAltKeyDown()) or WASync.isDebugMode or AddonDB.IsDev then
 			debugCheck:Show()
 		else
 			debugCheck:Hide()
@@ -1720,14 +1716,12 @@ function module.options:Load()
 end
 
 
-
-
-local COLOR_GREEN = {.5,1,.5}
-local COLOR_RED = {1,.2,.2}
-local COLOR_WHITE = {1,1,1}
+local COLOR_GREEN = {.5, 1, .5}
+local COLOR_RED = {1, .2, .2}
+local COLOR_WHITE = {1, 1, 1}
 
 module.IconHoverFunctions = {
-	function(self,isEnter)
+	function(self, isEnter)
 		if isEnter then
 			local id = self:GetParent().db.name
 			local pname = self.name
@@ -1736,7 +1730,7 @@ module.IconHoverFunctions = {
 			if id == "VERSION" then
 				local DB = module.db.responces[pname]
 				if DB then
-					ELib.Tooltip.Show(self,nil,DB.wa_ver or DB.noWA and "WeakAuras is not installed" or "NO DATA")
+					ELib.Tooltip.Show(self, nil, DB.wa_ver or DB.noWA and "WeakAuras is not installed" or "NO DATA")
 					return
 				end
 			else
@@ -1757,7 +1751,7 @@ module.IconHoverFunctions = {
 					local WAData = WeakAuras.GetData(id)
 
 					-- print(format("Date: %q, lastSender: %q, version: %q, semver: %q, load_never: %q", tostring(Date), tostring(lastSender), tostring(version), tostring(semver), tostring(load_never)))
-					local name = AddonDB.RGAPI and AddonDB.RGAPI:ClassColorName(Ambiguate(pname,"none")) or (AddonDB:ClassColorName(Ambiguate(pname,"none")) or pname)
+					local name = AddonDB.RGAPI and AddonDB.RGAPI:ClassColorName(Ambiguate(pname, "none")) or (AddonDB:ClassColorName(Ambiguate(pname, "none")) or pname)
 					ELib.Tooltip.Show(self,nil,id,
 						{name ~= "" and name or pname},
 						{"Last sender:", right=lastSender and Ambiguate(lastSender,"none") or "No data", unpack(COLOR_WHITE)},
@@ -1771,7 +1765,7 @@ module.IconHoverFunctions = {
 				else
 					if DB2 and DB2[id] == 5 then -- 1 no wa, 2 has wa, 5 hash missmatch
 						ELib.Tooltip.Show(self,nil,id,
-						{LR["WA is different version/changed"],unpack(COLOR_WHITE)}
+						{LR["WA is different version/changed"], unpack(COLOR_WHITE)}
 					)
 					end
 				end
@@ -1811,19 +1805,9 @@ end
 -- Export and Sending
 --------------------------------------------------------------------------------------------------------------------------------
 
--- function module:GetDataVer(data) -- does not cover weird wa moves :/
---     local v = data.exrtLastSync or 0
---     for parent in module.pTraverseParents(data) do
---         if parent.exrtLastSync and parent.exrtLastSync > v then
---             v = parent.exrtLastSync
---         end
---     end
---     return v
--- end
-
 function module:GetWAVer(id)
-	module:SetPending(id,3)
-	MRT.F.SendExMsg("WAS_STATUS", "20\t"..id)
+	module:SetPending(id, 3)
+	MRT.F.SendExMsg("WAS_STATUS", "20\t" .. id)
 end
 
 function module:SendWAVer(id)
@@ -1848,7 +1832,7 @@ function module:SendWAVer(id)
 			load_never = data.load and data.load.use_never and "1" or ""
 		end
 
-		local msg = MRT.F.CreateAddonMsg("21",lastSync,id,lastSender,data.uid,version,semver,load_never)
+		local msg = MRT.F.CreateAddonMsg("21", lastSync, id, lastSender, data.uid, version, semver, load_never)
 		MRT.F.SendExMsg("WAS_STATUS", msg)
 	end
 end
@@ -1867,15 +1851,15 @@ function module:ShowReloadPrompt(sender)
 			}
 		},
 		OnUpdate = function(self, elapsed)
-			if #module.QueueFrame.queue ~= 0  then
-				module:HideReloadPrompt()
+			if #module.QueueFrame.queue ~= 0 or module.QueueFrame.ImportedItem then
+				module:HideReloadPrompt("WA_SYNC_RELOAD_UI")
 				module.QueueFrame.needReload = true
 			elseif module.lastAddonMsg and module.lastAddonMsg + 5 > GetTime() then -- actievly accepting data
 				self.buttons[1]:SetText(LR["Accepting data"])
 				self.buttons[1]:Disable()
 				self.buttons[2]:Disable()
 			elseif module.lastAddonMsg and module.lastAddonMsg + 8 > GetTime() then -- timeout
-				self.buttons[1]:SetText(LR["Reload UI"].." ("..ceil(module.lastAddonMsg + 8 - GetTime())..")")
+				self.buttons[1]:SetText(LR["Reload UI"] .. " (" .. ceil(module.lastAddonMsg + 8 - GetTime()) .. ")")
 				self.buttons[1]:Disable()
 				self.buttons[2]:Disable()
 			else

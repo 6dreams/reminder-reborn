@@ -474,5 +474,18 @@ function module:Modernize()
 		end
 	end
 
+	if VMRT.Reminder.Version < 65 then
+		for token, data in module:IterateAllData() do
+			if data.triggers then
+				for i, trigger in ipairs(data.triggers) do -- those could be created from timeline module
+					if trigger.event == 2 and type(trigger.pattFind) == "number" then
+						trigger.pattFind = tostring(trigger.pattFind)
+					end
+				end
+			end
+		end
+	end
+
+
 	VMRT.Reminder.Version = max(VMRT.Reminder.Version or 0, AddonDB.Version)
 end

@@ -17,7 +17,7 @@ local MLib = AddonDB.MLib
 ---@class WASyncPrivate
 local WASync = AddonDB.WASYNC
 
--- upvaluse
+-- upvalues
 local tinsert = tinsert
 local random = random
 local time = time
@@ -182,9 +182,9 @@ AddonDB:RegisterCommOnHeader("was", function(prefix, sender, data, channel, key)
 
 	if tonumber(version or "?") ~= WASync.VERSION then
 		if tonumber(version or "0") > WASync.VERSION then
-			prettyPrint(WASYNC_ERROR,"Your WeakAuras Sync version is outdated (sender ver."..(version or "unk")..", your addon ver."..WASync.VERSION..")")
+			prettyPrint(WASYNC_ERROR, format("Your WeakAuras Sync version is outdated (%s ver.%s, your addon ver.%s)", sender, version or "unk", WASync.VERSION))
 		else
-			prettyPrint(WASYNC_ERROR,"Import data is outdated (sender ver."..(version or "unk")..", your addon ver."..WASync.VERSION..")")
+			prettyPrint(WASYNC_ERROR, format("Import data is outdated (%s ver.%s, your addon ver.%s)", sender, version or "unk", WASync.VERSION))
 		end
 		return
 	end
@@ -204,7 +204,7 @@ AddonDB:RegisterCommOnHeader("was", function(prefix, sender, data, channel, key)
 		if WAdata and
 			WAdata.exrtLastSync and WAdata.exrtLastSync >= tonumber(lastSync,16) -- sent data is not an update
 			and tonumber(importType) < 4 and -- acknowledge lastSync only for importTypes 1,2,3
-			not (WASync.isDebugMode and UnitIsUnit(Ambiguate(sender, "none"), 'player')) -- self sending allowed only for debug mode
+			not (WASync.isDebugMode and UnitIsUnit(Ambiguate(sender, "none"), "player")) -- self sending allowed only for debug mode
 		then
 			prettyPrint(format("%q is up to date. Ignoring update", id))
 			impData.ignore = true
@@ -212,7 +212,7 @@ AddonDB:RegisterCommOnHeader("was", function(prefix, sender, data, channel, key)
 		end
 	end
 
-	if target and target ~= "" and not UnitIsUnit(Ambiguate(target,"none"), "player") then -- most likely not needed as targeted WAs are now always in WHISPER
+	if target and target ~= "" and not UnitIsUnit(Ambiguate(target, "none"), "player") then -- most likely not needed as targeted WAs are now always in WHISPER
 		impData.ignore = true
 	end
 
@@ -225,8 +225,6 @@ AddonDB:RegisterCommOnHeader("was", function(prefix, sender, data, channel, key)
 		end
 	end
 end)
-
-
 
 AddonDB:RegisterComm("was", function(prefix, sender, data, channel, key)
 	ItemRefTooltip:Hide()
@@ -261,12 +259,11 @@ AddonDB:RegisterComm("was", function(prefix, sender, data, channel, key)
 end)
 
 
-
 local prev_addonMessage = module.addonMessage
 function module:addonMessage(sender, prefix, data, ...)
 	sender = AddonDB:GetFullName(sender, true) -- ensure db key is always name-realm
 
-	prev_addonMessage(self,sender,prefix,data,...) -- ensure compability
+	prev_addonMessage(self, sender, prefix, data, ...) -- ensure compability
 
 	if prefix == "WAS_STATUS" then
 		if data == "1" then -- some unused stuff i guess
@@ -382,9 +379,9 @@ function module:SendWAVerMulti(data,sender)
 				a.load_never = data.load and data.load.use_never and true or nil
 			end
 
-			tinsert(answer,a)
+			tinsert(answer, a)
 		else
-			tinsert(answer,{id = id, NO_WA = true})
+			tinsert(answer, {id = id, NO_WA = true})
 		end
 	end
 	local encoded = AddonDB:CompressTable(answer)
@@ -395,7 +392,7 @@ AddonDB:RegisterComm("WAS_VM", function(prefix, sender, encoded, ...)
 	if prefix == "WAS_VM" then
 		local answer, error = AddonDB:DecompressTable(encoded)
 		if not answer then
-			prettyPrint(WASYNC_ERROR,"Failed to deserialize versions answer", sender, error)
+			prettyPrint(WASYNC_ERROR, "Failed to deserialize versions answer", sender, error)
 			return
 		end
 		for i=1,#answer do
@@ -430,7 +427,6 @@ AddonDB:RegisterComm("WAS_VM", function(prefix, sender, encoded, ...)
 		if module.options:IsVisible() and module.options.ScheduleUpdate then
 			module.options.ScheduleUpdate()
 		end
-
 	end
 end)
 
@@ -527,8 +523,7 @@ AddonDB:RegisterComm("WAS_REQUEST_WA", function(prefix, sender, msg, channel)
 	})
 end)
 
-function module:SendSetLoadNever(id,target,load_never)
-	AddonDB:SendComm("WAS_SET_LOAD_NEVER", id.."\t"..(load_never and "1" or "0").."\t"..target)
+function module:SendSetLoadNever(id, target, load_never)
 	AddonDB:SendComm("WAS_SET_LOAD_NEVER", AddonDB:CreateHeader(id, load_never and "1" or "0"), "WHISPER", target)
 end
 

@@ -3592,7 +3592,7 @@ Or Atlas prefixed with 'A:' e.g. A:GarrMission_MissionIcon-Combat]]
 		SetupFrame:Update()
 	end)
 
-	SetupFrame.diffList = ELib:DropDown(SetupFrame.loadScrollFrame.C,220,MRT.isCata and 6 or 10):Size(270):Point("TOPRIGHT",SetupFrame.bossList,"BOTTOMRIGHT",0,-5):OnEnter(function(self)
+	SetupFrame.diffList = ELib:DropDown(SetupFrame.loadScrollFrame.C,220,MRT.isMoP and 6 or 10):Size(270):Point("TOPRIGHT",SetupFrame.bossList,"BOTTOMRIGHT",0,-5):OnEnter(function(self)
 		local diff = select(3,GetInstanceInfo())
 		local text = LR["Current difficulty"] .. ": " .. (diff or "none")
 		ELib.Tooltip.Show(self,nil,text)

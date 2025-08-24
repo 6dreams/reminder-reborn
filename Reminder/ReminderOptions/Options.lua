@@ -359,6 +359,9 @@ function options:Load()
 							end
 						end,
 					},
+					{
+						text = CANCEL,
+					}
 				},
 				editBox = {},
 			})

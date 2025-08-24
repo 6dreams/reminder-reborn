@@ -72,9 +72,9 @@ QueueFrame.skipNextButton = MLib:Button(QueueFrame,LR.Skip,15):Point("TOP",Queue
 		text = LR.WASyncUpdateSkipTitle,
 		buttons = {
 			{
-				text = format("|cffff0000%s|r",LR.Skip),
+				text = format("|cffff0000%s|r", LR.Skip),
 				func = function()
-					local queueItem = module.QueueFrame:RemoveFromQueue()
+					local queueItem = QueueFrame:SkipImport()
 					module:ErrorComms(queueItem.sender, 2, queueItem.id)
 					module:SendWAVer(queueItem.id)
 				end
@@ -90,7 +90,7 @@ QueueFrame.skipNextButton.Texture:SetGradient("VERTICAL",CreateColor(0.7,0.12,0.
 
 function QueueFrame.SetupSession()
 	---@type WASyncImportQueueItem
-	local queueItem = module.QueueFrame.queue[1]
+	local queueItem = QueueFrame.queue[1]
 
 	QueueFrame.SessionStarted = true
 	QueueFrame:Update()
@@ -105,8 +105,7 @@ function QueueFrame.SetupSession()
 end
 
 function QueueFrame:Update()
-
-	if #module.QueueFrame.queue == 0 then
+	if #QueueFrame.queue == 0 then
 		QueueFrame:Hide()
 		QueueFrame.SessionStarted = false
 
@@ -120,14 +119,14 @@ function QueueFrame:Update()
 			QueueFrame:UnregisterEvent("PLAYER_REGEN_ENABLED")
 			QueueFrame:Update()
 		end)
-	elseif QueueFrame.SessionStarted and not QueueFrame.IsImporting then
-		local queueItem = module.QueueFrame.queue[1]
+	elseif QueueFrame.SessionStarted and not QueueFrame.ImportedItem then
+		local queueItem = QueueFrame.queue[1]
 
 		QueueFrame:Show()
 
 		QueueFrame.currentWATitle:SetText(queueItem.id)
 		QueueFrame.ImportTypeText:SetText("Mode: " .. WASync.ImportTypes[queueItem.importType])
-		QueueFrame.importsLeft:SetText("Total imports left: " .. (#module.QueueFrame.queue or ""))
+		QueueFrame.importsLeft:SetText("Total imports left: " .. (#QueueFrame.queue or ""))
 
 		QueueFrame.processNextButton:SetText(LR.Import)
 
@@ -138,43 +137,43 @@ function QueueFrame:Update()
 end
 
 ---@type WASyncImportQueueItem[]
-module.QueueFrame.queue = {}
-module.QueueFrame.size = 0
+QueueFrame.queue = {}
+QueueFrame.size = 0
 
 ---@param queueItem WASyncImportQueueItem
-function module.QueueFrame:AddToQueue(queueItem) -- dataStr, sender, id, importType, stringNum, imageNum, skipPrompt
+function QueueFrame:AddToQueue(queueItem)
 	if not queueItem.str or not queueItem.sender or not queueItem.id or not queueItem.importType then
 		return
 	end
 
 	if queueItem.skipPrompt then
-		for i=1,#module.QueueFrame.queue+1 do
-			if not module.QueueFrame.queue[i] or not module.QueueFrame.queue[i].skipPrompt then
-					tinsert(module.QueueFrame.queue, i, queueItem)
+		for i = 1, #QueueFrame.queue+1 do
+			if not QueueFrame.queue[i] or not QueueFrame.queue[i].skipPrompt then
+					tinsert(QueueFrame.queue, i, queueItem)
 				break
 			end
 		end
 	else
-		module.QueueFrame.queue[#module.QueueFrame.queue+1] = queueItem
+		QueueFrame.queue[#QueueFrame.queue+1] = queueItem
 	end
 
 	prettyPrint(format("%s |cff0080ffsent WA|r %q", queueItem.sender:gsub("%-[^%-]*$",""), queueItem.id))
 
-
-	if not QueueFrame.SessionStarted and #module.QueueFrame.queue > 0 then
+	if not QueueFrame.SessionStarted and #QueueFrame.queue > 0 then
 		QueueFrame.SetupSession()
 	else
 		QueueFrame:Update()
 	end
 end
 
-function module.QueueFrame.RemoveFromQueue(success, id)
+function QueueFrame.postImportCallback(success, id)
 	---@type WASyncImportQueueItem
-	local queueItem = tremove(module.QueueFrame.queue, 1)
+	local queueItem = QueueFrame.ImportedItem
+
 	importText:Hide()
 
 	if success and id then
-		WeakAuras.GetData(id).preferToUpdate = true -- so users dont automatically prompted with "import as copy"
+		WeakAuras.GetData(id).preferToUpdate = true -- so users dont get automatically prompted with "import as copy"
 		if queueItem.needReload then
 			QueueFrame.needReload = true
 		end
@@ -188,27 +187,33 @@ function module.QueueFrame.RemoveFromQueue(success, id)
 		xpcall(queueItem.postImportCallback, geterrorhandler(), success, id)
 	end
 
-	QueueFrame.IsImporting = false
+	QueueFrame.ImportedItem = nil
 	QueueFrame:Update()
 	return queueItem
 end
 
-function module.QueueFrame:ProcessNext()
-	if #module.QueueFrame.queue == 0 then
+---@return WASyncImportQueueItem
+function QueueFrame:SkipImport()
+	local queueItem = tremove(QueueFrame.queue, 1)
+
+	QueueFrame:Update()
+	return queueItem
+end
+
+function QueueFrame:ProcessNext()
+	if #QueueFrame.queue == 0 then
 		QueueFrame.SessionStarted = false -- probably will never get there?
 		return
 	end
 
-	local queueItem = module.QueueFrame.queue[1]
+	local queueItem = tremove(QueueFrame.queue, 1)
 
 	if not module.PUBLIC then importText:Show() end
-	QueueFrame.IsImporting = true
+	QueueFrame.ImportedItem = queueItem
 
 	QueueFrame.LastSender = queueItem.sender
 
-	module:ImportAsync(function()
-		module:ImportWA(queueItem.str, queueItem.sender, queueItem.importType)
-	end,"ImportWA")
+	module:ImportWA(queueItem)
 end
 
 -- create a string that will be shown in error frame to diagnose the problem
@@ -221,13 +226,24 @@ function module:GetDiagonsticsForQueueItem(queueItem)
 	local imageNum = queueItem.imageNum
 	local skipPrompt = queueItem.skipPrompt
 
-	local str = "Diagnostics for queueItem:\n"
-	str = str .. "dataStr (type: " .. type(dataStr) .. "): " .. (type(dataStr) == "string" and #dataStr or "table") .. "\n"
-	str = str .. "sender (type: " .. type(sender) .. "): " .. tostring(sender) .. "\n"
-	str = str .. "importType (type: " .. type(importType) .. "): " .. tostring(importType) .. "\n"
-	str = str .. "stringNum (type: " .. type(stringNum) .. "): " .. tostring(stringNum) .. "\n"
-	str = str .. "imageNum (type: " .. type(imageNum) .. "): " .. tostring(imageNum) .. "\n"
-	str = str .. "skipPrompt (type: " .. type(skipPrompt) .. "): " .. tostring(skipPrompt) .. "\n\n\n"
+	local str = format([[
+Diagnostics for queueItem:
+dataStr (type: %s): %s
+sender (type: %s): %s
+importType (type: %s): %s
+stringNum (type: %s): %s
+imageNum (type: %s): %s
+skipPrompt (type: %s): %s
+
+
+]],
+		type(dataStr), type(dataStr) == "string" and #dataStr or "table",
+		type(sender), tostring(sender),
+		type(importType), tostring(importType),
+		type(stringNum), tostring(stringNum),
+		type(imageNum), tostring(imageNum),
+		type(skipPrompt), tostring(skipPrompt)
+	)
 
 	return str
 end

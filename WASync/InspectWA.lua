@@ -224,7 +224,7 @@ function module.options:InitializeInspect()
 			local data = button.data
 			local offset = data.depth * 7
 
-			text:SetPoint("LEFT",23 + offset,0)
+			text:SetPoint("LEFT", 23 + offset, 0)
 
 			if data.isGroup then
 				button.requestButton:Show()
@@ -232,9 +232,9 @@ function module.options:InitializeInspect()
 				button.expandIcon:Point("LEFT", offset, 0)
 
 				if data.isExpanded then
-					button.expandIcon.texture:SetTexCoord(0.25,0.3125,0.5,0.625)
+					button.expandIcon.texture:SetTexCoord(0.25, 0.3125, 0.5, 0.625)
 				else
-					button.expandIcon.texture:SetTexCoord(0.375,0.4375,0.5,0.625)
+					button.expandIcon.texture:SetTexCoord(0.375, 0.4375, 0.5, 0.625)
 				end
 			else
 				button.requestButton:Hide()
@@ -243,113 +243,113 @@ function module.options:InitializeInspect()
 
 			if data.isGroup then
 				if data.size > 0 then
-					button.Texture:SetGradient("HORIZONTAL",COLOR_GROUP1, COLOR_GROUP2)
+					button.Texture:SetGradient("HORIZONTAL", COLOR_GROUP1, COLOR_GROUP2)
 				else
-					button.Texture:SetGradient("HORIZONTAL",COLOR_GROUP1, COLOR_GROUP_EMPTY)
+					button.Texture:SetGradient("HORIZONTAL", COLOR_GROUP1, COLOR_GROUP_EMPTY)
 				end
 			elseif data.use_never then
-				button.Texture:SetGradient("HORIZONTAL",COLOR_USE_NEVER1, COLOR_USE_NEVER2)
+				button.Texture:SetGradient("HORIZONTAL", COLOR_USE_NEVER1, COLOR_USE_NEVER2)
 			else
-				button.Texture:SetGradient("HORIZONTAL",COLOR_SINGLE1, COLOR_SINGLE2)
+				button.Texture:SetGradient("HORIZONTAL", COLOR_SINGLE1, COLOR_SINGLE2)
 			end
 		end
 	end
 
 	function inspectFrame:UpdateData()
-	local Mdata = {}
-	if not inspectFrame.selected then return end
+		local Mdata = {}
+		if not inspectFrame.selected then return end
 
-	inspectFrame.Name:SetText(AddonDB:ClassColorName(Ambiguate(inspectFrame.selected,"none")))
+		inspectFrame.Name:SetText(AddonDB:ClassColorName(Ambiguate(inspectFrame.selected,"none")))
 
 
-	local db = module.db.inspectData[inspectFrame.selected or ""] or not IsInGroup() and module.db.inspectData[MRT.F.delUnitNameServer(inspectFrame.selected)] or {}
+		local db = module.db.inspectData[inspectFrame.selected or ""] or not IsInGroup() and module.db.inspectData[MRT.F.delUnitNameServer(inspectFrame.selected)] or {}
 
-	if not db then
-		inspectFrame.scrollList.data = {}
-		inspectFrame.scrollList:Update(true)
-		return
-	end
+		if not db then
+			inspectFrame.scrollList.data = {}
+			inspectFrame.scrollList:Update(true)
+			return
+		end
 
-	for id,entry in next, db do
-		local tableToAdd = {
-			name = id,
-			uid = id,
-			data = {},
-			entry = entry,
-		}
-		Mdata[#Mdata+1] = tableToAdd
-
-		local function traverse(id, entry, depth)
-			local prefix = depth > 0 and false and ("   "):rep(depth) or "" .. "- " or ""
-			local size = type(entry) == "table" and CountTable(entry) or nil
-			tableToAdd.data[#tableToAdd.data+1] = {
-				name = prefix .. id .. (size and ( " (" .. (size or "0") .. ")") or ""),
+		for id, entry in next, db do
+			local tableToAdd = {
+				name = id,
 				uid = id,
-				depth = depth,
-				use_never = entry == false,
-				isGroup = type(entry) == "table",
-				isExpanded = inspectFrame.scrollList.expandState2[id],
-				size = size,
+				data = {},
+				entry = entry,
 			}
+			Mdata[#Mdata+1] = tableToAdd
 
-			if type(entry) == "table" then
-				for id,entry in next, entry do
-					traverse(id, entry, depth+1)
+			local function traverse(id, entry, depth)
+				local prefix = depth > 0 and false and ("   "):rep(depth) or "" .. "- " or ""
+				local size = type(entry) == "table" and CountTable(entry) or nil
+				tableToAdd.data[#tableToAdd.data+1] = {
+					name = prefix .. id .. (size and ( " (" .. (size or "0") .. ")") or ""),
+					uid = id,
+					depth = depth,
+					use_never = entry == false,
+					isGroup = type(entry) == "table",
+					isExpanded = inspectFrame.scrollList.expandState2[id],
+					size = size,
+				}
+
+				if type(entry) == "table" then
+					for id, entry in next, entry do
+						traverse(id, entry, depth + 1)
+					end
 				end
 			end
-		end
-		traverse(id, entry, 0)
+			traverse(id, entry, 0)
 
-		if inspectFrame.search then
-			local newTableToAdd = {}
+			if inspectFrame.search then
+				local newTableToAdd = {}
+				local i = 1
+				local total = #tableToAdd.data
+				while i <= total do
+					if tableToAdd.data[i].name:lower():find(inspectFrame.search,1,true) then
+						newTableToAdd[#newTableToAdd+1] = tableToAdd.data[i]
+						if tableToAdd.data[i].isGroup then
+						local pass = tableToAdd.data[i].depth
+							while tableToAdd.data[i+1] and (pass < tableToAdd.data[i+1].depth) do
+								i = i + 1
+								newTableToAdd[#newTableToAdd+1] = tableToAdd.data[i]
+							end
+						end
+					end
+					i = i + 1
+				end
+				tableToAdd.data = newTableToAdd
+			end
+
+
+			-- iterate over tableToAdd.data and remove following groups if they are not expanded
 			local i = 1
 			local total = #tableToAdd.data
 			while i <= total do
-				if tableToAdd.data[i].name:lower():find(inspectFrame.search,1,true) then
-					newTableToAdd[#newTableToAdd+1] = tableToAdd.data[i]
-					if tableToAdd.data[i].isGroup then
+				if tableToAdd.data[i].isGroup then
 					local pass = tableToAdd.data[i].depth
+					if not tableToAdd.data[i].isExpanded then
 						while tableToAdd.data[i+1] and (pass < tableToAdd.data[i+1].depth) do
-							i = i + 1
-							newTableToAdd[#newTableToAdd+1] = tableToAdd.data[i]
+							-- tableToAdd.data[i+1] = nil
+							-- i = i + 1
+							tremove(tableToAdd.data,i+1)
+							total = total - 1
 						end
 					end
 				end
 				i = i + 1
 			end
-			tableToAdd.data = newTableToAdd
-		end
 
 
-		-- iterate over tableToAdd.data and remove following groups if they are not expanded
-		local i = 1
-		local total = #tableToAdd.data
-		while i <= total do
-			if tableToAdd.data[i].isGroup then
-				local pass = tableToAdd.data[i].depth
-				if not tableToAdd.data[i].isExpanded then
-					while tableToAdd.data[i+1] and (pass < tableToAdd.data[i+1].depth) do
-						-- tableToAdd.data[i+1] = nil
-						-- i = i + 1
-						tremove(tableToAdd.data,i+1)
-						total = total - 1
-					end
-				end
+			if #tableToAdd.data == 0 then
+				Mdata[#Mdata] = nil
 			end
-			i = i + 1
 		end
 
-
-		if #tableToAdd.data == 0 then
-			Mdata[#Mdata] = nil
-		end
-	end
-
-	sort(Mdata,function(a,b)
-		return a.name < b.name
-	end)
-	inspectFrame.scrollList.data = Mdata
-	inspectFrame.scrollList:Update(true)
+		sort(Mdata,function(a,b)
+			return a.name < b.name
+		end)
+		inspectFrame.scrollList.data = Mdata
+		inspectFrame.scrollList:Update(true)
 	end
 
 	inspectFrame:UpdateData()
@@ -417,7 +417,7 @@ local function BuildWAMap(parent, maxDepth)
 	if parent then
 		buildall(parent, maxDepth, true)
 		for d in module.pTraverseParents(parent) do
-			map = {[d.id] = map}
+			map = { [d.id] = map }
 		end
 
 		return map
@@ -464,10 +464,10 @@ AddonDB:RegisterComm("WAS_INS_REQ", function(prefix, sender, data, channel, key)
 	end
 	local parent, maxDepth = AddonDB:ParseHeader(data)
 
-	if InCombatLockdown() then
-		module:ErrorComms(sender, 3)
-		return
-	end
+	-- if InCombatLockdown() then
+	-- 	module:ErrorComms(sender, 3)
+	-- 	return
+	-- end
 
 	if parent == "" then parent = nil end
 	maxDepth = tonumber(maxDepth or "?") or 0
@@ -476,8 +476,12 @@ AddonDB:RegisterComm("WAS_INS_REQ", function(prefix, sender, data, channel, key)
 	module:SendWAMap(sender, parent, maxDepth)
 end)
 
-function module:SendWAMap(sender, parent, maxDepth)
-	module:Async(function()
+do
+	local sendConfig = {
+		maxPer5Sec = 50,
+	}
+
+	module.SendWAMap = AddonDB:WrapAsyncSingleton(function(self, sender, parent, maxDepth)
 		local map
 		if parent then
 			map = BuildWAMap(parent, maxDepth)
@@ -492,9 +496,9 @@ function module:SendWAMap(sender, parent, maxDepth)
 		local header = AddonDB:CreateHeader(WASync.WAMAP_VERSION)
 		local encoded = AddonDB:CompressTable(map)
 
-		local commsMessage = AddonDB:CreateHeaderCommsMessage(header,encoded)
-		AddonDB:SendComm("WAS_INS", commsMessage, "WHISPER", sender, nil, nil, {maxPer5Sec=50})
-	end,"RequestWAMap", true)
+		local commsMessage = AddonDB:CreateHeaderCommsMessage(header, encoded)
+		AddonDB:SendComm("WAS_INS", commsMessage, "WHISPER", sender, nil, nil, sendConfig)
+	end)
 end
 
 AddonDB:RegisterComm("WAS_INS", function(prefix, sender, data, channel, key)
@@ -507,9 +511,9 @@ AddonDB:RegisterComm("WAS_INS", function(prefix, sender, data, channel, key)
 	-- version check
 	if tonumber(version or "?") ~= WASync.WAMAP_VERSION then
 		if tonumber(version or "0") > WASync.WAMAP_VERSION then
-			prettyPrint(WASYNC_ERROR, "Your WeakAuras Sync version is outdated (sender ver."..(version or "unk")..", your addon(wa map) ver."..WASync.WAMAP_VERSION..")")
+			prettyPrint(WASYNC_ERROR, ("Your WeakAuras Sync version is outdated (sender ver.%s, your addon(wa map) ver.%s)"):format(version or "unk", WASync.WAMAP_VERSION))
 		else
-			prettyPrint(WASYNC_ERROR, "Import data is outdated (sender ver."..(version or "unk")..", your addon(wa map) ver."..WASync.WAMAP_VERSION..")")
+			prettyPrint(WASYNC_ERROR, ("Import data is outdated (sender ver.%s, your addon(wa map) ver.%s)"):format(version or "unk", WASync.WAMAP_VERSION))
 		end
 		return
 	end

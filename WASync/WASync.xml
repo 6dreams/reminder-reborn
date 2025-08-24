@@ -4,7 +4,7 @@
 	<Script file="WASyncArchive.lua"/>
 	<Script file="WeakAurasUtils.lua"/>
 	<Script file="SenderFrame.lua"/>
-	<Script file="Comms.lua"/>
+	<Script file="WASyncComms.lua"/>
 	<Script file="QueueFrame.lua"/>
 	<Script file="ImportFunctions.lua"/>
 	<Script file="InspectWA.lua"/>

@@ -4,7 +4,6 @@ local AddonDB = select(2, ...)
 local MRT = GMRT
 local LR = AddonDB.LR
 
-
 AddonDB.EJ_DATA = {
 	encountersList = {},            -- {{instance_id, encounter_id, encounter_id, ...}, ...}
 	encountersListShort = {},       -- {{instance_id, encounter_id, encounter_id, ...}, ...} but only for 2 latest tiers
@@ -105,6 +104,15 @@ local mopJournalEIDtoEID = {
 [745] = 1507, -- Imperial Vizier Zor'lok
 }
 
+-- EJ_SelectInstance sets lowest appropriate difficulty for the instance
+-- because of that we dont need to call EJ_SetDifficulty but we also
+-- don't see "higher difficulty only" bosses such as Ra-Den in Throne of Thunder.
+-- This bug is not always happens, but leave the workaround here for now.
+local customInstanceDifficulties = {
+	[72] = 6, -- Twighlight Bastion - 25 Heroic
+	[362] = 6, -- Throne of Thunder - 25 Heroic
+}
+
 function AddonDB:ParseEncounterJournal()
 	local encountersList = AddonDB.EJ_DATA.encountersList
 	local encountersListShort = AddonDB.EJ_DATA.encountersListShort
@@ -118,7 +126,7 @@ function AddonDB:ParseEncounterJournal()
 	local journalInstances = AddonDB.EJ_DATA.journalInstances
 
 
-	LR.instance_name = setmetatable({}, {__index=function (t, instanceID) -- instance_id to name
+	LR.instance_name = setmetatable({}, {__index = function (t, instanceID) -- instance_id to name
 		if not instanceID then return nil end
 
 		if not instanceIDtoEJCache[instanceID] then
@@ -145,7 +153,7 @@ function AddonDB:ParseEncounterJournal()
 		return name
 	end})
 
-	LR.boss_name = setmetatable({}, {__index=function (t, k) -- encounter_id to name
+	LR.boss_name = setmetatable({}, {__index = function (t, k) -- encounter_id to name
 		if not k then return nil end
 
 		if not encounterIDtoEJCache[k] and EJ_GetEncounterInfo then
@@ -159,27 +167,28 @@ function AddonDB:ParseEncounterJournal()
 		if not name or name == "" then
 			name = "Encounter ID: "..k
 		end
-		return name:gsub(",.+","")
+		return name:gsub(",.+","") -- remove everything after comma
 	end})
 
-	LR.diff_name = setmetatable({}, {__index=function (t, k) -- difficulty_id to name
+	LR.diff_name = setmetatable({}, {__index = function (t, k) -- difficulty_id to name
 		if not k then return nil end
 		return AddonDB.EJ_DATA.diffName[k] or ("Difficulty ID: "..k)
 	end})
 
-	LR.diff_name_short = setmetatable({}, {__index=function (t, k) -- difficulty_id to name
+	LR.diff_name_short = setmetatable({}, {__index = function (t, k) -- difficulty_id to name
 		if not k then return nil end
 		return AddonDB.EJ_DATA.diffNameShort[k] or AddonDB.EJ_DATA.diffName[k] or ("D:"..k)
 	end})
 
 	if not EJ_GetNumTiers or EJ_GetNumTiers() < 1 then
+		AddonDB:FireCallback("ENCOUNTER_JOURNAL_PARSED")
 		return
 	end
 
 	local currTier = EJ_GetCurrentTier()
 	local totalTiers = EJ_GetNumTiers()
 
-	for _, inRaid in ipairs({true, false}) do
+	for _, inRaid in ipairs({ true, false }) do
 		for tier = totalTiers, 1, -1  do
 			EJ_SelectTier(tier)
 			local instance_index = 1
@@ -200,10 +209,16 @@ function AddonDB:ParseEncounterJournal()
 
 			while journal_instance_id do
 				EJ_SelectInstance(journal_instance_id)
-				local instance_name, description, bgImage, buttonImage1, loreImage, buttonImage2, dungeonAreaMapID, link, shouldDisplayDifficulty, instance_id = EJ_GetInstanceInfo(journal_instance_id)
+
+				local customDiffID = customInstanceDifficulties[journal_instance_id]
+				if customDiffID then -- double check if custom difficulty is valid -- and EJ_IsValidInstanceDifficulty(customDiffID)
+					EJ_SetDifficulty(customDiffID)
+				end
+
+				local instance_name, desc, bgImg, buttonImg, loreImg, buttonSmallImg, mapID, link, shouldDisplayDiff, instance_id, covenantID, _inRaid = EJ_GetInstanceInfo(journal_instance_id)
 				local isMapAlreadyParsed = MRT.F.table_find3(encountersList, instance_id, 1)
 
-				if dungeonAreaMapID ~= 0 and not blacklisted_journal_instances[journal_instance_id] then
+				if mapID ~= 0 and not blacklisted_journal_instances[journal_instance_id] then
 					tinsert(tier_data, start_for_tier, journal_instance_id)
 				end
 
@@ -232,7 +247,7 @@ function AddonDB:ParseEncounterJournal()
 						boss, _, journalEncounterID, _, _, _, encounter_id = EJ_GetEncounterInfoByIndex(ej_index, journal_instance_id)
 					end
 
-					if currentInstance and #currentInstance > 1 and dungeonAreaMapID ~= 0 then
+					if currentInstance and #currentInstance > 1 and mapID ~= 0 then
 						tinsert(encountersList, startForTier, currentInstance)
 						if tier >= currTier then
 							tinsert(encountersListShort, startForTierShort, currentInstance)
@@ -247,9 +262,20 @@ function AddonDB:ParseEncounterJournal()
 	if EJ_SelectTier then
 		EJ_SelectTier(currTier) -- restore previously selected tier
 	end
+
+	AddonDB:FireCallback("ENCOUNTER_JOURNAL_PARSED")
 end
 
+AddonDB:RegisterCallback("EXRT_REMINDER_PLAYER_ENTERING_WORLD", function()
+	AddonDB:ParseEncounterJournal()
+end)
+
 function AddonDB:InstanceIsDungeon(journal_instance_id)
+	local name, desc, bgImg, buttonImg, loreImg, buttonSmallImg, mapID, link, shouldDisplayDiff, instance_id, covenantID, inRaid = EJ_GetInstanceInfo(journal_instance_id)
+	if type(inRaid) == "boolean" then -- Mop Classic bug workaround
+		return not inRaid
+	end
+
 	for _, tierInstances in next, AddonDB.EJ_DATA.journalInstances do
 		local isDungeons = false
 		for i = 2, #tierInstances do
@@ -271,8 +297,8 @@ function AddonDB:GetJournalInstanceImage(journalInstanceID)
 	if not journalInstanceID or not EJ_GetInstanceInfo then
 		return nil, nil, nil
 	end
-	local name, description, bgImage, buttonImage1, loreImage, buttonImage2, dungeonAreaMapID, link, shouldDisplayDifficulty, mapID = EJ_GetInstanceInfo(journalInstanceID)
-	return buttonImage2, bgImage, name
+	local name, desc, bgImg, buttonImg, loreImg, buttonSmallImg, mapID, link, shouldDisplayDiff, instance_id, covenantID, inRaid = EJ_GetInstanceInfo(journalInstanceID)
+	return buttonSmallImg, bgImg, instance_id and LR.instance_name[instance_id] or nil
 end
 
 ---@param instanceID number
@@ -281,6 +307,9 @@ end
 ---@return string name
 function AddonDB:GetInstanceImage(instanceID)
 	local journalInstanceID = AddonDB.EJ_DATA.instanceIDtoEJ[instanceID]
+	if not journalInstanceID then
+		return nil, nil, LR.instance_name[instanceID] or nil
+	end
 	return AddonDB:GetJournalInstanceImage(journalInstanceID)
 end
 
@@ -322,16 +351,30 @@ function AddonDB:SetBossPortait(texture, encounterID)
 	return nil
 end
 
+
 ---@param bossID number
 ---@return table? instance_table `{instance_id, encounter_id, encounter_id, ...}` from `encountersList`
 function AddonDB:FindInstanceTableByBossID(bossID)
+	local instanceID = AddonDB:GetInstanceForEncounter(bossID)
 	for _, instance in ipairs(AddonDB.EJ_DATA.encountersList) do
-		for i = 2, #instance do
-			if instance[i] == bossID then
-				return instance
-			end
+		if instance[1] == instanceID then
+			return instance
 		end
 	end
+end
+
+---@param encounter_id number
+---@return number? instanceID
+function AddonDB:GetInstanceForEncounter(encounter_id)
+	local journalEncounterID = AddonDB.EJ_DATA.encounterIDtoEJ[encounter_id]
+	if not journalEncounterID then
+		return nil
+	end
+	local _, _, _, _, _, journalInstanceID, _, instanceID = EJ_GetEncounterInfo(journalEncounterID)
+	if not instanceID then -- mop classic bug workaround, mop encounters return no instanceID
+		instanceID = select(10, EJ_GetInstanceInfo(journalInstanceID))
+	end
+	return instanceID
 end
 
 ---@return number? instanceID
@@ -343,9 +386,9 @@ function AddonDB:FindLatestRaidInstance()
 	if not journal_instance_id or journal_instance_id == 0 then
 		return nil
 	end
-	local instance_name, description, bgImage, buttonImage1, loreImage, buttonImage2, dungeonAreaMapID, link, shouldDisplayDifficulty, instance_id = EJ_GetInstanceInfo(journal_instance_id)
+	local name, desc, bgImg, buttonImg, loreImg, buttonSmallImg, mapID, link, shouldDisplayDiff, instance_id, covenantID, inRaid = EJ_GetInstanceInfo(journal_instance_id)
 
-	return instance_id -- 1 is tier number
+	return instance_id
 end
 
 if MRT.clientVersion > 40000 then
@@ -409,7 +452,12 @@ if MRT.clientVersion > 40000 then
 		[205] = LR["Follower Dungeon"],
 		[208] = LR["Delve"],
 		[216] = LR["Quest Party"],
-		[220] = LR["Story Raid"]
+		[220] = LR["Story Raid"],
+		[230] = unused, -- heroic party
+		[231] = unused, -- normal raid dungeon
+		[232] = unused, -- event party
+		[236] = unused,
+		-- [236] = LR["Lorewalking"],
 	}
 
 	for i = 1, 220 do
@@ -422,7 +470,7 @@ if MRT.clientVersion > 40000 then
 			else
 				AddonDB.EJ_DATA.diffName[i] = name
 				if AddonDB.IsDev then
-					print(GlobalAddonName..":",string.format("Unknown difficulty id found. Debug Information: %s %s %s", i, name, type))
+					print(GlobalAddonName..":", string.format("Unknown difficulty id found. Debug Information: %s %s %s", i, name, type))
 				end
 			end
 		end
@@ -449,28 +497,28 @@ if MRT.clientVersion > 40000 then
 	end
 end
 
-function AddonDB:GetEncounterSortIndex(id,unk)
+function AddonDB:GetEncounterSortIndex(id)
 	local encountersList = AddonDB.EJ_DATA.encountersList
 
-	for i=1,#encountersList do
+	for i = 1, #encountersList do
 		local dung = encountersList[i]
-		for j=2,#dung do
+		for j = 2, #dung do
 			if id == dung[j] then
 				return i * 100 + (#dung - j)
 			end
 		end
 	end
-	return unk
+	return 100000 - id
 end
 
-function AddonDB:GetInstanceSortIndex(instanceID, unk) -- instanceID, unk
+function AddonDB:GetInstanceSortIndex(instanceID) -- instanceID, unk
 	local encountersList = AddonDB.EJ_DATA.encountersList
 
-	for i=1,#encountersList do
+	for i = 1, #encountersList do
 		local dung = encountersList[i]
 		if dung[1] == instanceID then
 			return i * 100
 		end
 	end
-	return unk
+	return 100000 - instanceID
 end

@@ -1,5 +1,5 @@
 -- This file represents backup system for WASync
--- Creating backup everytime WA is exported or deleted
+-- Creating backup everytime WA is deleted from WASync
 -- Backups are keyd by uid, each backup stores a table of nested children
 -- Each entry is deleted after a month of inactivity
 --[[
@@ -162,19 +162,9 @@ function module.options:LoadArchive()
 		elseif button == "LeftButton" then
 			local UID = self.data.UID
 			local entry = self.data.entry
-			local d = WASyncArchive:Restore(entry, UID)
+			local transmit = WASyncArchive:Restore(entry, UID)
 
-			---@type WASyncImportQueueItem
-			local queueItem = {
-				str = d,
-				sender = "Backup",
-				id = self.data.name,
-				importType = 3,
-				stringNum = 1,
-				imageNum = 1,
-			}
-
-			module.QueueFrame:AddToQueue(queueItem)
+			module.importWindow:SetTransmit(transmit)
 		end
 	end
 

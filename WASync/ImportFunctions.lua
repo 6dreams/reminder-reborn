@@ -1,26 +1,26 @@
 --[=[
 
-Target group is a weak aura with the same ID as the imported weak aura or in case the imported weak aura
-does not exists on user's side then the target group is the imported weak aura itself.
+Target group is a WA with the same ID as the imported WA or in case the imported WA
+does not exists on user's side then the target group is the imported WA itself.
 
 Deleting notes:
-	If there is an ID collision with a weak aura that exists outside the target group, the user's weak aura is deleted.
-	If a weak aura with the same ID does not exist, it checks for a weak aura with the same UID and deletes it if it exists.
-	If target group has weak aura that does not exist in the imported data, the user's weak aura is deleted.
-	Note that the delete process also deletes all children of the deleted weak aura.
+	If there is an ID collision with a WA that exists outside the target group, the user's WA is deleted.
+	If a WA with the same ID does not exist, it checks for a WA with the same UID and deletes it if it exists.
+	If target group has WA that does not exist in the imported data, the user's WA is deleted.
+	Note that the delete process also deletes all children of the deleted WA.
 
-	There is currently no technique to handle weak aura duplicates, so all collisions are handled by deleting the weak aura.
-	Before deleting any weak aura, it is saved to the archive(with all the children).
+	There is currently no technique to handle WA duplicates, so all collisions are handled by deleting the WA.
+	Before deleting any WA, it is saved to the archive(with all the children).
 
 Assigning parent notes:
-	 If the imported weak aura was a top-level aura on the sender's side:
-		1. If the weak aura exists on the user's side and has a parent, it is assigned to the existing parent.
-		2. Else if the weak aura exists on the user's side but does not have a parent, it remains a top-level aura.
+	 If the imported WA was a top-level aura on the sender's side:
+		1. If the WA exists on the user's side and has a parent, it is assigned to the existing parent.
+		2. Else if the WA exists on the user's side but does not have a parent, it remains a top-level aura.
 
-	If the imported weak aura had a parent aura on the sender's side:
-		1. If the parent of the weak aura exists on the user's side, it is assigned to that parent.
-		2. Else if the weak aura exists on the user's side and has a parent, it is assigned to the existing parent.
-		3. Else if the weak aura does not exist on the user's side, it remains a top-level aura.
+	If the imported WA had a parent aura on the sender's side:
+		1. If the parent of the WA exists on the user's side, it is assigned to that parent.
+		2. Else if the WA exists on the user's side and has a parent, it is assigned to the existing parent.
+		3. Else if the WA does not exist on the user's side, it remains a top-level aura.
 
 No support for importing data with SortHybridTable, it may error/import incorrectly.
 
@@ -62,6 +62,24 @@ local format = string.format
 local xpcall = xpcall
 local geterrorhandler = geterrorhandler
 
+local importAsyncConfig = {
+	maxTime = 50,
+	maxTimeCombat = 8,
+	errorHandler = function(msg, stacktrace)
+		local queueItem = module.QueueFrame.ImportedItem
+
+		if queueItem then
+			local diagnostics = module:GetDiagonsticsForQueueItem(queueItem)
+			stacktrace = diagnostics .. stacktrace
+			module.QueueFrame.postImportCallback()
+		end
+
+		if AddonDB.OnError then
+			AddonDB:OnError(msg, stacktrace, "WASync Import")
+		end
+		geterrorhandler()(msg)
+	end,
+}
 
 local function DeepMergeTable(t1, t2)
 	for k, v in next, t2 do
@@ -214,7 +232,7 @@ local function table_update(tableFrom, tableTo, isSublevel, top_level_ignore_fie
 	end
 	for key, _ in next, keysToRemove do
 		-- if current key is not ignored then remove it
-		if ignore_fields[key] ~= true then
+		if not ignore_fields or ignore_fields[key] ~= true then
 			tableFrom[key] = nil
 		end
 	end
@@ -726,7 +744,7 @@ end
 
 
 -- This is processing of sent string copied from WeakAuras.Import
-local function WAImport(inData,importType,callbackFunction)
+local function ImportWAInternal(inData,importType,callbackFunction)
 	local start = debugprofilestop()
 	-- convert import string to tables
 	local data, children, version
@@ -930,9 +948,7 @@ local function WAImport(inData,importType,callbackFunction)
 
 	ReloadWeakAuras()
 
-	local t = string.format("%.2f", debugprofilestop() - start)
-
-	prettyPrint(format("|cff22ff22IMPORTED:|r %q in %s ms", data.id, t))
+	prettyPrint(format("|cff22ff22IMPORTED:|r %q, execution time: %d ms, total time: %d ms", data.id, AddonDB.AsyncEnvironment.EXECUTION_TIME, AddonDB.AsyncEnvironment.TOTAL_TIME))
 
 	-- print("imported in", debugprofilestop() - start, "ms")
 
@@ -945,27 +961,28 @@ local function WAImport(inData,importType,callbackFunction)
 	return true
 end
 
-function module:ImportWA(dataStr, sender, importType)
-	if type(dataStr) == "string" then
-		dataStr = module.StringToTable(dataStr, sender == "WAS Import")
+---@param queueItem WASyncImportQueueItem
+module.ImportWA = AddonDB:WrapAsync(importAsyncConfig, function(self, queueItem)
+	if type(queueItem.str) == "string" then
+		queueItem.str = module.StringToTable(queueItem.str, queueItem.sender == "WAS Import") -- todo XXX add fromChat to the queueItem
 	end
 
 	local success, error
-	if importType == 1 then
+	if queueItem.importType == 1 then
 		local importFunc = WASYNC_MAIN_PRIVATE and WASYNC_MAIN_PRIVATE.Import or WeakAurasPrivate and WeakAurasPrivate.Import or WeakAuras.Import
-		success, error = importFunc(dataStr, nil, module.QueueFrame.RemoveFromQueue)
+		success, error = importFunc(queueItem.str, nil, module.QueueFrame.postImportCallback)
 	else
 		if WASync.RELOAD_AFTER_IMPORTS then
 			module.QueueFrame.needReload = true
 		end
-		success, error = WAImport(dataStr, importType, module.QueueFrame.RemoveFromQueue)
+		success, error = ImportWAInternal(queueItem.str, queueItem.importType, module.QueueFrame.postImportCallback)
 	end
 
 	if not success and error ~= nil then
-		module:ErrorComms(sender, "ERROR", tostring(error))
-		module.QueueFrame.RemoveFromQueue()
+		module:ErrorComms(queueItem.sender, "ERROR", tostring(error))
+		module.QueueFrame.postImportCallback()
 	end
-end
+end)
 
 function module:SetLoadNever(id, value, level)
 	if not level then
@@ -990,7 +1007,7 @@ function module:SetLoadNever(id, value, level)
 	end
 end
 
-function module:QuickImportWA(data)
+function module:QuickImportWA(data, noReload)
 	if not data or type(data) ~= "table" then
 		prettyPrint(module.WASYNC_ERROR, "Invalid data!")
 		return
@@ -1006,5 +1023,7 @@ function module:QuickImportWA(data)
 		end
 	end
 
-	ReloadWeakAuras()
+	if not noReload then
+		ReloadWeakAuras()
+	end
 end

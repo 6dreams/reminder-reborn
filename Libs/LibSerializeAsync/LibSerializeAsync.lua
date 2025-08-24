@@ -1515,7 +1515,7 @@ function LibSerialize:DeserializeValue(input, opts, async)
 end
 
 function LibSerialize:Deserialize(input)
-	if coroutine.running() then
+	if coroutine_running() then
 		local deserialized = self:DeserializeValue(input)
 		return deserialized and true, deserialized
 	end

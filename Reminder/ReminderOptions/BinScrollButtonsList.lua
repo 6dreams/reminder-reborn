@@ -544,13 +544,13 @@ function module.options:BinScrollButtonsListInitialize()
 		end
 		sort(Mdata,function(a,b)
 			if a.zoneID and b.zoneID then
-				return AddonDB:GetInstanceSortIndex(a.zoneID,100000-a.zoneID) < AddonDB:GetInstanceSortIndex(b.zoneID,100000-b.zoneID)
+				return AddonDB:GetInstanceSortIndex(a.zoneID) < AddonDB:GetInstanceSortIndex(b.zoneID)
 			elseif a.zoneID then
 				return true
 			elseif b.zoneID then
 				return false
 			elseif a.bossID and b.bossID then
-				return AddonDB:GetEncounterSortIndex(a.bossID,100000-a.bossID) < AddonDB:GetEncounterSortIndex(b.bossID,100000-b.bossID)
+				return AddonDB:GetEncounterSortIndex(a.bossID) < AddonDB:GetEncounterSortIndex(b.bossID)
 			elseif a.otherID then
 				return false
 			elseif b.otherID then

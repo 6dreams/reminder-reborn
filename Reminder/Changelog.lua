@@ -8,6 +8,21 @@ AddonDB.Changelog = [=[
  - Also note that |cFF8855FFWeakAuras Sync|r and |cff80ff00Raid Analyzer|r modules are also included with this addon.
 |r
 
+ v.65.3
+* Timeline: Updated data for Mythic Soulhunters and Fractilus
+
+ v.65
+* Fixes
+
+ v.64
+* Added season 3 mythic+ dungeons timeline data
+* Fixes
+
+ v.63.1
+* Spells disabled in timeline and assignments will now be saved between sessions
+* Manually edited cooldown timers in assignments will now be saved between sessions
+* WASync: Allow inspecting WA maps in combat
+* Fix error in MoP Classic challenge mode dungeons
 
  v.63
 * MoP Classic fixes

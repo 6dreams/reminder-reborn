@@ -77,7 +77,7 @@ function AddonDB.SetHistory(uid, data, source)
 		local repo = loadHistory()
 		data.source = source
 		local hist = repo:Set(uid, data, true)
-		GMRT.A.Reminder.prettyPrint("Saved pull history:", format("%.2f",debugprofilestop() - start), "ms,", #data, "entries")
+		GMRT.A.Reminder.prettyPrint("Saved pull history:", format("%d", debugprofilestop() - start), "ms,", #data, "entries")
 		return hist
 	end
 end
@@ -110,3 +110,7 @@ function AddonDB.GetHistoryPinnedState(uid)
 		return subStore.pinned
 	end
 end
+
+AddonDB:RegisterCallback("EXRT_REMINDER_ADDON_LOADED", function()
+	AddonDB.CleanArchive(30) -- clean history and WAArchive data older than 30 days
+end)

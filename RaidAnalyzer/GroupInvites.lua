@@ -20,6 +20,9 @@ if not module then return end
 
 module.db.invitersReady = {}
 
+-- /run EXRT_REMINDER_GROUP_INVITES_TIMER_INTERVAL = 10
+EXRT_REMINDER_GROUP_INVITES_TIMER_INTERVAL = 10
+
 local function prettyPrint(...)
 	print("|cff0088ff[Group Inviter]|r", ...)
 end
@@ -72,6 +75,16 @@ local function GroupInvitesInit()
 		end)
 	end
 
+	module.autoFixServerName = true
+	ELib:Check(self, LR["Automatically fix server names"], module.autoFixServerName):Point("TOPLEFT", InvitersDropDown, "BOTTOMLEFT", 0, -5):OnClick(function(self)
+		module.autoFixServerName = self:GetChecked()
+		if module.autoFixServerName then
+			prettyPrint("Auto-fixing server names enabled")
+		else
+			prettyPrint("Auto-fixing server names disabled")
+		end
+	end)
+
 	local Fields = {}
 	for i = 1, 18 do
 		Fields[i] = {}
@@ -108,7 +121,7 @@ local function GroupInvitesInit()
 
 		Fields[i]["Button"].StartTimer = function(self)
 			ELib:Border(self, 1, .24, .45, 1, 1)
-			self.timer = C_Timer.NewTicker(10, function()
+			self.timer = C_Timer.NewTicker(EXRT_REMINDER_GROUP_INVITES_TIMER_INTERVAL, function()
 				if module:InviteSingle(i) then
 					self:StopTimer()
 					module:PlayInviteSuccessSound()
@@ -167,7 +180,7 @@ local function GroupInvitesInit()
 	end)
 	function InviteAllButton:StartTimer()
 		ELib:Border(self, 1, .24, .45, 1, 1)
-		self.timer = C_Timer.NewTicker(10, function()
+		self.timer = C_Timer.NewTicker(EXRT_REMINDER_GROUP_INVITES_TIMER_INTERVAL, function()
 			if module:InviteAll() then
 				self:StopTimer()
 				module:PlayInviteSuccessSound()
@@ -224,6 +237,7 @@ local function GroupInvitesInit()
 		for i=1, #data do
 			local text = string.trim(data[i])
 			text = text:gsub("/inv", ""):trim()
+			text = module:FixServerName(text)
 			local ambiguatedName = Ambiguate(text,"none")
 			if text ~= "" and not UnitInRaid(ambiguatedName) and not UnitInParty(ambiguatedName) and not UnitIsVisible(ambiguatedName) and not UnitExists(ambiguatedName) then
 				list[#list + 1] = text
@@ -244,12 +258,13 @@ local function GroupInvitesInit()
 
 		local text = string.trim(Fields[i]["Edit"]:GetText())
 		text = text:gsub("/inv", ""):trim()
+		text = module:FixServerName(text)
 
 		if not text or text == "" then
 			return true
 		end
 
-		local ambiguatedName = Ambiguate(text,"none")
+		local ambiguatedName = Ambiguate(text, "none")
 		if UnitInRaid(ambiguatedName) or UnitInParty(ambiguatedName) or UnitIsVisible(ambiguatedName) or UnitExists(ambiguatedName) then
 			return true
 		end
@@ -269,6 +284,7 @@ local function GroupInvitesInit()
 		for i = 1, #Fields do
 			local text = string.trim(Fields[i]["Edit"]:GetText())
 			text = text:gsub("/inv", ""):trim()
+			text = module:FixServerName(text)
 			local ambiguatedName = Ambiguate(text,"none")
 			if text ~= "" and not UnitInRaid(ambiguatedName) and not UnitInParty(ambiguatedName) and not UnitIsVisible(ambiguatedName) and not UnitExists(ambiguatedName) then
 				list[#list + 1] = text
@@ -378,3 +394,338 @@ AddonDB:RegisterComm("GROUP_INVITE_ERROR", function(prefix, sender, data, channe
 	prettyPrint("|cffff0000" .. MRT.F.delUnitNameServer(sender) .. " Error:|r |cffffff00" .. errorMsg)
 end)
 
+
+do
+	-- eu realms only https://worldofwarcraft.blizzard.com/en-gb/game/status/eu
+	local realms = {
+		"aegwynn",
+		"aeriepeak",
+		"agamaggan",
+		"aggra(português)",
+		"aggramar",
+		"ahn'qiraj",
+		"al'akir",
+		"alexstrasza",
+		"alleria",
+		"alonsus",
+		"aman'thul",
+		"ambossar",
+		"anachronos",
+		"anetheron",
+		"antonidas",
+		"anub'arak",
+		"arak-arahm",
+		"arathi",
+		"arathor",
+		"archimonde",
+		"area52",
+		"argentdawn",
+		"arthas",
+		"arygos",
+		"ashenvale",
+		"aszune",
+		"auchindoun",
+		"azjol-nerub",
+		"azshara",
+		"azuregos",
+		"azuremyst",
+		"baelgun",
+		"balnazzar",
+		"blackhand",
+		"blackmoore",
+		"blackrock",
+		"blackscar",
+		"blade'sedge",
+		"bladefist",
+		"bloodfeather",
+		"bloodhoof",
+		"bloodscalp",
+		"blutkessel",
+		"bootybay",
+		"boreantundra",
+		"boulderfist",
+		"bronzedragonflight",
+		"bronzebeard",
+		"burningblade",
+		"burninglegion",
+		"burningsteppes",
+		"c'thun",
+		"chamberofaspects",
+		"chantseternels",
+		"cho'gall",
+		"chromaggus",
+		"colinaspardas",
+		"confrèreduthorium",
+		"conseildesombras",
+		"crushridge",
+		"cultedelarivenoire",
+		"daggerspine",
+		"dalaran",
+		"dalvengyr",
+		"darkmoonfaire",
+		"darksorrow",
+		"darkspear",
+		"daskonsortium",
+		"dassyndikat",
+		"deathguard",
+		"deathweaver",
+		"deathwing",
+		"deepholm",
+		"defiasbrotherhood",
+		"dentarg",
+		"dermithrilorden",
+		"derratvondalaran",
+		"derabyssischerat",
+		"destromath",
+		"dethecus",
+		"diealdor",
+		"diearguswacht",
+		"dienachtwache",
+		"diesilbernehands",
+		"dietodeskrallen",
+		"dieewigewacht",
+		"doomhammer",
+		"draenor",
+		"dragonblight",
+		"dragonmaw",
+		"drak'thul",
+		"drek'thar",
+		"dunmodr",
+		"dunmorogh",
+		"dunemaul",
+		"durotan",
+		"earthenring",
+		"echsenkessel",
+		"eitrigg",
+		"eldre'thalas",
+		"elune",
+		"emeraldream",
+		"emeriss",
+		"eonar",
+		"eredar",
+		"eversong",
+		"executus",
+		"exodar",
+		"festungderstürme",
+		"fordragon",
+		"forscherliga",
+		"frostmane",
+		"frostmourne",
+		"frostwhisper",
+		"frostwolf",
+		"galakrond",
+		"garona",
+		"garrosh",
+		"genjuros",
+		"ghostlands",
+		"gilneas",
+		"goldrinn",
+		"gordunni",
+		"gorgonnash",
+		"greymane",
+		"grimbatol",
+		"grom",
+		"gul'dan",
+		"hakkar",
+		"haomarush",
+		"hellfire",
+		"hellscream",
+		"howlingfjord",
+		"hyjal",
+		"illidan",
+		"jaedenar",
+		"kael'thas",
+		"karazhan",
+		"kargath",
+		"kazzak",
+		"kel'thuzad",
+		"khadgar",
+		"khazmodan",
+		"khaz'goroth",
+		"kil'jaeden",
+		"kilrogg",
+		"kirintor",
+		"kor'gall",
+		"krag'jin",
+		"krasus",
+		"kultiras",
+		"kultderverdammten",
+		"lacroisadeécarlate",
+		"laughingskull",
+		"lesclairvoyants",
+		"lessentinelles",
+		"lichking",
+		"lightbringer",
+		"lightning'sblade",
+		"lordaeron",
+		"loserrantes",
+		"lothar",
+		"madmortem",
+		"magtheridon",
+		"mal'ganis",
+		"malfurion",
+		"malorne",
+		"malygos",
+		"mannoroth",
+		"marécagedezangar",
+		"mazrigos",
+		"medivh",
+		"minahonda",
+		"moonglade",
+		"mug'thol",
+		"nagrand",
+		"nathrezim",
+		"naxxramas",
+		"nazjatar",
+		"nefarian",
+		"nemesis",
+		"neptulon",
+		"ner'zhul",
+		"nera'thor",
+		"nethersturm",
+		"nordrassil",
+		"norgannon",
+		"nozdormu",
+		"onyxia",
+		"outland",
+		"perenolde",
+		"pozzodell'eternità",
+		"proudmoore",
+		"quel'thalas",
+		"ragnaros",
+		"rajaxx",
+		"rashgarroth",
+		"ravencrest",
+		"ravenholdt",
+		"razuvious",
+		"rexxar",
+		"runetotem",
+		"sanguino",
+		"sargeras",
+		"saurfang",
+		"scarshieldlegion",
+		"sen'jin",
+		"shadowsong",
+		"shatteredhalls",
+		"shatteredhand",
+		"shattrath",
+		"shen'dralar",
+		"silvermoon",
+		"sinstralis",
+		"skullcrusher",
+		"soulflayer",
+		"spinebreaker",
+		"sporeggar",
+		"steamwheedlecartel",
+		"stormrage",
+		"stormreaver",
+		"stormscale",
+		"sunstrider",
+		"suramar",
+		"sylvanas",
+		"taerar",
+		"talnivarr",
+		"tarrenmill",
+		"teldrassil",
+		"templenoir",
+		"terenas",
+		"terokkar",
+		"terroddar",
+		"themaelstrom",
+		"thesha'tar",
+		"theventureco",
+		"theradras",
+		"thermaplugg",
+		"thrall",
+		"throk'feroth",
+		"thunderhorn",
+		"tichondrius",
+		"tirion",
+		"todeswache",
+		"trollbane",
+		"turalyon",
+		"twilight'shammer",
+		"twistingnether",
+		"tyrande",
+		"uldaman",
+		"ulduar",
+		"uldum",
+		"un'goro",
+		"varimathras",
+		"vashj",
+		"vek'lor",
+		"vek'nilash",
+		"vol'jin",
+		"wildhammer",
+		"wrathbringer",
+		"xavius",
+		"ysera",
+		"ysondre",
+		"zenedar",
+		"zirkeldescenarius",
+		"zul'jin",
+		"zuluhed"
+	}
+	-- Levenshtein distance function
+	local function levenshtein(a, b)
+		local la, lb = #a, #b
+		local dist = {}
+
+		-- Initialize the distance matrix
+		for i = 0, la do
+			dist[i] = {}
+			dist[i][0] = i
+		end
+		for j = 0, lb do
+			dist[0][j] = j
+		end
+
+		-- Compute the distance matrix
+		for i = 1, la do
+			for j = 1, lb do
+				local cost = (a:sub(i, i) == b:sub(j, j)) and 0 or 1
+				dist[i][j] = math.min(
+					dist[i - 1][j] + 1,      -- Deletion
+					dist[i][j - 1] + 1,      -- Insertion
+					dist[i - 1][j - 1] + cost -- Substitution
+				)
+			end
+		end
+
+		-- Return the Levenshtein distance
+		return dist[la][lb]
+	end
+
+
+	function module:FixServerName(fullName)
+		local name, server = strsplit("-", fullName, 2)
+		if not server or not module.autoFixServerName then return fullName end
+		server = server:lower()
+
+		local similarServers = {}
+		local serverDistance = {}
+		for i=1,#realms do
+			local realm = realms[i]
+			if server == realm then
+				return name .. "-" .. realm -- Exact match found
+			end
+			local distance = levenshtein(server, realm)
+
+			if distance <= 2 then -- Adjust the threshold as needed
+				similarServers[#similarServers + 1] = realm
+				serverDistance[realm] = distance
+			end
+		end
+
+		sort(similarServers, function(a, b)
+			return serverDistance[a] < serverDistance[b] -- Sort by distance
+		end)
+		prettyPrint("Similar servers for", server, "are:", table.concat(similarServers, ", "))
+		if #similarServers > 0 then
+			local closestServer = similarServers[1]
+			return name .. "-" .. closestServer
+		else
+			return fullName -- No close match found, return original
+		end
+	end
+end

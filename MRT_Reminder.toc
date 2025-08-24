@@ -1,4 +1,4 @@
-## Interface: 40400
+## Interface: 50500
 ## Title: Method Raid Tools |cffC69B6D[Reminder]|r
 ## Author: ykiigor, |cffC69B6Dm33shoq|r's fork
 ## Notes: Method Raid Tools [Reminder] (|cffC69B6Dm33shoq|r's fork, dotfry release)
@@ -6,7 +6,7 @@
 ## OptionalDeps: Plater, WeakAuras, RG_Aliases
 ## SavedVariables: ReminderLog, RGDB, WASyncArchiveDB, ReminderArchive
 ## IconTexture: Interface\AddOns\MRT\media\MiniMap.tga
-## Version: 63
+## Version: 65.3
 ## X-VersionMajor: 60.1
 ## X-Release: Public
 ## X-RequiredMRT: 5100
@@ -16,6 +16,10 @@ Libs/Libs.xml
 core.lua
 
 Locales/locales.xml
+
+Comms.lua
+Async.lua
+Utilities.lua
 
 EncounterJournalParser.lua
 
