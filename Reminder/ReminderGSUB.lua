@@ -387,6 +387,9 @@ local function GSUB_Status(str)
 	return "off"
 end
 
+--- 1=1 AND 3~3 OR 1=1 AND 3=4 -- false
+--- "1=2 OR 1=1 AND 1=2" -- false
+--- "1=2 OR 1=1 AND 1=1" -- true
 local function GSUB_YesNoCondition(condition,str)
 	local res = 1
 	local pnow = 1
@@ -433,6 +436,10 @@ local function GSUB_YesNoCondition(condition,str)
 			res = res + (isPass and 1 or 0)
 		else
 			res = res * (isPass and 1 or 0)
+		end
+
+		if isOR and res > 0 then -- return early in OR chain
+			break
 		end
 
 		isORnow = isOR

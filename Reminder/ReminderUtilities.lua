@@ -161,18 +161,19 @@ function module:AdvancedSearch(input, search) -- return true if found
 	return false
 end
 
-function module:SearchInData(data,searchPat)
+function module:SearchInData(data, searchPat)
 	if not data then return end
 	if not searchPat then return true end
 
 	if
-		(data.name and data.name:lower():find(searchPat,1,true)) or
-		(data.msg and data.msg:lower():find(searchPat,1,true)) or
-		(data.tts and data.tts:lower():find(searchPat,1,true)) or
-		(data.spamMsg and data.spamMsg:lower():find(searchPat,1,true)) or
-		(data.nameplateText and data.nameplateText:lower():find(searchPat,1,true)) or
-		data.boss and LR.boss_name[data.boss]:lower():find(searchPat,1,true) or
-		(data.units and data.units:lower():find(searchPat,1,true))
+		(data.name and module:AdvancedSearch(data.name, searchPat)) or
+		(data.msg and module:AdvancedSearch(data.msg, searchPat)) or
+		(data.tts and module:AdvancedSearch(data.tts, searchPat)) or
+		(data.spamMsg and module:AdvancedSearch(data.spamMsg, searchPat)) or
+		(data.nameplateText and module:AdvancedSearch(data.nameplateText, searchPat)) or
+		(data.boss and module:AdvancedSearch(LR.boss_name[data.boss], searchPat)) or
+		(data.units and module:AdvancedSearch(data.units, searchPat)) or
+		(data.glow and module:AdvancedSearch(data.glow, searchPat))
 	then
 		return true
 	end

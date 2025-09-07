@@ -468,6 +468,7 @@ PrivateHook:SetScript("OnEvent",function(self,event,addon)
 					notCheckable = true,
 					func = function()
 						local id = self.data.id
+						MRT.Options:Open()
 						MRT.Options:OpenByModuleName("WAChecker")
 						module.options.filterEdit:SetText("")
 						module.options.filterEdit:SetText(id)

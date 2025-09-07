@@ -1,12 +1,12 @@
 --[[
-project-revision 			1160
-project-hash 				cfaf1e654610c845ddf3758517eb2d6e0a2732e4
-project-abbreviated-hash 	cfaf1e6
+project-revision 			1199
+project-hash 				51feaef517f9f8ae768758102eb3569ae5c5035c
+project-abbreviated-hash 	51feaef
 project-author 				m33shoq
-project-date-iso 			2025-08-23T14:37:17Z
-project-date-integer 		20250823143717
-project-timestamp 			1755959837
-project-version 			v65.3
+project-date-iso 			2025-08-31T22:38:35Z
+project-date-integer 		20250831223835
+project-timestamp 			1756679915
+project-version 			v66.5
 ]]
 
 local GlobalAddonName = ...
@@ -245,7 +245,7 @@ _G.GREMINDER = setmetatable({}, {
 
 AddonDB.defaultFont = GameFontNormal:GetFont()
 
-AddonDB.VersionHash = "cfaf1e6"
+AddonDB.VersionHash = "51feaef"
 if AddonDB.VersionHash:find("@") then
 	AddonDB.VersionHash = "DEV"
 	AddonDB.IsDev = true

@@ -489,7 +489,7 @@ LR.Zone = "Instance:"
 LR.ZoneID = "Instance ID:"
 LR.ZoneTip = "Do not confuse with the zone ID,\nan instance is a separate continent or dungeon/raid"
 
-LR.searchTip = "Searches for matches in boss' name, reminder's name, message, chat message, text to speech, on-nameplate text and load by name"
+LR.searchTip = "Searches for matches in boss' name, reminder's name, message, chat message, text to speech, on-nameplate text, frame glow and load by name. You can use `|` or ` or ` to search by multiple words.\n\nExample: `fire|ice` or `fire or ice`"
 LR.search = "Search"
 
 LR.BossKilled = "Boss Killed"

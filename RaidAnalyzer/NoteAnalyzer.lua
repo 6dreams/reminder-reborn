@@ -502,19 +502,26 @@ local function NoteAnalyzerInit()
 			for noteName,noteData in next, VMRT.NoteChecker.NoteBackups do
 				if type(noteData) == "table" then
 					-- VMRT.NoteChecker.NoteBackups[i].name = VMRT.NoteChecker.NoteBackups[i].name or "Note " .. i
+					local latestSendTime = 0
 					local subMenu = {}
 					for i = 1, #noteData do
+						latestSendTime = max(latestSendTime, noteData[i].time or 0)
 						subMenu[#subMenu+1] = {
 							text = noteData[i].name .. " " .. i .. " - " .. date("%d.%m.%Y %H:%M:%S", noteData[i].time),
 							func = NoteBackupsDropDown_SetValue,
 							arg1 = noteName,
 							arg2 = i,
-							tooltip = (date("%d.%m.%Y %H:%M:%S", noteData[i].time))
+							tooltip = (date("%d.%m.%Y %H:%M:%S", noteData[i].time)),
+							time = noteData[i].time,
 						}
 					end
 
+					local name = VMRT.NoteChecker.NoteBackups[noteName][1].name
+					if not name or name:trim() == "" then
+						name = "!!!No name"
+					end
 					List[#List+1] = {
-						text = VMRT.NoteChecker.NoteBackups[noteName][1].name,
+						text = name,
 						subMenu = subMenu,
 						func = function()
 							if IsShiftKeyDown() and IsAltKeyDown() then
@@ -522,6 +529,7 @@ local function NoteAnalyzerInit()
 								ELib:DropDownClose()
 							end
 						end ,
+						time = latestSendTime,
 					}
 				else
 					List[#List+1] = {
@@ -530,7 +538,9 @@ local function NoteAnalyzerInit()
 						arg1 = noteName,
 					}
 				end
-
+				sort(List, function(a,b)
+					return (a.time or 0) > (b.time or 0)
+				end)
 			end
 		end
 	end

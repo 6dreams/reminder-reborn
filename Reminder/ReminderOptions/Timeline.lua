@@ -161,7 +161,7 @@ function options:TimelineInitialize()
 				local dt = module:ConvertMinuteStrToNum(data.triggers[1].delayTime or "0")
 				local p = data.triggers[1].pattFind
 				local pc = data.triggers[1].counter
-				local globalCombatTime, phaseGlobalCount = options.timeLine:GetTimeOnPhase(dt[1],p,pc)
+				local globalCombatTime, phaseGlobalCount = options.timeLine:GetTimeOnPhase(dt[1], p, pc)
 				pd = globalCombatTime or 0
 			elseif data.triggers[1].event == 3 then -- pull
 				local dt = module:ConvertMinuteStrToNum(data.triggers[1].delayTime or "0")
@@ -174,7 +174,7 @@ function options:TimelineInitialize()
 				local dt = module:ConvertMinuteStrToNum(data.triggers[1].delayTime)
 
 				local afterEnd = eventCLEU == "SPELL_AURA_REMOVED"
-				pd = options.timeLine:GetTimeForSpell(dt and dt[1] or 0,spellID,counter,afterEnd,eventCLEU)
+				pd = options.timeLine:GetTimeForSpell(dt and dt[1] or 0, spellID, counter, afterEnd, eventCLEU)
 			end
 
 			local time
@@ -1805,6 +1805,17 @@ function options:TimelineInitialize()
 			subMenu = customSubMenu,
 			Lines = #customSubMenu > 15 and 15,
 		}
+		if AddonDB.IsDev then
+			self.List[#self.List+1] = {
+				isDivider = true,
+			}
+			self.List[#self.List+1] = {
+				text = "Dev: Export timeline",
+				func = function()
+					options:ExportTimeline(true)
+				end,
+			}
+		end
 
 		return res
 	end
@@ -1856,15 +1867,17 @@ function options:TimelineInitialize()
 						for i,delay in next, delaysTable do
 							local d = type(delay) == "table" and delay[1] or delay
 							local r = type(delay) == "table" and delay.r or 1
-							if not options.timeLine:IsRemovedByTimeAdjust(d) then
-								d = options.timeLine:GetTimeAdjust(d)
-								for j=1,r do
-									ScheduleSimrunTimer(module.main.COMBAT_LOG_EVENT_UNFILTERED, d,
+							if module.db.eventsToTriggers.COMBAT_LOG_EVENT_UNFILTERED then
+								if not options.timeLine:IsRemovedByTimeAdjust(d) then
+									d = options.timeLine:GetTimeAdjust(d)
+									for j = 1, r do
+										ScheduleSimrunTimer(module.main.COMBAT_LOG_EVENT_UNFILTERED, d,
 										nil, event, nil,
 										"Creature-0-4255-1530-15001-108361-000065DDA7", "Crystalline Scorpid", 0, 0,
 										UnitGUID("player"), MRT.SDB.charKey, 0, 0,
 										spellID, GetSpellName(spellID) or ""
-									)
+										)
+									end
 								end
 							end
 						end
@@ -1877,7 +1890,7 @@ function options:TimelineInitialize()
 		if module.db.SIMRUN_START_OFFSET and module.db.SIMRUN_START_OFFSET > 0 and module.db.SIMRUN_START_OFFSET < 10000 then
 			local onUpdateScript = SimrunScheduler:GetScript("OnUpdate")
 			while module.db.simrun < module.db.SIMRUN_START_OFFSET do
-				onUpdateScript(SimrunScheduler,0.05)
+				onUpdateScript(SimrunScheduler, 0.05)
 			end
 		end
 
@@ -3899,7 +3912,7 @@ function options:TimelineInitialize()
 		if data.triggers[1].event == 2 then
 			p = data.triggers[1].pattFind
 			pc = data.triggers[1].counter
-			pd = dt and options.timeLine:GetTimeOnPhase(dt[1],p,pc)
+			-- pd = dt and options.timeLine:GetTimeOnPhase(dt[1],p,pc)
 		elseif data.triggers[1].event == 1 and data.triggers[1].eventCLEU then
 			local trigger = data.triggers[1]
 			local name,_,texture = GetSpellInfo(trigger.spellID)
@@ -5811,7 +5824,7 @@ function options:TimelineInitialize()
 			return
 		end
 		self:ResetSavedVars()
-		options.assign:AddNewReminderToLine(line,nil,true)
+		options.assign:AddNewReminderToLine(line, nil, true)
 	end
 
 	function options.assign:UpdateLineSize()
@@ -5944,7 +5957,7 @@ function options:TimelineInitialize()
 		if self.funcOnClick then self.funcOnClick(self) end
 		if self.setup and button == "RightButton" then
 			local spellName = GetSpellName(self.setup.spell)
-			MRT.F.ShowInput2("Set custom options for "..(spellName or self.setup.spell),function(res)
+			MRT.F.ShowInput2("Set custom options for " .. (spellName or self.setup.spell), function(res)
 				local t = module:ConvertMinuteStrToNum(res[1])
 				if not t then
 					self.setup.cd = options.assign:GetSpellBaseCD(self.setup.spell)
@@ -5959,12 +5972,12 @@ function options:TimelineInitialize()
 				else
 					options.assign.custom_charges[self.setup.spell] = nil
 				end
-				self:UpdateFromData(self.setup,true)
-			end,{text=LR["Cooldown:"],tip=LR["Leave empty for reset to default value"]},{text=LR["Charges:"],tip=LR["Leave empty for reset to default value"]})
+				self:UpdateFromData(self.setup, true)
+			end, { text = LR["Cooldown:"], tip = LR["Leave empty for reset to default value"] }, { text = LR["Charges:"], tip = LR["Leave empty for reset to default value"] })
 			return
 		elseif self.setup then
 			if options.assign.var_draggedlastline then
-				options.assign:AddNewReminderToLine(options.assign.var_draggedlastline,self.setup)
+				options.assign:AddNewReminderToLine(options.assign.var_draggedlastline, self.setup)
 			end
 		end
 		if not self.data then return end
@@ -6004,6 +6017,7 @@ function options:TimelineInitialize()
 	options.assign.Util_LineAssignOnEnter = function(self)
 		if self.funcOnEnter then self.funcOnEnter(self) end
 		local data = self.data
+		local timestamp = self.timestamp
 
 		self:SetAlpha(.7)
 
@@ -6038,22 +6052,22 @@ function options:TimelineInitialize()
 		if data.triggers[1].event == 2 then
 			p = data.triggers[1].pattFind
 			pc = data.triggers[1].counter
-			pd = dt and options.assign:GetTimeOnPhase(dt[1],p,pc)
+			-- pd = dt and options.assign:GetTimeOnPhase(dt[1],p,pc)
 		elseif data.triggers[1].event == 1 and data.triggers[1].eventCLEU then
 			local trigger = data.triggers[1]
 			local name,_,texture = GetSpellInfo(trigger.spellID)
 			local levent = module.C[trigger.eventCLEU].lname
 
 			local desc = (trigger.counter and "["..trigger.counter.."]" or "")..(texture and "|T"..texture..":0|t" or "")..(name or "")
-			local afterEnd = trigger.eventCLEU == "SPELL_AURA_REMOVED"
-			pd = options.assign:GetTimeForSpell(dt and dt[1] or 0,trigger.spellID,trigger.counter,afterEnd,trigger.eventCLEU)
+			-- local afterEnd = trigger.eventCLEU == "SPELL_AURA_REMOVED"
+			-- pd = options.assign:GetTimeForSpell(dt and dt[1] or 0,trigger.spellID,trigger.counter,afterEnd,trigger.eventCLEU)
 			GameTooltip:AddLine(levent ..": ".. desc)
 		end
 		if dt and data.triggers[1].event ~= 3 then
 			GameTooltip:AddLine((p and LR["Phase "]..p..(pc and " (#"..pc..")" or "")..": " or "")..module:FormatTime(dt[1]))
 		end
-		if pd then
-			GameTooltip:AddLine(LR["From start: "]..module:FormatTime(pd))
+		if timestamp then
+			GameTooltip:AddLine(LR["From start: "]..module:FormatTime(timestamp))
 		end
 
 		if data.units then
@@ -6662,20 +6676,20 @@ function options:TimelineInitialize()
 		self:Hide()
 
 		options.assign:Util_LineAssignRemoveSpace()
-		options.assign.frame:ShowCD(nil,nil,nil,"DRAGGING")
+		options.assign.frame:ShowCD(nil, nil, nil, "DRAGGING")
 
 		if options.assign.frame.draggingNow and not isCancel then
-			options.assign:AddNewReminderToLine(options.assign.frame.draggingNow,self.setup,false,options.assign.frame.draggingData,IsShiftKeyDown())
+			options.assign:AddNewReminderToLine(options.assign.frame.draggingNow, self.setup, false, options.assign.frame.draggingData, IsShiftKeyDown())
 
 			options.assign.var_draggedlastline = options.assign.frame.draggingNow
 		end
 	end
 
-	function options.assign:AddNewReminderToLine(line,setup,window,existed,makeNew)
+	function options.assign:AddNewReminderToLine(line, setup, window, existed, makeNew)
 		local line_data = line
 
 		local time = line_data.time
-		self:PrepareSavedVars(time,line.line)
+		self:PrepareSavedVars(time, line.line)
 
 		local phase, x_phase, phaseCount, phaseGlobalCount = self.SAVED_VAR_P, self.SAVED_VAR_XP, self.SAVED_VAR_PC, self.SAVED_VAR_PGC
 
@@ -6690,13 +6704,9 @@ function options:TimelineInitialize()
 		data.durrev = true
 		data.countdown = true
 
-		if self.ZONE_ID then
-			data.boss = nil
-			data.zoneID = self.ZONE_ID
-		else
-			data.boss = self.BOSS_ID
-			data.zoneID = nil
-		end
+		data.zoneID = self.ZONE_ID
+		data.boss = self.BOSS_ID
+		data.diff = self.DIFF_ID
 
 		if not data.triggers[1] then
 			data.triggers[1] = {}
@@ -6734,13 +6744,13 @@ function options:TimelineInitialize()
 				local spell = msg:match("{spell:(%d+)")
 				spell = spell and tonumber(spell)
 				if spell then
-					data.tts = GetSpellName(spell) or msg:gsub("{spell:%d+}",""):trim()
+					data.tts = GetSpellName(spell) or msg:gsub("{spell:%d+}", ""):trim()
 				else
-					data.tts = msg:gsub("{spell:%d+}",""):trim()
+					data.tts = msg:gsub("{spell:%d+}", ""):trim()
 				end
 			end
 			if self.OPTS_NOSPELLNAME and data.msg then
-				data.msg = data.msg:gsub("^({spell:%d+}).-$","%1")
+				data.msg = data.msg:gsub("^({spell:%d+}).-$", "%1")
 			end
 
 			if self.OPTS_NOSPELLCD then
@@ -6752,10 +6762,10 @@ function options:TimelineInitialize()
 			end
 		end
 
-		local t=floor(time*10)/10
-		data.triggers[1].delayTime = module:FormatTime(t,true)
+		local t = floor(time * 10) / 10
+		data.triggers[1].delayTime = module:FormatTime(t, true)
 
-		GenerateReminderName(data)
+		GenerateReminderName(data, makeNew)
 
 		if window then
 			if IsShiftKeyDown() then
@@ -6767,7 +6777,7 @@ function options:TimelineInitialize()
 				options.quickSetupFrame:Show()
 			end
 		else
-			module:AddReminder(data.token,data)
+			module:AddReminder(data.token, data)
 
 			options.assign:Update()
 			module:ReloadAll()
@@ -8952,7 +8962,7 @@ function options:TimelineInitialize()
 			isEvents = isEvents or false
 
 			for k, v in next, tbl do
-				if not ignoreFields[k] and (not (module.TimeLineExportBlacklist[k] or options.timeLine.spell_status[k]) or data == cData) then -- and (not customSpells or type(k) ~= "number" or k < 200 or customSpells[k])
+				if not ignoreFields[k] and (not options.timeLine.spell_status[k] or data == cData) then -- and (not customSpells or type(k) ~= "number" or k < 200 or customSpells[k])
 					local keyIsNum = false
 					if type(k) == "number" then
 						keyIsNum = true

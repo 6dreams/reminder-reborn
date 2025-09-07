@@ -269,8 +269,18 @@ local function CheckDataIntegrity(data)
 
 end
 
-local checksTable = {"countdown", "reversed", "nameplateGlow", "glowOnlyText", "doNotLoadOnBosses", "dynamicdisable",
-"norewrite", "copy", "disabled", "defDisabled", "RGAPIOnlyRG", "noteIsBlock", "sametargets", "durrev", "hideTextChanged", "ignoreTimeline"}
+local checksTable = {
+	"countdown", "reversed", "nameplateGlow", "glowOnlyText",
+	"doNotLoadOnBosses", "dynamicdisable", "norewrite", "copy",
+	"disabled", "defDisabled", "RGAPIOnlyRG", "noteIsBlock",
+	"sametargets", "durrev", "hideTextChanged", "ignoreTimeline",
+	"autoName"
+}
+
+if #checksTable >= 32 then
+	geterrorhandler()("Reminder Sender: Too many checks for bit array")
+end
+
 local function GetChecksString(data)
 	local checks = ""
 

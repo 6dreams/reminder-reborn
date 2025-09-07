@@ -24,10 +24,6 @@ AddonDB:RegisterCallback("ENCOUNTER_JOURNAL_PARSED", function()
 	end
 end)
 
-module.TimeLineExportBlacklist = {
-
-}
-
 module.TimelineData = {
 -- toes
 [1431]={ -- Sha of Fear

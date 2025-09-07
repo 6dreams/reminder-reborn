@@ -35,9 +35,16 @@ local bit_rshift = bit.rshift
 -- Compability
 -----------------------------------------------------------
 
+---@return string name
+---@return fileID iconID
+---@return fileID originalIconID
+---@return number castTime
+---@return number minRange
+---@return number maxRange
+---@return number spellID
 AddonDB.GetSpellInfo = C_Spell and C_Spell.GetSpellInfo and function(spellID)
 	if not spellID then
-		return nil
+		return nil, nil, nil, nil, nil, nil, nil
 	end
 	local sp = C_Spell.GetSpellInfo(spellID)
 	if sp then
@@ -46,9 +53,13 @@ AddonDB.GetSpellInfo = C_Spell and C_Spell.GetSpellInfo and function(spellID)
 end or GetSpellInfo
 AddonDB.GetSpellName = C_Spell and C_Spell.GetSpellName or GetSpellInfo
 AddonDB.GetSpellTexture = C_Spell and C_Spell.GetSpellTexture or GetSpellTexture
+---@return number startTime
+---@return number duration
+---@return boolean isEnabled
+---@return number modRate
 AddonDB.GetSpellCooldown = C_Spell and C_Spell.GetSpellCooldown and function(spellID)
 	if not spellID then
-		return nil
+		return nil, nil, nil, nil
 	end
 	local cd = C_Spell.GetSpellCooldown(spellID)
 	if cd then

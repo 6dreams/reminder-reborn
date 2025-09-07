@@ -8,6 +8,26 @@ AddonDB.Changelog = [=[
  - Also note that |cFF8855FFWeakAuras Sync|r and |cff80ff00Raid Analyzer|r modules are also included with this addon.
 |r
 
+ v.66.5
+* Fixes
+
+ v.66.4
+* Reminder: when searching in reminder it is now possible to use `|` and ` or ` to search for multiple terms at once
+ - e.g. soak|break will find reminders that contain either "soak" or "break"
+* Reminder: fixed issue when casting empowered spells made spell cd trigger work incorrectly
+* Timeline: fixed issue when simulating timeline for certain data sets wasn't working
+
+ v.66.3
+* Timeline: Added data for Mythic Dimensius, based on Liquid's pov so timings are not precise
+
+ v.66.1
+* Timeline: Updated data for Mythic Araz and Salhadaar
+
+ v.66
+* Reminder: Added new trigger activation logical operand AND+
+ - This allows expressing logic like (t1 and t2) or (t3 and t4)
+* Reminder: Extra check conditions like "1=1 OR 1=1 AND 1=0" are now properly evaluated as true
+
  v.65.3
 * Timeline: Updated data for Mythic Soulhunters and Fractilus
 

@@ -3038,8 +3038,8 @@ function module:TriggerSpellCD(triggers)
 			if type(spell) == "number" and duration == 0 and startTime == 0 then
 				startTime, duration, enabled, modRate = GetSpellCooldown(GetSpellName(spell))
 			end
-			if duration then	--spell found
-				if not enabled then
+			if duration then -- spell found
+				if not enabled and select(7, GetSpellInfo(spell)) == 370537 then -- stasis workaround
 					duration = 3600
 				end
 				local cdCheck = duration > gduration and duration > 0 and (not triggerData.bwtimeleft or (startTime + duration - GetTime()) < triggerData.bwtimeleft)
@@ -4269,8 +4269,12 @@ do
 		return (koreanCount / #letters) > 0.5
 	end
 
-	local missingTTSStrings = VMRT.Reminder.missingTTSStrings or {}
-	VMRT.Reminder.missingTTSStrings = missingTTSStrings
+	local missingTTSStrings = {}
+
+	if VMRT.Reminder then
+		missingTTSStrings = VMRT.Reminder.missingTTSStrings or {}
+		VMRT.Reminder.missingTTSStrings = missingTTSStrings
+	end
 	local function exportMissingTTSStrings()
 		local t = {}
 		for k in next, missingTTSStrings do
@@ -4278,6 +4282,7 @@ do
 		end
 		table.sort(t)
 		MRT.F:Export(table.concat(t, "\n"))
+		wipe(missingTTSStrings)
 	end
 	SlashCmdList["REMINDER_EXPORT_MISSING_TTS"] = exportMissingTTSStrings
 	SLASH_REMINDER_EXPORT_MISSING_TTS1 = "/remindertts"
@@ -5224,7 +5229,7 @@ function module:CreateFunctions(encounterID,difficultyID,zoneID,isSimrun)
 			end
 			local triggersStr = ""
 			local opened = false
-			for i=#data.triggers,2,-1 do
+			for i = #data.triggers, 2, -1 do
 				local trigger = data.triggers[i]
 				if not trigger.andor or trigger.andor == 1 then
 					triggersStr = "and "..(opened and "(" or "")..(trigger.invert and "not " or "").."t["..i.."].status " .. triggersStr
@@ -5234,6 +5239,10 @@ function module:CreateFunctions(encounterID,difficultyID,zoneID,isSimrun)
 					opened = false
 				elseif trigger.andor == 3 then
 					triggersStr = "or "..(trigger.invert and "not " or "").."t["..i.."].status"..(not opened and ")" or "").." " .. triggersStr
+					opened = true
+				elseif trigger.andor == 4 then -- ignore
+				elseif trigger.andor == 5 then -- and with opened = true
+					triggersStr = "and "..(trigger.invert and "not " or "").."t["..i.."].status"..(not opened and ")" or "").." " .. triggersStr
 					opened = true
 				end
 			end

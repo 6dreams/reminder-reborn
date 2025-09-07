@@ -2527,7 +2527,9 @@ Or Atlas prefixed with 'A:' e.g. A:GarrMission_MissionIcon-Combat]]
 		button.UpdateTriggerAlerts = SetupFrame.UpdateTriggerAlerts
 
 		button.andor = MLib:Button(button,"AND"):Size(45,20):Point("LEFT",10,0):Shown(triggerNum ~= 1):OnClick(function(self)
-			self.state = self.state == 1 and 2 or self.state == 2 and 3 or self.state == 3 and 4 or 1
+			-- 1, 5, 2, 3, 4
+			-- AND, AND+, OR, OR+, ignore
+			self.state = self.state == 1 and 5 or self.state == 5 and 2 or self.state == 2 and 3 or self.state == 3 and 4 or 1
 			self:Update()
 
 			SetupFrame.data.triggers[button.num].andor = self.state
@@ -2548,6 +2550,9 @@ Or Atlas prefixed with 'A:' e.g. A:GarrMission_MissionIcon-Combat]]
 					opened = false
 				elseif trigger.andor == 3 then
 					triggersStr = " or "..(trigger.invert and "not " or "")..i..(not opened and ")" or "").. triggersStr
+					opened = true
+				elseif trigger.andor == 5 then
+					triggersStr = " and "..(trigger.invert and "not " or "")..i..(not opened and ")" or "").. triggersStr
 					opened = true
 				end
 			end
@@ -2571,6 +2576,8 @@ Or Atlas prefixed with 'A:' e.g. A:GarrMission_MissionIcon-Combat]]
 				self:SetText("OR+")
 			elseif self.state == 4 then
 				self:SetText(" ")
+			elseif self.state == 5 then
+				self:SetText("AND+")
 			end
 		end
 
